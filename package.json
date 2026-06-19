@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate-interfaces": "../pyobs-core/.venv/bin/python3 scripts/generate-interfaces.py",
+    "generate-interfaces": "bash scripts/generate-interfaces.sh",
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
