@@ -1,28 +1,15 @@
 #!/usr/bin/env python3
 """Generate src/pyobs-interfaces.ts from pyobs-core interface definitions.
 
-Usage:
-    python3 scripts/generate-interfaces.py [--pyobs-core PATH]
-
-PATH defaults to ../../pyobs-core relative to this script (i.e. a sibling
-checkout of pyobs-core next to pyobs-web-client).
+Intended to be called via scripts/generate-interfaces.sh, which sets up a
+temporary venv with pyobs-core installed before running this script.
 """
 
-import argparse
 import inspect
 import json
-import sys
 import types
 import typing
 from pathlib import Path
-
-
-def parse_args() -> argparse.Namespace:
-    default_core = Path(__file__).parent.parent.parent / "pyobs-core"
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--pyobs-core", default=str(default_core), metavar="PATH",
-                   help="Path to pyobs-core checkout (default: %(default)s)")
-    return p.parse_args()
 
 
 # ── type mapping ─────────────────────────────────────────────────────────────
@@ -46,7 +33,6 @@ def py_type_to_ts(ann) -> str:
         return "string"
 
     if _is_union(ann):
-        # e.g. str | None  →  unwrap and map the non-None side
         non_none = [a for a in _union_args(ann) if a is not type(None)]
         return py_type_to_ts(non_none[0]) if len(non_none) == 1 else "string"
 
@@ -117,16 +103,8 @@ def process_interface(cls) -> dict:
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    args = parse_args()
-    core_path = Path(args.pyobs_core)
-
-    if not (core_path / "pyobs" / "interfaces").exists():
-        sys.exit(f"ERROR: pyobs-core not found at {core_path}")
-
-    sys.path.insert(0, str(core_path))
-
-    import pyobs.interfaces as ifaces  # noqa: E402  (intentional late import)
-    from pyobs.interfaces.interface import Interface  # noqa: E402
+    import pyobs.interfaces as ifaces
+    from pyobs.interfaces.interface import Interface
 
     interfaces: dict = {}
     for name in ifaces.__all__:

@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
 import LoginView from '@/views/LoginView.vue'
 import { useXmpp } from '@/composables/useXmpp'
 
 const { status } = useXmpp()
-const route = useRoute()
 </script>
 
 <template>

@@ -4,17 +4,30 @@ import { Strophe, $pres, $iq } from 'strophe.js'
 export type XmppStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
 export type PyobsModule = {
-  jid: string
+  jid: string      // bare JID, e.g. camera@localhost
+  fullJid: string  // full JID with resource, e.g. camera@localhost/pyobs
   name: string
   features: string[]
 }
 
+export type RpcResult = {
+  success: boolean
+  value: unknown
+}
+
 const NS_DISCO_INFO = 'http://jabber.org/protocol/disco#info'
+const NS_RPC = 'jabber:iq:rpc'
 const PYOBS_RESOURCE = 'pyobs'
 const SESSION_JID_KEY = 'xmpp_jid'
 const SESSION_PW_KEY = 'xmpp_password'
 
-const status = ref<XmppStatus>('disconnected')
+// Start as 'connecting' immediately if credentials are stored so the first
+// render never shows the login screen before the auto-reconnect kicks in.
+const status = ref<XmppStatus>(
+  sessionStorage.getItem(SESSION_JID_KEY) && sessionStorage.getItem(SESSION_PW_KEY)
+    ? 'connecting'
+    : 'disconnected',
+)
 const jid = ref<string>('')
 const errorMessage = ref<string>('')
 const modules = ref<PyobsModule[]>([])
@@ -57,7 +70,7 @@ async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> 
 
   modules.value = [
     ...modules.value.filter((m) => m.jid !== bareJid),
-    { jid: bareJid, name, features },
+    { jid: bareJid, fullJid, name, features },
   ]
 }
 
@@ -79,6 +92,83 @@ function handlePresence(presence: Element): boolean {
 
   return true // keep handler active
 }
+
+// ── XEP-0009 RPC helpers ──────────────────────────────────────────────────────
+
+function toRpcValue(type: string, value: string | number | boolean): { tag: string; text: string } {
+  const str = String(value)
+  if (type === 'number') {
+    return /^-?\d+$/.test(str.trim())
+      ? { tag: 'i4', text: str }
+      : { tag: 'double', text: str }
+  }
+  if (type === 'boolean') {
+    return { tag: 'boolean', text: str === 'true' || str === '1' ? '1' : '0' }
+  }
+  return { tag: 'string', text: str }
+}
+
+function parseRpcValue(el: Element): unknown {
+  const child = el.firstElementChild
+  if (!child) return el.textContent ?? null
+  switch (child.localName) {
+    case 'nil':     return null
+    case 'double':  return parseFloat(child.textContent ?? '0')
+    case 'i4':
+    case 'int':     return parseInt(child.textContent ?? '0', 10)
+    case 'boolean': return child.textContent === '1'
+    case 'string':  return child.textContent ?? ''
+    case 'array': {
+      const data = child.getElementsByTagName('data')[0]
+      return data ? Array.from(data.children).map(parseRpcValue) : []
+    }
+    default:        return child.textContent
+  }
+}
+
+async function executeMethod(
+  fullJid: string,
+  methodName: string,
+  params: Array<{ type: string; value: string | number | boolean }>,
+): Promise<RpcResult> {
+  if (!connection) throw new Error('Not connected')
+
+  // Build XEP-0009 methodCall IQ
+  const builder = $iq({ to: fullJid, type: 'set' })
+    .c('query', { xmlns: NS_RPC })
+    .c('methodCall')
+    .c('methodName').t(methodName).up()
+    .c('params')
+
+  for (const p of params) {
+    const { tag, text } = toRpcValue(p.type, p.value)
+    builder.c('param').c('value').c(tag).t(text).up().up().up()
+  }
+
+  let result: Element
+  try {
+    result = await sendIQ(builder.tree())
+  } catch (err: unknown) {
+    // XMPP-level error (item-not-found, forbidden, …)
+    const msg = err instanceof Element
+      ? (err.getElementsByTagName('text')[0]?.textContent ?? 'XMPP error')
+      : String(err)
+    return { success: false, value: msg }
+  }
+
+  // RPC-level fault
+  const faultEl = result.getElementsByTagName('fault')[0]
+  if (faultEl) {
+    const msg = faultEl.getElementsByTagName('string')[0]?.textContent ?? 'RPC fault'
+    return { success: false, value: msg }
+  }
+
+  // Success — parse first return value (void methods have no params element)
+  const valueEl = result.getElementsByTagName('value')[0]
+  return { success: true, value: valueEl ? parseRpcValue(valueEl) : null }
+}
+
+// ── connection management ─────────────────────────────────────────────────────
 
 function connect(userJid: string, password: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -149,5 +239,6 @@ export function useXmpp() {
     modules: readonly(modules),
     connect,
     disconnect,
+    executeMethod,
   }
 }
