@@ -40,3 +40,29 @@ npm run dev
 ```sh
 npm run build
 ```
+
+### Run Unit Tests
+
+Fast, no external dependencies — covers `src/pyobs-codec.ts`'s wire-protocol
+encode/decode logic.
+
+```sh
+npm run test:unit
+```
+
+### Run End-to-End Tests
+
+Drives the real app in a browser against a **live pyobs-core XMPP server** —
+there is no mocked backend. Requires an ejabberd server with at least one
+pyobs-core 2.0 module online, and Playwright's browser installed once via
+`npx playwright install chromium`.
+
+```sh
+XMPP_TEST_JID=you@your.server XMPP_TEST_PASSWORD=yourpassword npm run test:e2e
+```
+
+Tests skip themselves with a clear reason if the credentials aren't set, or if
+no module comes online within 30s. A few tests (enum-typed params, RPC
+faults) additionally skip if the connected module doesn't implement the
+relevant interface (e.g. `IImageFormat`, `IConfig`) — they cover that ground
+when available rather than assuming every environment has the same modules.
