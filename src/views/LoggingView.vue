@@ -87,10 +87,10 @@ function formatTime(ts: number): string {
       <table v-else class="w-100">
         <tbody>
           <tr v-for="ev in logEvents" :key="ev.uuid" :class="levelClass(String(ev.data['level'] ?? ''))">
-            <td class="text-secondary pe-3 text-nowrap">{{ formatTime(ev.timestamp) }}</td>
-            <td class="pe-3 text-nowrap" style="min-width: 4rem">{{ String(ev.data['level'] ?? '').toUpperCase() }}</td>
-            <td class="pe-3 text-nowrap text-muted">{{ ev.module }}</td>
-            <td class="text-break">{{ String(ev.data['message'] ?? '') }}</td>
+            <td class="text-secondary pe-3 text-nowrap align-top">{{ formatTime(ev.timestamp) }}</td>
+            <td class="pe-3 text-nowrap align-top" style="min-width: 4rem">{{ String(ev.data['level'] ?? '').toUpperCase() }}</td>
+            <td class="pe-3 text-nowrap text-muted align-top">{{ ev.module }}</td>
+            <td class="text-break align-top">{{ String(ev.data['message'] ?? '') }}</td>
           </tr>
         </tbody>
       </table>
