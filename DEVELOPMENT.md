@@ -181,6 +181,12 @@ user. Full implementation plan below.
 Not yet approved for execution — captured here for reference. Original plan file:
 `/home/husser/.claude/plans/parsed-wiggling-brooks.md`.
 
+**Superseded — see [Re-pass: implementation plan without codegen](#re-pass-implementation-plan-without-codegen)
+at the end of this doc.** User's call: codegen isn't just unnecessary now, it's
+explicitly not wanted. Kept below for the reasoning trail that's still accurate (the
+RPC value wire format in §3, the fault shape) — but §1/§2's `WireType`-in-generated-file
+design and the generator itself are not what gets built.
+
 ### 1. New file `src/pyobs-codec.ts` — generic value↔XML codec
 
 Pure logic, no XMPP dependency, port of `serializer.py`'s `value_to_xml`/`xml_to_value`.
@@ -415,3 +421,293 @@ User's call: **stop the web client work here and change pyobs-core first** — a
 whatever's needed there so RPC method introspection also becomes wire-native, fully
 realizing the "no shared codegen needed" idea for 2.0. Web client implementation is
 on hold pending that.
+
+## Unpaused: pyobs-core now publishes full wire-native schemas
+
+Re-checked `../pyobs-core` at `700ba457` (2026-07-02), including its own
+`DEVELOPMENT.md` (`v0.47`, now an implementation log rather than a design doc, with a
+dedicated "Phase 7 — pyobs-web-client catch-up" section). The exact gap the pause above
+was blocked on is closed:
+
+- **RPC method schemas are now wire-native.** `pyobs/comm/xmpp/serializer.py:
+  _interface_schema_to_xml`, wired into disco#info via
+  `xmppcomm.py:_get_disco_info`, emits one `<pyobs:interface>` block per interface
+  containing `<command name="...">` elements with typed `<parameter name="..."
+  type="..." unit="...">` children (types: `int32`, `float64`, `bool`, `string`,
+  `datetime`, `enum(Name)`, `struct<Name>`), a `<types>` block with `<enum>` value
+  lists for any enum params/fields referenced, a `<state node="...">` block (fields,
+  same type vocabulary) when the interface declares `state`, and sibling
+  `<capability name="..." type="...">value</capability>` elements for fixed-lifetime
+  values. One disco#info query now returns everything needed to both *call* a method
+  and *render* a form for it — the missing piece from the "Paused" section above.
+- **Event schemas/versioning are also now implemented** (this was still open as of
+  the previous check, closed since in `9c19e512`/`700ba457`): `xmppcomm.py:680` adds
+  `urn:pyobs:event:{name}:{version}` disco#info features (was unversioned
+  `pyobs:event:{name}`), `:685` uses the same versioned string for XEP-0163 PEP
+  interest, and `:843` (`_get_disco_info`, `local == "event" and
+  ns.startswith("urn:pyobs:event:")`) publishes a typed `<{ns}event>` schema block per
+  event class, same shape as interface schemas.
+- **RPC value wire format is unchanged** from what this doc already described —
+  confirmed still matches: `urn:pyobs:rpc:1`, `<int>`/`<double>`/`<string>`/
+  `<boolean>`/`<nil>`/`<items>`/`<tuple>`/`<dict>` value tags in `serializer.py`, fault
+  shape `<fault><value><pyobs:fault xmlns="urn:pyobs:rpc:1"><exception>…</exception>
+  <message>…</message></pyobs:fault></value></fault>` in `rpc.py`. Nothing in §1/§3 of
+  the implementation plan above needs revising on this front.
+
+**Implication beyond what the plan above assumed:** §1 of the plan already correctly
+guessed state/capabilities don't need codegen (self-describing wire format). That now
+extends to *commands* too — the entire per-interface IDL (types, commands+params,
+state, capabilities) is derivable from one disco#info query, not just state/
+capabilities. `generate-interfaces.py`'s build-time extraction (§2 of the plan) is now
+fully optional rather than a hard prerequisite for RPC calls — pyobs-core's own Phase 7
+notes list "retire the extraction script for live disco#info fetching" as an explicit
+option. Whether to actually drop codegen (build-time generated TS vs. runtime-fetched
+schema) is a real design choice with its own tradeoffs (type safety/autocomplete vs.
+always-fresh schema, one disco#info round-trip per module on connect either way for
+capabilities today) — not yet decided, worth revisiting before resuming
+implementation given how much of the plan above (§2, §3's `WireType`, the generator
+changes) was written assuming codegen was the only option.
+
+Blocker lifted. Implementation plan above needs a re-pass before resuming — it was
+written under the assumption that commands still required generated TS from a local
+Python checkout; that assumption no longer holds.
+
+## Re-pass: implementation plan without codegen
+
+**Decision (user): codegen is not just optional, it's not wanted.** The client fetches
+interface/event schemas live from disco#info on every connect; nothing is
+pre-generated from a local `../pyobs-core` checkout, ever. This section supersedes §1–6
+of the "Implementation plan" above. Re-verified directly against
+`../pyobs-core@700ba457`'s actual code (`pyobs/comm/xmpp/serializer.py`,
+`xmppcomm.py`) while writing this, not just its design doc's illustrative XML — one
+discrepancy surfaced, noted in §3.
+
+### 1. New file `src/pyobs-codec.ts` — schema-less decode, schema-driven encode
+
+Decoding and encoding have genuinely different information needs, because the wire
+vocabulary is self-tagging on the way out but not on the way in:
+
+**Decoding needs no schema at all.** Every value already on the wire — RPC returns,
+state pushes, capability values — carries its own type as the element tag:
+`<boolean>`, `<int>`, `<double>`, `<string>`, `<nil/>`,
+`<items><item>…</item></items>`, `<tuple>` (identical shape to `<items>`, no reason
+for the client to distinguish them — both become a JS array),
+`<dict><entry><key>…</key><val>…</val></entry></dict>`, or a dataclass element (any
+tag not in that list — its children are one `<fieldName>` wrapper per field, each
+wrapping one more self-tagged value, recursively — this is how `_dataclass_to_xml`
+serializes both state and, per §3 below, capabilities). One function covers all of it:
+
+```ts
+export function localTag(el: Element): string   // tag.split('}').pop(), ejabberd may namespace any element on round-trip
+export function xmlToValue(el: Element): unknown   // fully generic, no type argument — dispatches on localTag(el) alone
+```
+
+`xmlToValue` recurses into `<items>`/`<tuple>` → `unknown[]`, `<dict>` → `Record<string,
+unknown>` (or `Map` if keys aren't always strings — keys are `xmlToValue`'d too, so
+technically not guaranteed string; a plain `dict` param/field is the only place this
+could bite, revisit if one shows up with non-string keys), anything else unrecognized
+→ walk `Array.from(el.children)`, one field per child, `{ [localTag(child)]:
+xmlToValue(child.children[0]) }`. `StrEnum` values need no special casing on decode —
+they're plain `<string>` on the wire (`serializer.py:98-101`), so they just decode to a
+JS string.
+
+**Encoding needs the target type**, because a plain JS input (e.g. a string typed into
+a form field) is ambiguous — `"5"` could be meant as `<int>` or `<double>` — and RPC
+call params must match the callee's declared type. This is the one place the client
+still needs a schema, fetched live (§3), not generated:
+
+```ts
+export type WireType =
+  | 'bool' | 'int32' | 'float64' | 'string' | 'void' | 'datetime'
+  | { kind: 'enum'; name: string }
+  | { kind: 'struct'; name: string }
+  | { kind: 'array'; item: WireType }
+  | { kind: 'optional'; inner: WireType }
+
+export function parseWireType(typeStr: string): WireType
+  // parses the *schema* type-string vocabulary emitted by pyobs-core's
+  // `_wire_type()` (serializer.py:343): "bool", "int32", "float64", "string",
+  // "void", "datetime", "enum(Name)", "struct<Name>", "array<T>", "optional<T>" —
+  // NOT the same vocabulary as the value tags above (schema says "int32", a value
+  // on the wire says "<int>") — two different jobs, deliberately not unified.
+
+export function valueToXml(value: unknown, type: WireType): Element
+  // only used for RPC call params built from user input; return values never
+  // need this, they're decoded with xmlToValue instead.
+```
+
+**Schema-block parsers**, for the `<pyobs:interface>`/`<{ns}event>` disco#info
+elements (§3 supplies the raw `Element`, parsed once per `fetchModuleInfo` call):
+
+```ts
+export type CommandSchema = { name: string; params: { name: string; type: WireType; unit?: string }[] }
+export type StateSchema = { node: string; fields: { name: string; type: WireType; unit?: string }[] }
+export type InterfaceSchema = {
+  name: string; version: number
+  enums: Record<string, string[]>   // from <types><enum name=.. ><value>..</value></enum></types>
+  commands: Record<string, CommandSchema>
+  state: StateSchema | null
+}
+export type EventSchema = { name: string; version: number; enums: Record<string, string[]>; fields: { name: string; type: WireType; unit?: string }[] }
+
+export function parseInterfaceSchema(el: Element): InterfaceSchema   // one <{urn:pyobs:interface:Name:version}interface> element
+export function parseEventSchema(el: Element): EventSchema           // one <{urn:pyobs:event:Name:version}event> element
+export type VersionedFeature = { name: string; version: number }
+export function parseVersionedFeature(prefix: 'interface' | 'state' | 'event', feat: string): VersionedFeature | null
+  // urn:pyobs:{prefix}:{name}:{version} — one function, not three near-duplicates
+```
+
+Deliberate decisions:
+- **No legacy scalar-text fallback** ported (same call as the original plan's §1 —
+  still correct, nothing on the wire produces `_parse_scalar`'s shape).
+- **`struct<Name>`-typed params can't be form-built from schema alone.** Unlike
+  `enum(Name)`, whose values live in the same `<types>` block, a `struct<Name>`
+  param/field only ever gives you the *name* — pyobs-core doesn't publish that
+  struct's own field list anywhere in disco#info (confirmed: `_interface_schema_to_xml`
+  only ever adds `<types><enum>` entries, never a `<struct>` counterpart). Not an
+  issue today — grep-confirmed no real command takes a struct/list/dict param, same
+  finding the original plan already made — but if one appears, the client genuinely
+  cannot build an input widget for it without pyobs-core publishing struct field
+  schemas too. Flagged, not built for.
+
+### 2. Delete the codegen path entirely
+
+- Delete `scripts/generate-interfaces.py`, `scripts/generate-interfaces.sh`,
+  `src/pyobs-interfaces.ts`.
+- No local `../pyobs-core` checkout dependency for the client to build or run
+  correctly, against any server version — schema is discovered live from whatever
+  module the client is actually talking to.
+- Direct consequence: a mixed-version fleet just works per-module. Module A on
+  `ICooling:1` and module B on `ICooling:2` each render from their own live schema —
+  there's no single "the client's known `ICooling` shape" to compare against, so the
+  original plan's "version-mismatch" diagnostic (`unmatchedInterfaces`, comparing a
+  remote-advertised version against a locally-known `Interface.version`) doesn't apply
+  the same way anymore and is dropped, not carried forward — see §6.
+
+### 3. `useXmpp.ts` — `fetchModuleInfo` becomes the one schema source
+
+Extend the disco#info parsing `fetchModuleInfo` already does, per module:
+
+- For each child element whose namespace starts with `urn:pyobs:interface:`,
+  `parseInterfaceSchema` it into `PyobsModule.interfaces: Record<string,
+  InterfaceSchema>` (keyed by interface name — version comes off the schema's own
+  parsed `xmlns`, not a comparison against anything local).
+- For each child element whose namespace starts with `urn:pyobs:event:`,
+  `parseEventSchema` it into `PyobsModule.events: Record<string, EventSchema>` —
+  optional for Phase 3/6 below (only needed if Shell/Dashboard end up listing event
+  schemas, not required for RPC/state/capabilities to work).
+- For each child element whose namespace starts with `urn:pyobs:capabilities:`,
+  `xmlToValue` it (fully generically, per §1) into `PyobsModule.capabilities:
+  Record<string, Record<string, unknown>>`, keyed by interface name.
+  **Correction to the "Unpaused" section above**: I described `<capability name="..."
+  type="...">value</capability>` scalar elements there, copying pyobs-core's *design
+  doc* illustration — but the actual `_get_disco_info` code
+  (`xmppcomm.py:846-850`) builds this via `_dataclass_to_xml(caps, ns,
+  tag="capabilities")`, the exact same self-describing field-wrapper shape `state`
+  uses, not the scalar form. (`_capability_type`/`_CAPABILITY_NS` at
+  `xmppcomm.py:33-44` do match the scalar-form sketch, but grep confirms they're dead
+  code — never called anywhere in that file. Worth a heads-up upstream; doesn't affect
+  the client either way since `xmlToValue` handles whatever shape is actually on the
+  wire without caring which one pyobs-core meant to ship.)
+- `parseVersionedFeature('interface'|'state'|'event', feat)` replaces `ShellView.vue`'s
+  `ifaceNameFromFeature` prefix check, reading straight off `<feature var="urn:pyobs:
+  ...:{name}:{version}">` — no comparison against a locally-known version, because
+  there's no local copy of anything to compare against anymore.
+
+### 4. RPC rewrite (`useXmpp.ts` + `ShellView.vue`) — schema from the module, not an import
+
+`executeMethod(fullJid, methodName, params: unknown[], commandSchema: CommandSchema)`:
+
+- `commandSchema` comes from `module.interfaces[ifaceName].commands[methodName]` —
+  already fetched by `fetchModuleInfo`, zero extra round trips.
+- Build `<params><param><value><pyobs:value xmlns="urn:pyobs:rpc:1">
+  {valueToXml(params[i], commandSchema.params[i].type)}</pyobs:value></value></param>
+  </params>` — same envelope the original plan described, `valueToXml` now taking a
+  live-parsed `WireType` instead of a generated one.
+- Parse success: `xmlToValue` on the returned `pyobs:value` child — no return-type
+  argument needed at all, decoding is schema-less (§1). Empty `<params/>` → `null`.
+- Parse fault: unchanged from the original plan — `{exception, message}` from
+  `<pyobs:fault>`, surfaced distinctly, `RpcResult` gains `errorClass?: string`.
+- `ShellView.vue` renders one input per `commandSchema.params[i]`: `int32`/`float64` →
+  number input, `bool` → select, `string`/`datetime` → text, `enum(Name)` → a real
+  `<select>` populated from `module.interfaces[ifaceName].enums[Name]` — this was
+  pyobs-core's own Phase 7 "optional" item, now essentially free since the enum values
+  arrive in the same `fetchModuleInfo` call, no extra plumbing needed to get them.
+  `optional<T>` affects the existing "(optional)" label the same way `nil`-ability did
+  in the original plan.
+
+### 5. State subscription — node path from live schema, decode fully generic
+
+Same ref-counted design the original plan already worked out (module-level
+`stateStore`, `stateRefCounts`, `stateNodeSubscribed`, retry-on-`item-not-found`
+matching `_subscribe_with_retry`) — two changes from schema-less decode:
+
+- Node path read straight from `module.interfaces[name].state.node` (the schema's own
+  `node` attribute, `state/{Interface}/{version}`, matching `_state_node`) instead of
+  built from a generated constant.
+- `handlePubsubMessage`'s state branch is just `xmlToValue(payload)` — no `fields:
+  Record<string, WireType>` lookup, because decoding never needed the schema to begin
+  with.
+
+### 6. Dashboard — generic state cards, no version-mismatch badge
+
+`ModuleStateCard.vue`: given `{ interfaceName, value: unknown }` (no `fields` prop —
+dropped, decode doesn't produce or need one), renders `Object.entries(value as
+Record<string, unknown>)` generically, branching on `typeof` per value (boolean →
+badge, number/string → as-is, object/array → the same compact-JSON fallback
+`ShellView.vue` already has for RPC results, `formatResult`, worth extracting to a
+shared util both import).
+
+`DashboardView.vue`: for each module, for each interface present in
+`module.interfaces` with a non-null `.state`, call `subscribeState` and render a
+card. The version-mismatch badge from the original plan's §6 is dropped — see §2,
+there's no local version to mismatch against, each module's card just renders
+whatever that module's own live schema says.
+
+### Sequencing
+
+1. `pyobs-codec.ts` (self-contained) — generic decoder, schema-string parser,
+   interface/event schema-block parsers.
+2. Delete codegen artifacts (`generate-interfaces.py`/`.sh`, `pyobs-interfaces.ts`) —
+   do this alongside step 3 so there's no window with a dangling stale import.
+3. `fetchModuleInfo` extended to parse interface/event schemas + capabilities live —
+   hard prerequisite for 4–6, they all consume `PyobsModule.interfaces`/`.capabilities`.
+4. RPC rewrite (`useXmpp.ts` + `ShellView.vue`) — fixes the currently-broken Shell,
+   independently shippable once 3 lands.
+5. State subscription + Dashboard cards — largest, most novel piece, done last.
+
+### Critical files
+
+- `src/pyobs-codec.ts` (new)
+- `src/composables/useXmpp.ts`
+- `src/views/ShellView.vue`
+- `src/views/DashboardView.vue`
+- `src/components/ModuleStateCard.vue` (new)
+- Deleted: `scripts/generate-interfaces.py`, `scripts/generate-interfaces.sh`,
+  `src/pyobs-interfaces.ts`
+- Reference only, not modified:
+  `../pyobs-core/pyobs/comm/xmpp/{serializer,rpc,xmppcomm}.py`
+
+### Verification
+
+Same approach the original plan settled on, still the right call — real end-to-end
+verification against a live server is more authoritative than a mocked round-trip test
+for wire-format code, so no added test infra (vitest) for this pass either:
+
+- `npm run type-check` and `npm run build` after each phase.
+- **Live end-to-end verification against the real ejabberd server**: log in via
+  `npm run dev` and exercise Shell RPC calls against a real module (success and a
+  deliberate-failure fault path, including an `enum`-typed param rendering as a
+  dropdown), capabilities showing up on Dashboard, live state updates rendering and
+  updating.
+- Before connecting to the live server for the first time, confirm with the user
+  which account/resource the web client itself should log in as — not yet
+  established, unchanged from the original plan's note.
+
+### Open items carried forward
+
+- `struct<Name>`-typed command params can't be form-built from schema alone (§1) — not
+  needed today, revisit if pyobs-core ever adds one; would need pyobs-core to publish
+  struct field lists the way it already does for enums via `<types>`.
+- pyobs-core's `_capability_type`/`_CAPABILITY_NS` dead code (`xmppcomm.py:33-44`,
+  §3) — worth flagging upstream, doesn't block the client either way.
