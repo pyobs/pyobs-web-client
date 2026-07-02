@@ -66,4 +66,28 @@ test.describe('Shell', () => {
     await expect(errorHeading).toBeVisible({ timeout: 10000 })
     await expect(errorHeading).toHaveText(/^Error: \w+/) // "Error: <ExceptionClass>"
   })
+
+  test('IConfig.get_config_value with an empty name surfaces the clean pyobs-core validation error', async ({
+    connectedPage: page,
+  }) => {
+    // Only present if the connected module implements IConfig.
+    const { methodSelect } = await openShell(page)
+    const hasGetConfigValue = await methodSelect.locator('option', { hasText: 'get_config_value' }).count()
+    test.skip(hasGetConfigValue === 0, 'connected module does not implement IConfig.get_config_value')
+
+    await methodSelect.selectOption({ label: 'get_config_value' })
+    // Leave `name` untouched — non-optional string params default to '',
+    // which the client must send as a real empty <string>, not <nil/> (that
+    // was the earlier RPC-params-sent-as-None bug). This exercises
+    // pyobs-core's own validation for an empty name (raises a clean
+    // ValueError rather than a confusing "Invalid parameter None"), not a
+    // client-side encoding bug.
+    await expect(page.locator('input.form-control.form-control-sm').first()).toHaveValue('')
+    await page.getByRole('button', { name: /execute/i }).click()
+
+    const errorHeading = page.getByText(/^Error/)
+    await expect(errorHeading).toBeVisible({ timeout: 10000 })
+    await expect(errorHeading).toHaveText('Error: ValueError')
+    await expect(page.locator('pre')).toHaveText('No parameter name given.')
+  })
 })
