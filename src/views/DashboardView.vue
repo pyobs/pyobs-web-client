@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useXmpp } from '@/composables/useXmpp'
+import ModuleStateCard from '@/components/ModuleStateCard.vue'
+import KeyValueCard from '@/components/KeyValueCard.vue'
 
 const { modules } = useXmpp()
 </script>
@@ -24,14 +26,31 @@ const { modules } = useXmpp()
             <span class="text-light fw-semibold" style="font-size:0.9rem">{{ mod.name }}</span>
           </div>
           <div class="text-muted mb-2" style="font-size:0.75rem">{{ mod.jid }}</div>
-          <div v-if="mod.features.length" class="d-flex flex-wrap gap-1">
+
+          <div v-if="Object.keys(mod.interfaces).length" class="d-flex flex-wrap gap-1 mb-2">
             <span
-              v-for="feat in mod.features"
-              :key="feat"
+              v-for="iface in Object.values(mod.interfaces)"
+              :key="iface.name"
               class="badge bg-secondary"
               style="font-size:0.65rem; font-weight:400"
-            >{{ feat }}</span>
+            >{{ iface.name }}:{{ iface.version }}</span>
           </div>
+
+          <ModuleStateCard
+            v-for="iface in Object.values(mod.interfaces).filter((i) => i.state)"
+            :key="`state-${mod.jid}-${iface.name}`"
+            :jid="mod.jid"
+            :interface-name="iface.name"
+            :version="iface.version"
+            :title="iface.name"
+          />
+
+          <KeyValueCard
+            v-for="[ifaceName, caps] in Object.entries(mod.capabilities)"
+            :key="`caps-${mod.jid}-${ifaceName}`"
+            :title="`${ifaceName} capabilities`"
+            :value="caps"
+          />
         </div>
       </div>
     </div>

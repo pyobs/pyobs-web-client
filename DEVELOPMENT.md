@@ -711,3 +711,97 @@ for wire-format code, so no added test infra (vitest) for this pass either:
   struct field lists the way it already does for enums via `<types>`.
 - pyobs-core's `_capability_type`/`_CAPABILITY_NS` dead code (`xmppcomm.py:33-44`,
   §3) — worth flagging upstream, doesn't block the client either way.
+
+## Two corrections found re-verifying against current pyobs-core HEAD (`05275feb`)
+
+Before starting implementation, re-checked `serializer.py`/`xmppcomm.py` directly
+(HEAD moved past `700ba457` since the last check) line-by-line rather than trusting
+the summary above. Two things the "Re-pass" section got wrong or missed:
+
+- **§5 is wrong: the state PubSub node is not `state.node` from the schema.**
+  `_interface_schema_to_xml` (`serializer.py:440`) sets the schema's `<state
+  node="...">` attribute to `f"state/{interface.__name__}/{interface.version}"`
+  (slash-separated, no module name) — that's a display label, not the actual
+  subscribable node. The real PubSub node, still built by `_state_node`
+  (`xmppcomm.py:790`), is `f"pyobs:state:{module}:{interface.__name__}:{interface.version}"`
+  (colon-separated, module username required). The client must construct this itself
+  from the module's JID username + the schema's own interface `name`/version — it
+  cannot use the schema's `node` attribute verbatim. `_state_namespace`
+  (`xmppcomm.py:786`) — `urn:pyobs:state:{Interface}:{version}` — is unaffected, that
+  part of §5 was right.
+- **Event PubSub nodes changed too, and this breaks `LoggingView.vue` right now, not
+  just Shell/Dashboard** — nobody had flagged this yet. `_register_events`
+  (`xmppcomm.py:679`) advertises `urn:pyobs:event:{EventName}:{version}` (was
+  unversioned `pyobs:event:{EventName}`), and `send_event` (`xmppcomm.py:656`)
+  publishes to that same versioned string as the PubSub node. `useXmpp.ts`'s current
+  `handlePubsubMessage` (`node.startsWith('pyobs:event:')`) and its auto-subscribe
+  loop in `fetchModuleInfo` (`feat.startsWith('pyobs:event:')`) both use the old
+  unversioned prefix — `'urn:pyobs:event:LogEvent:1'.startsWith('pyobs:event:')` is
+  `false`, so **no events are received at all** against current pyobs-core, including
+  `LogEvent` — Logging is as broken as Shell, just not diagnosed before now. Fix:
+  match `urn:pyobs:event:` instead, and derive the event `type` from the node by
+  stripping the `urn:pyobs:event:` prefix and the trailing `:{version}` suffix rather
+  than a fixed `.slice(12)`.
+
+Proceeding to implementation with these two corrections folded in.
+
+## Implementation done, verified live
+
+Built per the "Re-pass" plan above (§1–6): `src/pyobs-codec.ts` (new), `useXmpp.ts`
+rewritten (live schema parsing in `fetchModuleInfo`, `urn:pyobs:rpc:1` RPC codec,
+versioned event-node matching, ref-counted `subscribeState`), `ShellView.vue` and
+`DashboardView.vue` updated, `ModuleStateCard.vue`/`KeyValueCard.vue` added,
+`scripts/generate-interfaces.{py,sh}` and `src/pyobs-interfaces.ts` deleted along with
+the npm script. `type-check` and `build` clean throughout.
+
+Verified end-to-end against the live ejabberd server (`admin@localhost`, real
+`camera` module running current `../pyobs-core`), via a temporary Playwright driver
+(not committed — no test infra was added, per the plan's verification section):
+
+- Dashboard: all 13 interfaces the live `camera` module implements render as badges;
+  capability cards (`IWindow`, `IBinning`, `IImageFormat`, `IModule`, `IConfig`)
+  decode correctly, including nested list-of-dataclass (`IBinning.binnings`) and
+  dict/tuple shapes (`IConfig.caps`); live state cards (`ICooling`, `IExposure`,
+  `IBinning`, `IExposureTime`, `IGain`) populate and update via PubSub, including a
+  correctly-decoded `null` for an unset `optional<float64>` field.
+  Confirmed via raw disco#info capture that a real `<interface>` schema block
+  (commands, nested `array<struct<SensorReading>>`, `optional<float64>` fields, enum
+  types) parses exactly as the codec expects.
+- Shell: method list correctly grouped by interface (11 optgroups, 14 commands
+  including a `grab_data` duplicate across two interfaces, disambiguated by the
+  compound `iface::method` key); `ICooling.set_cooling(bool, float64)` executed
+  successfully (void return decoded as `null`); `IImageFormat.set_image_format`'s
+  `enum(ImageFormat)` param rendered as a real `<select>` populated from the schema's
+  `<types>` block and executed correctly; a real RPC-level fault
+  (`get_config_value` with a bad key) decoded as `Error: ValueError — No parameter
+  name given.` — exception class and message both correct, confirming the
+  `urn:pyobs:rpc:1` fault-parsing path.
+- Logging: previously-undiagnosed-until-now event-node bug (see above) confirmed
+  fixed — `LogEvent`s (including a real traceback) now render live, filterable by
+  module.
+
+Two real client bugs found and fixed during this pass (not present in the plan,
+found by testing against live data):
+
+- Boolean/enum `<select>` params rendered blank instead of showing a matching
+  default, because `paramValues[name]` started `undefined`, which matches no
+  `<option>` (enum has an empty placeholder option; bool doesn't). Fixed by seeding
+  `paramValues` with a real default (`'true'` for bool, `''` otherwise) whenever the
+  selected command schema changes, instead of resetting to `{}`.
+- The param type hint next to each input showed raw `JSON.stringify(param.type)`
+  (e.g. `{"kind":"enum","name":"ImageFormat"}`). Added `formatWireType` to render the
+  schema's own type-string syntax instead (`enum(ImageFormat)`, `array<T>`,
+  `optional<T>`, `struct<Name>`).
+
+One environment-only finding, not a client bug: a freshly-connecting session only
+receives a module's presence if it's already connected at the moment that module
+comes online — there's no roster-subscription-based presence redelivery in this
+ejabberd setup, so a browser tab opened after a module has been up for a while never
+learns about it. Pre-existing behavior (`handlePresence` reacting to pushes only, no
+presence probe), unchanged by this pass — flagged here in case it's worth an explicit
+presence-probe-on-connect follow-up.
+
+A separate `ValueError: No parameter name given.` surfaced from `get_config_value`
+even when the client demonstrably sent a real string value (confirmed via raw
+WebSocket frame capture) — this is a pyobs-core server-side validation bug
+(`pyobs/modules/module.py:413`), not a client issue; out of scope for this repo.

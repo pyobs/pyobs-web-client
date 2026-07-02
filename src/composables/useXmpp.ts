@@ -1,18 +1,33 @@
-import { ref, readonly } from 'vue'
+import { ref, readonly, computed, type ComputedRef } from 'vue'
 import { Strophe, $pres, $iq } from 'strophe.js'
+import {
+  localTag,
+  xmlToValue,
+  valueToXml,
+  createNamespacedElement,
+  parseVersionedFeature,
+  parseInterfaceSchema,
+  parseEventSchema,
+  type InterfaceSchema,
+  type EventSchema,
+  type CommandSchema,
+} from '@/pyobs-codec'
 
 export type XmppStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
 export type PyobsModule = {
-  jid: string      // bare JID, e.g. camera@localhost
-  fullJid: string  // full JID with resource, e.g. camera@localhost/pyobs
+  jid: string // bare JID, e.g. camera@localhost
+  fullJid: string // full JID with resource, e.g. camera@localhost/pyobs
   name: string
-  features: string[]
+  interfaces: Record<string, InterfaceSchema>
+  events: Record<string, EventSchema>
+  capabilities: Record<string, Record<string, unknown>> // interface name -> decoded capabilities
 }
 
 export type RpcResult = {
   success: boolean
   value: unknown
+  errorClass?: string
 }
 
 export type PyobsEvent = {
@@ -27,10 +42,13 @@ const NS_DISCO_INFO = 'http://jabber.org/protocol/disco#info'
 const NS_PUBSUB = 'http://jabber.org/protocol/pubsub'
 const NS_PUBSUB_EVENT = 'http://jabber.org/protocol/pubsub#event'
 const NS_RPC = 'jabber:iq:rpc'
+const NS_PYOBS_RPC = 'urn:pyobs:rpc:1'
 const PYOBS_RESOURCE = 'pyobs'
 const SESSION_JID_KEY = 'xmpp_jid'
 const SESSION_PW_KEY = 'xmpp_password'
 const MAX_EVENTS = 500
+const STATE_SUBSCRIBE_RETRIES = 30
+const STATE_SUBSCRIBE_RETRY_WAIT_MS = 1000
 
 // Start as 'connecting' immediately if credentials are stored so the first
 // render never shows the login screen before the auto-reconnect kicks in.
@@ -43,6 +61,14 @@ const jid = ref<string>('')
 const errorMessage = ref<string>('')
 const modules = ref<PyobsModule[]>([])
 const events = ref<PyobsEvent[]>([])
+
+// PubSub state: keyed by the real "pyobs:state:{module}:{Interface}:{version}"
+// node string. Ref-counted since ejabberd tracks one real subscription per
+// (JID, node) — multiple components watching the same module/interface must
+// not each send their own subscribe/unsubscribe IQ.
+const stateStore = ref<Map<string, unknown>>(new Map())
+const stateRefCounts = new Map<string, number>()
+const stateSubscribing = new Set<string>()
 
 let connection: InstanceType<typeof Strophe.Connection> | null = null
 let connectionGeneration = 0
@@ -61,39 +87,63 @@ function sendIQ(stanza: Element): Promise<Element> {
   })
 }
 
+function pubsubServiceFor(bareJid: string): string {
+  return `pubsub.${Strophe.getDomainFromJid(bareJid)}`
+}
+
+// ── module discovery: one disco#info query returns everything ──────────────
+// (interface schemas — commands/state/types — plus capabilities), per
+// pyobs-core 2.0's `_get_disco_info`. Nothing is pre-generated; the schema is
+// whatever this specific module actually publishes.
+
 async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> {
   let name = Strophe.getNodeFromJid(bareJid) ?? bareJid
-  let features: string[] = []
+  const interfaces: Record<string, InterfaceSchema> = {}
+  const eventSchemas: Record<string, EventSchema> = {}
+  const capabilities: Record<string, Record<string, unknown>> = {}
 
   try {
-    // XEP-0030: query the module directly for its identity and features
     const result = await sendIQ(
       $iq({ to: fullJid, type: 'get' })
         .c('query', { xmlns: NS_DISCO_INFO })
         .tree(),
     )
     const identities = Array.from(result.getElementsByTagName('identity'))
-    features = Array.from(result.getElementsByTagName('feature'))
-      .map((f) => f.getAttribute('var') ?? '')
-      .filter(Boolean)
     name = identities[0]?.getAttribute('name') ?? name
+
+    const query = result.getElementsByTagName('query')[0]
+    for (const child of Array.from(query?.children ?? [])) {
+      const ns = child.namespaceURI ?? ''
+      const tag = localTag(child)
+      if (tag === 'interface' && ns.startsWith('urn:pyobs:interface:')) {
+        const schema = parseInterfaceSchema(child)
+        interfaces[schema.name] = schema
+      } else if (tag === 'event' && ns.startsWith('urn:pyobs:event:')) {
+        const schema = parseEventSchema(child)
+        eventSchemas[schema.name] = schema
+      } else if (tag === 'capabilities' && ns.startsWith('urn:pyobs:capabilities:')) {
+        const ref = parseVersionedFeature('capabilities', ns)
+        if (ref) capabilities[ref.name] = xmlToValue(child) as Record<string, unknown>
+      }
+    }
   } catch {
     // use defaults derived from JID
   }
 
   modules.value = [
     ...modules.value.filter((m) => m.jid !== bareJid),
-    { jid: bareJid, fullJid, name, features },
+    { jid: bareJid, fullJid, name, interfaces, events: eventSchemas, capabilities },
   ]
 
-  // Subscribe to each PEP event node so ejabberd delivers them to us.
+  // Subscribe to every event this module publishes (PEP — hosted on the
+  // module's own bare JID, not a separate pubsub service, unlike state below).
   const myBareJid = Strophe.getBareJidFromJid(jid.value)
-  for (const feat of features) {
-    if (!feat.startsWith('pyobs:event:')) continue
+  for (const schema of Object.values(eventSchemas)) {
+    const node = `urn:pyobs:event:${schema.name}:${schema.version}`
     sendIQ(
       $iq({ to: bareJid, type: 'set' })
         .c('pubsub', { xmlns: NS_PUBSUB })
-        .c('subscribe', { node: feat, jid: myBareJid })
+        .c('subscribe', { node, jid: myBareJid })
         .tree(),
     ).catch(() => {})
   }
@@ -118,7 +168,16 @@ function handlePresence(presence: Element): boolean {
   return true // keep handler active
 }
 
-// ── PubSub event handler ──────────────────────────────────────────────────────
+// ── PubSub message handler (events + state pushes) ─────────────────────────
+
+function handleStateNotification(node: string, itemsEl: Element): void {
+  const itemEl = Array.from(itemsEl.children).find((c) => localTag(c) === 'item')
+  const payloadEl = itemEl?.firstElementChild
+  if (!payloadEl) return
+  const next = new Map(stateStore.value)
+  next.set(node, xmlToValue(payloadEl))
+  stateStore.value = next
+}
 
 function handlePubsubMessage(message: Element): boolean {
   const eventEl = Array.from(message.children).find(
@@ -130,15 +189,22 @@ function handlePubsubMessage(message: Element): boolean {
   if (!itemsEl) return true
 
   const node = itemsEl.getAttribute('node') ?? ''
-  if (!node.startsWith('pyobs:event:')) return true
 
-  const payloadEl = itemsEl.getElementsByTagName('item')[0]?.firstElementChild
+  if (node.startsWith('pyobs:state:')) {
+    handleStateNotification(node, itemsEl)
+    return true
+  }
+
+  if (!node.startsWith('urn:pyobs:event:')) return true
+
+  const payloadEl = Array.from(itemsEl.children).find((c) => localTag(c) === 'item')?.firstElementChild
   if (!payloadEl) return true
 
   try {
     const raw = JSON.parse(payloadEl.textContent ?? '{}')
+    const ref = parseVersionedFeature('event', node)
     const ev: PyobsEvent = {
-      type: raw.type ?? node.slice(12),
+      type: raw.type ?? ref?.name ?? node,
       module: Strophe.getNodeFromJid(message.getAttribute('from') ?? '') ?? message.getAttribute('from') ?? '?',
       timestamp: raw.timestamp ?? Date.now() / 1000,
       uuid: raw.uuid ?? '',
@@ -152,57 +218,50 @@ function handlePubsubMessage(message: Element): boolean {
   return true
 }
 
-// ── XEP-0009 RPC helpers ──────────────────────────────────────────────────────
+// ── XEP-0009 RPC (urn:pyobs:rpc:1 payload encoding) ─────────────────────────
 
-function toRpcValue(type: string, value: string | number | boolean): { tag: string; text: string } {
-  const str = String(value)
-  if (type === 'number') {
-    return /^-?\d+$/.test(str.trim())
-      ? { tag: 'i4', text: str }
-      : { tag: 'double', text: str }
-  }
-  if (type === 'boolean') {
-    return { tag: 'boolean', text: str === 'true' || str === '1' ? '1' : '0' }
-  }
-  return { tag: 'string', text: str }
-}
-
-function parseRpcValue(el: Element): unknown {
-  const child = el.firstElementChild
-  if (!child) return el.textContent ?? null
-  switch (child.localName) {
-    case 'nil':     return null
-    case 'double':  return parseFloat(child.textContent ?? '0')
-    case 'i4':
-    case 'int':     return parseInt(child.textContent ?? '0', 10)
-    case 'boolean': return child.textContent === '1'
-    case 'string':  return child.textContent ?? ''
-    case 'array': {
-      const data = child.getElementsByTagName('data')[0]
-      return data ? Array.from(data.children).map(parseRpcValue) : []
-    }
-    default:        return child.textContent
+function findRpcFault(result: Element): { exception: string; message: string } | null {
+  const outerFault = result.getElementsByTagName('fault')[0]
+  if (!outerFault) return null
+  const outerValue = Array.from(outerFault.children).find((c) => localTag(c) === 'value')
+  const innerFault = outerValue ? Array.from(outerValue.children).find((c) => localTag(c) === 'fault') : undefined
+  const exceptionEl = innerFault ? Array.from(innerFault.children).find((c) => localTag(c) === 'exception') : undefined
+  const messageEl = innerFault ? Array.from(innerFault.children).find((c) => localTag(c) === 'message') : undefined
+  return {
+    exception: exceptionEl?.textContent ?? 'RemoteError',
+    message: messageEl?.textContent ?? '',
   }
 }
 
-async function executeMethod(
-  fullJid: string,
-  methodName: string,
-  params: Array<{ type: string; value: string | number | boolean }>,
-): Promise<RpcResult> {
+function parseRpcReturn(result: Element): unknown {
+  const paramsEl = result.getElementsByTagName('params')[0]
+  const paramEl = paramsEl?.children[0]
+  if (!paramEl) return null // void return: empty <params/>
+  const outerValueEl = Array.from(paramEl.children).find((c) => localTag(c) === 'value')
+  const innerValueEl = outerValueEl
+    ? Array.from(outerValueEl.children).find((c) => localTag(c) === 'value' && c.namespaceURI === NS_PYOBS_RPC)
+    : undefined
+  const contentEl = innerValueEl?.firstElementChild
+  return contentEl ? xmlToValue(contentEl) : null
+}
+
+async function executeMethod(fullJid: string, methodName: string, params: unknown[], schema: CommandSchema): Promise<RpcResult> {
   if (!connection) throw new Error('Not connected')
 
-  // Build XEP-0009 methodCall IQ
   const builder = $iq({ to: fullJid, type: 'set' })
     .c('query', { xmlns: NS_RPC })
     .c('methodCall')
-    .c('methodName').t(methodName).up()
+    .c('methodName')
+    .t(methodName)
+    .up()
     .c('params')
 
-  for (const p of params) {
-    const { tag, text } = toRpcValue(p.type, p.value)
-    builder.c('param').c('value').c(tag).t(text).up().up().up()
-  }
+  schema.params.forEach((paramSchema, i) => {
+    const contentEl = valueToXml(params[i], paramSchema.type)
+    const pyobsValue = createNamespacedElement(NS_PYOBS_RPC, 'value')
+    pyobsValue.appendChild(contentEl)
+    builder.c('param').c('value').cnode(pyobsValue).up().up().up()
+  })
 
   let result: Element
   try {
@@ -215,19 +274,98 @@ async function executeMethod(
     return { success: false, value: msg }
   }
 
-  // RPC-level fault
-  const faultEl = result.getElementsByTagName('fault')[0]
-  if (faultEl) {
-    const msg = faultEl.getElementsByTagName('string')[0]?.textContent ?? 'RPC fault'
-    return { success: false, value: msg }
+  const fault = findRpcFault(result)
+  if (fault) {
+    return { success: false, value: fault.message, errorClass: fault.exception }
   }
 
-  // Success — parse first return value (void methods have no params element)
-  const valueEl = result.getElementsByTagName('value')[0]
-  return { success: true, value: valueEl ? parseRpcValue(valueEl) : null }
+  return { success: true, value: parseRpcReturn(result) }
 }
 
-// ── connection management ─────────────────────────────────────────────────────
+// ── state subscription (reference-counted, mirrors XmppComm's own model) ───
+
+function stateNode(moduleUsername: string, interfaceName: string, version: number): string {
+  return `pyobs:state:${moduleUsername}:${interfaceName}:${version}`
+}
+
+async function subscribeWithRetry(bareJid: string, node: string): Promise<void> {
+  const pubsubService = pubsubServiceFor(bareJid)
+  const myBareJid = Strophe.getBareJidFromJid(jid.value)
+
+  for (let attempt = 0; attempt < STATE_SUBSCRIBE_RETRIES; attempt++) {
+    try {
+      await sendIQ(
+        $iq({ to: pubsubService, type: 'set' })
+          .c('pubsub', { xmlns: NS_PUBSUB })
+          .c('subscribe', { node, jid: myBareJid })
+          .tree(),
+      )
+      break
+    } catch {
+      // publisher may not have created the node yet — wait and retry
+      await new Promise((r) => setTimeout(r, STATE_SUBSCRIBE_RETRY_WAIT_MS))
+    }
+  }
+
+  // Fetch the current value in case a live push races the subscribe ack.
+  try {
+    const result = await sendIQ(
+      $iq({ to: pubsubService, type: 'get' })
+        .c('pubsub', { xmlns: NS_PUBSUB })
+        .c('items', { node, max_items: '1' })
+        .tree(),
+    )
+    const itemEl = Array.from(result.getElementsByTagName('items')[0]?.children ?? []).find(
+      (c) => localTag(c) === 'item',
+    )
+    const payloadEl = itemEl?.firstElementChild
+    if (payloadEl) {
+      const next = new Map(stateStore.value)
+      next.set(node, xmlToValue(payloadEl))
+      stateStore.value = next
+    }
+  } catch {
+    // no current value published yet
+  }
+}
+
+function subscribeState(bareJid: string, interfaceName: string, version: number): { value: ComputedRef<unknown>; unsubscribe: () => void } {
+  const moduleUsername = Strophe.getNodeFromJid(bareJid) ?? bareJid
+  const node = stateNode(moduleUsername, interfaceName, version)
+
+  stateRefCounts.set(node, (stateRefCounts.get(node) ?? 0) + 1)
+  if (!stateSubscribing.has(node)) {
+    stateSubscribing.add(node)
+    subscribeWithRetry(bareJid, node)
+  }
+
+  const value = computed(() => stateStore.value.get(node))
+
+  let unsubscribed = false
+  const unsubscribe = () => {
+    if (unsubscribed) return
+    unsubscribed = true
+    const remaining = (stateRefCounts.get(node) ?? 1) - 1
+    if (remaining <= 0) {
+      stateRefCounts.delete(node)
+      stateSubscribing.delete(node)
+      const pubsubService = pubsubServiceFor(bareJid)
+      const myBareJid = Strophe.getBareJidFromJid(jid.value)
+      sendIQ(
+        $iq({ to: pubsubService, type: 'set' })
+          .c('pubsub', { xmlns: NS_PUBSUB })
+          .c('unsubscribe', { node, jid: myBareJid })
+          .tree(),
+      ).catch(() => {})
+    } else {
+      stateRefCounts.set(node, remaining)
+    }
+  }
+
+  return { value, unsubscribe }
+}
+
+// ── connection management ─────────────────────────────────────────────────
 
 function connect(userJid: string, password: string, silent = false): Promise<void> {
   const myGeneration = ++connectionGeneration
@@ -290,6 +428,9 @@ function disconnect() {
   jid.value = ''
   modules.value = []
   events.value = []
+  stateStore.value = new Map()
+  stateRefCounts.clear()
+  stateSubscribing.clear()
 }
 
 // Restore session automatically on page reload, with one retry after 1 s in
@@ -325,6 +466,7 @@ export function useXmpp() {
     connect,
     disconnect,
     executeMethod,
+    subscribeState,
     clearEvents: () => { events.value = [] },
   }
 }
