@@ -21,13 +21,12 @@ test.describe('Logging', () => {
     // Trigger at least one log line for real: IModule.reset_error is safe
     // and pyobs-core logs at INFO/ERROR around most RPC calls.
     await page.click('text=Shell')
-    const methodSelect = page.locator('select').nth(1)
-    await page.locator('select').nth(0).selectOption({ index: 1 })
-    const hasResetError = await methodSelect.locator('option', { hasText: 'reset_error' }).count()
-    test.skip(hasResetError === 0, 'connected module does not implement IModule.reset_error')
-    await methodSelect.selectOption({ label: 'reset_error' })
+    await page.getByTestId('shell-modules').locator('button').first().click()
+    const resetErrorButton = page.getByTestId('shell-methods').getByRole('button', { name: 'reset_error', exact: true })
+    test.skip((await resetErrorButton.count()) === 0, 'connected module does not implement IModule.reset_error')
+    await resetErrorButton.click()
     await page.getByRole('button', { name: /execute/i }).click()
-    await expect(page.getByText(/^(Result|Error)/)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByTestId('shell-log').getByText(/reset_error/)).toBeVisible({ timeout: 10000 })
 
     await page.click('text=Logging')
     const rows = page.locator('table tbody tr')

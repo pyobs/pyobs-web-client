@@ -13,6 +13,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'retain-on-failure',
+    ignoreHTTPSErrors: true,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {

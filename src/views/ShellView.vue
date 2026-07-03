@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
 import type { CommandSchema, WireType } from '@/pyobs-codec'
 
@@ -8,8 +8,23 @@ const { modules, executeMethod } = useXmpp()
 const selectedJid = ref('')
 const selectedMethodKey = ref('') // `${ifaceName}::${methodName}` — command names aren't unique across interfaces
 const paramValues = ref<Record<string, string>>({})
-const result = ref<{ success: boolean; value: unknown; errorClass?: string } | null>(null)
 const running = ref(false)
+
+type LogEntry = {
+  id: number
+  timestamp: number
+  moduleName: string
+  iface: string
+  method: string
+  paramsDisplay: string
+  success: boolean
+  value: unknown
+  errorClass?: string
+}
+
+const log = ref<LogEntry[]>([])
+const logContainer = ref<HTMLElement | null>(null)
+let nextLogId = 0
 
 const selectedModule = computed(() => modules.value.find((m) => m.jid === selectedJid.value))
 
@@ -85,40 +100,27 @@ function defaultParamValue(type: WireType): string {
   return ''
 }
 
+function selectModule(jid: string) {
+  selectedJid.value = jid
+}
+
+function selectMethod(iface: string, name: string) {
+  selectedMethodKey.value = `${iface}::${name}`
+}
+
 watch(selectedJid, () => {
   selectedMethodKey.value = ''
   paramValues.value = {}
-  result.value = null
 })
 
 watch(currentCommandSchema, (schema) => {
   paramValues.value = Object.fromEntries((schema?.params ?? []).map((p) => [p.name, defaultParamValue(p.type)]))
-  result.value = null
 })
 
-async function execute() {
-  if (!selectedModule.value || !currentCommandSchema.value) return
-  running.value = true
-  result.value = null
-  try {
-    const params = currentCommandSchema.value.params.map((p) => {
-      const { inner, optional } = unwrapOptional(p.type)
-      const raw = paramValues.value[p.name]
-      if (optional && (raw === undefined || raw === '')) return null
-      const kind = widgetKind(inner)
-      if (kind === 'bool') return raw === 'true'
-      // Optional + empty was already handled above and returned null; a
-      // non-optional number must always resolve to a real number, never nil.
-      if (kind === 'number') return Number(raw || 0)
-      return raw ?? ''
-    })
-
-    result.value = await executeMethod(selectedModule.value.fullJid, currentMethodName.value, params, currentCommandSchema.value)
-  } catch (e) {
-    result.value = { success: false, value: String(e) }
-  } finally {
-    running.value = false
-  }
+function formatParamForDisplay(value: unknown): string {
+  if (value === null) return 'None'
+  if (typeof value === 'string') return JSON.stringify(value)
+  return String(value)
 }
 
 function formatResult(value: unknown): string {
@@ -129,55 +131,162 @@ function formatResult(value: unknown): string {
   }
   return String(value)
 }
+
+function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function scrollLogToBottom() {
+  nextTick(() => {
+    if (logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight
+  })
+}
+
+async function execute() {
+  const module = selectedModule.value
+  const schema = currentCommandSchema.value
+  if (!module || !schema) return
+
+  const iface = currentIfaceName.value
+  const method = currentMethodName.value
+
+  const params = schema.params.map((p) => {
+    const { inner, optional } = unwrapOptional(p.type)
+    const raw = paramValues.value[p.name]
+    if (optional && (raw === undefined || raw === '')) return null
+    const kind = widgetKind(inner)
+    if (kind === 'bool') return raw === 'true'
+    // Optional + empty was already handled above and returned null; a
+    // non-optional number must always resolve to a real number, never nil.
+    if (kind === 'number') return Number(raw || 0)
+    return raw ?? ''
+  })
+
+  const paramsDisplay = schema.params.map((p, i) => `${p.name}=${formatParamForDisplay(params[i])}`).join(', ')
+
+  running.value = true
+  try {
+    const result = await executeMethod(module.fullJid, method, params, schema)
+    log.value.push({
+      id: nextLogId++,
+      timestamp: Date.now(),
+      moduleName: module.name,
+      iface,
+      method,
+      paramsDisplay,
+      success: result.success,
+      value: result.value,
+      errorClass: result.errorClass,
+    })
+  } catch (e) {
+    log.value.push({
+      id: nextLogId++,
+      timestamp: Date.now(),
+      moduleName: module.name,
+      iface,
+      method,
+      paramsDisplay,
+      success: false,
+      value: String(e),
+    })
+  } finally {
+    running.value = false
+    scrollLogToBottom()
+  }
+}
 </script>
 
 <template>
-  <div>
-    <h5 class="text-light fw-semibold mb-4">Shell</h5>
+  <div class="d-flex flex-column" style="height: calc(100vh - 6rem)">
+    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+      <h5 class="text-light fw-semibold mb-0">Shell</h5>
+      <button class="btn btn-outline-secondary btn-sm ms-auto" @click="log = []">
+        <i class="bi bi-trash me-1"></i>Clear
+      </button>
+    </div>
 
-    <!-- Module + method selectors -->
-    <div class="row g-3 mb-4">
-      <div class="col-sm-5">
-        <label class="form-label text-muted" style="font-size:0.8rem">Module</label>
-        <select
-          v-model="selectedJid"
-          class="form-select form-select-sm bg-dark border-secondary text-light"
-        >
-          <option value="">— select module —</option>
-          <option v-for="m in modules" :key="m.jid" :value="m.jid">{{ m.name }}</option>
-        </select>
-      </div>
+    <!-- Command / reply log -->
+    <div
+      ref="logContainer"
+      data-testid="shell-log"
+      class="flex-grow-1 overflow-auto rounded-3 p-2 mb-3"
+      style="background-color: #111316; font-family: monospace; font-size: 0.8rem"
+    >
+      <p v-if="log.length === 0" class="text-muted text-center mt-4" style="font-size:0.85rem">
+        No commands executed yet.
+      </p>
 
-      <div class="col-sm-7">
-        <label class="form-label text-muted" style="font-size:0.8rem">Method</label>
-        <select
-          v-model="selectedMethodKey"
-          class="form-select form-select-sm bg-dark border-secondary text-light"
-          :disabled="!selectedJid || methodsByIface.length === 0"
-        >
-          <option value="">— select method —</option>
-          <optgroup v-for="g in methodsByIface" :key="g.iface" :label="g.iface">
-            <option v-for="name in g.methods" :key="name" :value="`${g.iface}::${name}`">{{ name }}</option>
-          </optgroup>
-        </select>
+      <div v-for="entry in log" :key="entry.id" class="mb-2 pb-2 border-bottom border-secondary-subtle">
+        <div class="text-secondary">
+          <span class="me-2">{{ formatTime(entry.timestamp) }}</span>
+          <span class="text-info">{{ entry.moduleName }}</span>:
+          <span class="text-light">{{ entry.iface }}.{{ entry.method }}</span>(<span class="text-muted">{{ entry.paramsDisplay }}</span>)
+        </div>
+        <div :class="entry.success ? 'text-success' : 'text-danger'" style="white-space:pre-wrap">
+          <template v-if="entry.success">{{ formatResult(entry.value) }}</template>
+          <template v-else>{{ entry.errorClass ? `${entry.errorClass}: ` : '' }}{{ formatResult(entry.value) }}</template>
+        </div>
       </div>
     </div>
 
-    <!-- Parameter form -->
-    <template v-if="currentCommandSchema">
-      <div v-if="currentCommandSchema.params.length" class="mb-3">
+    <!-- Command builder: module -> method -> params, buttons over dropdowns for mobile -->
+    <div class="flex-shrink-0">
+      <div class="mb-2">
+        <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Module</div>
+        <div class="d-flex flex-wrap gap-2" data-testid="shell-modules">
+          <button
+            v-for="m in modules"
+            :key="m.jid"
+            type="button"
+            class="btn btn-sm"
+            :class="selectedJid === m.jid ? 'btn-primary' : 'btn-outline-secondary'"
+            @click="selectModule(m.jid)"
+          >
+            {{ m.name }}
+          </button>
+          <span v-if="modules.length === 0" class="text-muted align-self-center" style="font-size:0.8rem">No modules online.</span>
+        </div>
+      </div>
+
+      <div v-if="selectedJid" class="mb-2">
+        <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Method</div>
         <div
-          v-for="param in currentCommandSchema.params"
-          :key="param.name"
-          class="row align-items-center g-2 mb-2"
+          class="overflow-auto rounded-3 p-2"
+          style="max-height: 25vh; background-color: #16181b; border: 1px solid #2d3035"
+          data-testid="shell-methods"
         >
-          <div class="col-sm-3 text-end">
-            <label class="form-label mb-0 text-muted" style="font-size:0.8rem">
-              {{ param.name }}
-              <span v-if="unwrapOptional(param.type).optional" class="text-secondary ms-1" style="font-size:0.7rem">(optional)</span>
-            </label>
+          <p v-if="methodsByIface.length === 0" class="text-muted mb-0" style="font-size:0.8rem">
+            This module publishes no commands.
+          </p>
+          <div v-for="g in methodsByIface" :key="g.iface" class="d-flex flex-wrap align-items-center gap-1 mb-1">
+            <span class="text-secondary me-1" style="font-size:0.7rem; min-width:5rem">{{ g.iface }}</span>
+            <button
+              v-for="name in g.methods"
+              :key="name"
+              type="button"
+              class="btn btn-sm"
+              :class="selectedMethodKey === `${g.iface}::${name}` ? 'btn-primary' : 'btn-outline-secondary'"
+              @click="selectMethod(g.iface, name)"
+            >
+              {{ name }}
+            </button>
           </div>
-          <div class="col-sm-6">
+        </div>
+      </div>
+
+      <template v-if="currentCommandSchema">
+        <div v-if="currentCommandSchema.params.length" class="mb-2" data-testid="shell-params">
+          <div v-for="param in currentCommandSchema.params" :key="param.name" class="mb-2">
+            <div class="d-flex align-items-baseline gap-2 mb-1">
+              <label class="form-label mb-0 text-muted" style="font-size:0.8rem">
+                {{ param.name }}
+                <span v-if="unwrapOptional(param.type).optional" class="text-secondary" style="font-size:0.7rem">(optional)</span>
+              </label>
+              <span class="text-secondary" style="font-size:0.7rem">
+                {{ formatWireType(param.type) }}
+                <span v-if="param.unit">({{ param.unit }})</span>
+              </span>
+            </div>
             <select
               v-if="widgetKind(unwrapOptional(param.type).inner) === 'bool'"
               v-model="paramValues[param.name]"
@@ -202,44 +311,24 @@ function formatResult(value: unknown): string {
             />
             <span v-else class="text-danger" style="font-size:0.75rem">unsupported param type</span>
           </div>
-          <div class="col-sm-3">
-            <span class="text-secondary" style="font-size:0.75rem">
-              {{ formatWireType(param.type) }}
-              <span v-if="param.unit">({{ param.unit }})</span>
-            </span>
-          </div>
         </div>
-      </div>
-      <p v-else class="text-muted mb-3" style="font-size:0.85rem">No parameters.</p>
+        <p v-else class="text-muted mb-2" style="font-size:0.85rem">No parameters.</p>
 
-      <button
-        class="btn btn-primary btn-sm"
-        :disabled="running || hasUnsupportedParam"
-        @click="execute"
-      >
-        <span v-if="running">
-          <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-          Running…
-        </span>
-        <span v-else>
-          <i class="bi bi-play-fill me-1"></i>
-          Execute
-        </span>
-      </button>
-    </template>
-
-    <!-- Result -->
-    <div v-if="result !== null" class="mt-4">
-      <div
-        class="rounded-3 p-3"
-        :class="result.success ? 'border-success' : 'border-danger'"
-        style="background-color:#1a1d21; border-width:1px; border-style:solid"
-      >
-        <div class="mb-1" style="font-size:0.75rem" :class="result.success ? 'text-success' : 'text-danger'">
-          {{ result.success ? 'Result' : (result.errorClass ? `Error: ${result.errorClass}` : 'Error') }}
-        </div>
-        <pre class="mb-0 text-light" style="font-size:0.85rem; white-space:pre-wrap">{{ formatResult(result.value) }}</pre>
-      </div>
+        <button
+          class="btn btn-primary btn-sm"
+          :disabled="running || hasUnsupportedParam"
+          @click="execute"
+        >
+          <span v-if="running">
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            Running…
+          </span>
+          <span v-else>
+            <i class="bi bi-play-fill me-1"></i>
+            Execute
+          </span>
+        </button>
+      </template>
     </div>
   </div>
 </template>
