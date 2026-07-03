@@ -173,6 +173,76 @@ equivalent, stored per-account in the browser instead of a config file.
   other backend shapes (`SFTPFile`/`SMBFile`/etc.) supported, since those are
   fundamentally unreachable from a browser anyway.
 
+## Proposed: per-domain WebSocket endpoint config (one install, many servers)
+
+**Not yet approved for execution — design only, captured here for review.**
+
+### The problem
+
+`buildWsUrl()` (`useXmpp.ts`) has exactly one override point: the `VITE_XMPP_WS_URL`
+env var, read once at Vite dev-server/build startup (`.env.local`, gitignored,
+machine-local). When set, it **unconditionally** replaces the WS URL for every login
+attempt, regardless of the domain in the JID typed in — there's no way to say "use
+this override only for `localhost`, auto-construct normally for everything else."
+
+Concretely: a real user hit this trying to log into `admin@monet.saao.ac.za` on a
+machine whose `.env.local` had `VITE_XMPP_WS_URL=wss://localhost:5280/ws` set (from
+earlier local dev against a self-signed-cert ejabberd, per the existing local-TLS
+debugging note) — every connection attempt silently went to `localhost:5280`
+instead, failing with Strophe's generic "Connection failed." The ask: **one running
+install of the client should be able to reach both a local dev server and a real
+remote deployment**, without editing an env file and restarting between them.
+
+The auto-construction fallback (`${proto}://${domain}:5280/ws`, `proto` inferred
+from `window.location.protocol`) already varies correctly by domain — the gap is
+specifically when a server's actual WS requirements (scheme, port, path) don't
+match that inference (e.g. local ejabberd forces `wss://` via a self-signed cert
+even though the page itself is served over plain `http://`, so the auto-inferred
+`ws://` scheme is wrong for that one server).
+
+### Proposed fix
+
+Replace the single global env-var override with a `localStorage`-backed, per-domain
+override list — same architecture already built for VFS endpoints
+(`useVfsConfig.ts`), just keyed by **domain**, not bare JID: the WS endpoint is a
+property of the *server*, so every user connecting to the same domain wants the
+same override, unlike VFS credentials which can legitimately differ per account.
+
+- New composable (e.g. `useServerConfig.ts`): `serverOverrides: Array<{ domain: string; wsUrl: string }>`,
+  persisted to `localStorage`, with CRUD functions mirroring `useVfsConfig.ts`'s
+  shape.
+- `buildWsUrl(domain)` checks this list first (exact domain match), falls back to
+  `VITE_XMPP_WS_URL` if still set (keeps today's simple-deployment/zero-config path
+  working), then the existing auto-construction as the final fallback. No behavior
+  change for anyone who never configures an override.
+- **Must be editable pre-login** — this is the key architectural difference from
+  VFS config: `SettingsView.vue` is gated behind `requiresAuth`, but you need to set
+  a server override *before* you can ever successfully connect to that server. This
+  config has to live on/near `LoginView.vue` itself, not the authenticated Settings
+  page — e.g. a small collapsible "Advanced" section on the login screen, editable
+  without being logged in.
+- Domain is read from whatever's typed into the JID field at connect time
+  (`Strophe.getDomainFromJid`), so switching between `admin@localhost` and
+  `admin@monet.saao.ac.za` in the same running session, each with its own override
+  (or no override, using auto-construction), just works — no restart.
+
+### Not in scope
+
+- Auto-detecting the right WS URL for a server (e.g. probing well-known paths) —
+  this is purely manual, user-supplied config, same as VFS endpoints.
+- Removing `VITE_XMPP_WS_URL` entirely — kept as a lowest-priority fallback for
+  today's simple single-server deployments that already rely on it.
+
+### Open questions
+
+- Exact placement/UI for the pre-login override editor on `LoginView.vue` — a
+  collapsible section, a small gear/settings icon near the JID field, or something
+  else. Needs to satisfy the standing mobile+desktop constraint like everything
+  else.
+- Whether to validate/normalize the stored `wsUrl` at all (e.g. require `ws://` or
+  `wss://` scheme) or accept it as a raw opaque string, same as `VITE_XMPP_WS_URL`
+  today.
+
 ## Proposed: Dashboard — expandable module list instead of a card grid
 
 **Not yet approved for execution — design only, captured here for review.**
@@ -380,6 +450,11 @@ section for the full design/reasoning):
 - ~~Remember previous logins + per-connection config (VFS endpoints)~~ — **done**,
   see "Implemented: remember previous logins + per-connection config (VFS
   endpoints)" above.
+- **Per-domain WebSocket endpoint config (one install, many servers)** — see
+  "Proposed: per-domain WebSocket endpoint config (one install, many servers)".
+  Prompted by a real login failure (`.env.local`'s global override silently
+  redirecting a remote-domain login attempt to `localhost`). Two open questions:
+  UI placement on the pre-login screen, and whether to validate the stored URL.
 - **Dashboard — expandable module list instead of a card grid** — see that section
   above. All open questions resolved (ephemeral expand state, collapse-all/
   expand-all affordance) — ready to implement pending go-ahead.
