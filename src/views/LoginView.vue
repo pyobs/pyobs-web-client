@@ -10,6 +10,10 @@ const jid = ref('')
 const password = ref('')
 const loading = ref(false)
 
+function pickRecentLogin(recentJid: string) {
+  jid.value = recentJid
+}
+
 async function handleLogin() {
   if (!jid.value || !password.value) return
   loading.value = true
@@ -53,22 +57,35 @@ async function handleLogin() {
           {{ errorMessage }}
         </div>
 
+        <!-- Recent logins -->
+        <div v-if="recentLogins.length" class="mb-3">
+          <label class="form-label text-muted" style="font-size:0.8rem">Recent logins</label>
+          <div class="d-flex flex-wrap gap-2">
+            <button
+              v-for="recentJid in recentLogins"
+              :key="recentJid"
+              type="button"
+              class="btn btn-outline-secondary btn-sm"
+              :disabled="loading"
+              @click="pickRecentLogin(recentJid)"
+            >
+              {{ recentJid }}
+            </button>
+          </div>
+        </div>
+
         <!-- JID -->
         <div class="mb-3">
           <label class="form-label text-muted" style="font-size:0.8rem">XMPP JID</label>
           <input
             v-model="jid"
             type="text"
-            list="recent-logins"
             class="form-control form-control-sm bg-dark border-secondary text-light"
             placeholder="user@xmpp.example.com"
             autocomplete="username"
             :disabled="loading"
             @keyup.enter="handleLogin"
           />
-          <datalist id="recent-logins">
-            <option v-for="recentJid in recentLogins" :key="recentJid" :value="recentJid" />
-          </datalist>
         </div>
 
         <!-- Password -->

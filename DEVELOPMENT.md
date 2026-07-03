@@ -63,10 +63,15 @@ same bar to any new proposal added after this note too.
 
 ## Implemented: remember previous logins + per-connection config (VFS endpoints)
 
-**Done, verified live and via unit tests.** Built exactly per the design below:
-`useXmpp.ts` gained a `localStorage`-backed `recentLogins` list (JIDs only, capped at
-10, moved-to-front on successful connect), surfaced in `LoginView.vue` via a native
-`<datalist>` on the JID input. New `src/composables/useVfsConfig.ts` holds the
+**Done, verified live and via unit tests.** Built per the design below, with one
+correction after live testing: `useXmpp.ts` gained a `localStorage`-backed
+`recentLogins` list (JIDs only, capped at 10, moved-to-front on successful connect).
+First surfaced in `LoginView.vue` via a native `<datalist>` on the JID input — live
+testing showed this wasn't reliably visible (no dropdown appeared on click in a real
+browser check, not just a screenshot artifact), so it was replaced with an explicit
+"Recent logins" row of clickable button chips above the JID field, matching this
+app's existing buttons-over-hidden-native-widgets convention (same reasoning as
+Shell's module/method chips). New `src/composables/useVfsConfig.ts` holds the
 per-bare-JID `vfsEndpoints` store (`localStorage`, `HttpFile`-shaped only) with
 `resolveVfsPath()` and add/update/remove CRUD, and a new `SettingsView.vue` (routed
 at `/settings`, sidebar entry added) manages endpoints for the current account —
@@ -74,7 +79,7 @@ stacked-input form, same styling/mobile pattern as the rest of the app. Unit-tes
 in `src/__tests__/useVfsConfig.spec.ts` (44/44 passing, including per-account
 isolation and path-resolution edge cases: leading slash, no trailing slash on
 `baseUrl`, unknown root, rootless path). Verified live at desktop and mobile
-(390×844) viewports: login datalist populates and fills the JID field, Settings
+(390×844) viewports: recent-login chips fill the JID field on click, Settings
 add/edit/remove all persist correctly and re-populate the form on edit.
 
 Two related but distinct asks: (1) let the user pick a previously-used JID at login
