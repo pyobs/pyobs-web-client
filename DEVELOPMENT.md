@@ -23,9 +23,13 @@ codegen — everything is discovered live from each module's own disco#info resp
   `probeRosterPresence()` sending directed presence probes to every roster contact
   right after connecting so already-online modules are discovered even if the server
   doesn't auto-probe on initial presence.
-- **`ShellView.vue`**: RPC method forms built from live command schemas — scalar,
-  `datetime`, and `enum(Name)` (rendered as a populated `<select>`) params all work;
-  optional-vs-required defaults are handled correctly.
+- **`ShellView.vue`**: a pyobs-gui-style console — a log of executed commands/replies
+  on top, and a command builder below it that shows only one of module/method/params
+  at a time (accordion-style: picking a value collapses that layer into a tappable
+  one-line summary and advances to the next). RPC forms are built from live command
+  schemas — scalar, `datetime`, and `enum(Name)` (rendered as a populated `<select>`)
+  params all work, optional-vs-required defaults are handled correctly, and clicking
+  Execute fully resets the builder back to the module picker.
 - **`DashboardView.vue`** / **`ModuleStateCard.vue`** / **`KeyValueCard.vue`**: generic
   capability/state rendering, no per-interface hardcoding.
 - **`LoggingView.vue`**: live `LogEvent`s via versioned event PubSub nodes.

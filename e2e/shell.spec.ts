@@ -18,6 +18,35 @@ test.describe('Shell', () => {
     expect(methodCount).toBeGreaterThan(0)
   })
 
+  test('only one builder layer is shown at a time, and Execute collapses back to the module picker', async ({
+    connectedPage: page,
+  }) => {
+    await page.click('text=Shell')
+    await page.getByTestId('shell-modules').locator('button').first().click()
+
+    // Module layer collapsed to a summary; method layer now showing.
+    await expect(page.getByTestId('shell-modules')).not.toBeVisible()
+    await expect(page.getByTestId('shell-module-summary')).toBeVisible()
+    await expect(page.getByTestId('shell-methods')).toBeVisible()
+
+    const resetErrorButton = page.getByTestId('shell-methods').getByRole('button', { name: 'reset_error', exact: true })
+    test.skip((await resetErrorButton.count()) === 0, 'connected module does not implement IModule.reset_error')
+    await resetErrorButton.click()
+
+    // Method layer collapsed to a summary; params layer now showing.
+    await expect(page.getByTestId('shell-methods')).not.toBeVisible()
+    await expect(page.getByTestId('shell-method-summary')).toBeVisible()
+    await expect(page.getByText('No parameters.')).toBeVisible()
+
+    await page.getByRole('button', { name: /execute/i }).click()
+    await expect(page.getByTestId('shell-log').getByText(/reset_error/)).toBeVisible({ timeout: 10000 })
+
+    // Full reset: back to the module picker, no summaries left over.
+    await expect(page.getByTestId('shell-modules')).toBeVisible()
+    await expect(page.getByTestId('shell-module-summary')).not.toBeVisible()
+    await expect(page.getByTestId('shell-method-summary')).not.toBeVisible()
+  })
+
   test('IModule.reset_error executes and appends a result to the log', async ({ connectedPage: page }) => {
     // Every module implements IModule; reset_error takes no params and is a
     // safe no-op when there's no error to reset — good generic smoke test

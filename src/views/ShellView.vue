@@ -10,6 +10,12 @@ const selectedMethodKey = ref('') // `${ifaceName}::${methodName}` — command n
 const paramValues = ref<Record<string, string>>({})
 const running = ref(false)
 
+// Only one of module/method/params is shown at a time — picking a value at one
+// layer advances to the next; the completed layer collapses to a one-line,
+// tappable summary instead of staying expanded alongside it.
+type BuilderStep = 'module' | 'method' | 'params'
+const step = ref<BuilderStep>('module')
+
 type LogEntry = {
   id: number
   timestamp: number
@@ -102,10 +108,20 @@ function defaultParamValue(type: WireType): string {
 
 function selectModule(jid: string) {
   selectedJid.value = jid
+  step.value = 'method'
 }
 
 function selectMethod(iface: string, name: string) {
   selectedMethodKey.value = `${iface}::${name}`
+  step.value = 'params'
+}
+
+function backToModuleStep() {
+  step.value = 'module'
+}
+
+function backToMethodStep() {
+  step.value = 'method'
 }
 
 watch(selectedJid, () => {
@@ -192,6 +208,12 @@ async function execute() {
   } finally {
     running.value = false
     scrollLogToBottom()
+    // Full reset back to the module picker, per the accordion design — not
+    // just clearing params — so the builder always starts fresh after a run.
+    selectedJid.value = ''
+    selectedMethodKey.value = ''
+    paramValues.value = {}
+    step.value = 'module'
   }
 }
 </script>
@@ -229,52 +251,77 @@ async function execute() {
       </div>
     </div>
 
-    <!-- Command builder: module -> method -> params, buttons over dropdowns for mobile -->
+    <!-- Command builder: only one of module/method/params is shown at a time; a
+         completed layer collapses into a tappable one-line summary. -->
     <div class="flex-shrink-0">
       <div class="mb-2">
-        <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Module</div>
-        <div class="d-flex flex-wrap gap-2" data-testid="shell-modules">
-          <button
-            v-for="m in modules"
-            :key="m.jid"
-            type="button"
-            class="btn btn-sm"
-            :class="selectedJid === m.jid ? 'btn-primary' : 'btn-outline-secondary'"
-            @click="selectModule(m.jid)"
-          >
-            {{ m.name }}
-          </button>
-          <span v-if="modules.length === 0" class="text-muted align-self-center" style="font-size:0.8rem">No modules online.</span>
-        </div>
+        <template v-if="step === 'module'">
+          <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Module</div>
+          <div class="d-flex flex-wrap gap-2" data-testid="shell-modules">
+            <button
+              v-for="m in modules"
+              :key="m.jid"
+              type="button"
+              class="btn btn-sm"
+              :class="selectedJid === m.jid ? 'btn-primary' : 'btn-outline-secondary'"
+              @click="selectModule(m.jid)"
+            >
+              {{ m.name }}
+            </button>
+            <span v-if="modules.length === 0" class="text-muted align-self-center" style="font-size:0.8rem">No modules online.</span>
+          </div>
+        </template>
+        <button
+          v-else
+          type="button"
+          class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+          data-testid="shell-module-summary"
+          @click="backToModuleStep"
+        >
+          <span class="text-muted">Module:</span> {{ selectedModule?.name }}
+          <i class="bi bi-chevron-right"></i>
+        </button>
       </div>
 
       <div v-if="selectedJid" class="mb-2">
-        <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Method</div>
-        <div
-          class="overflow-auto rounded-3 p-2"
-          style="max-height: 25vh; background-color: #16181b; border: 1px solid #2d3035"
-          data-testid="shell-methods"
-        >
-          <p v-if="methodsByIface.length === 0" class="text-muted mb-0" style="font-size:0.8rem">
-            This module publishes no commands.
-          </p>
-          <div v-for="g in methodsByIface" :key="g.iface" class="d-flex flex-wrap align-items-center gap-1 mb-1">
-            <span class="text-secondary me-1" style="font-size:0.7rem; min-width:5rem">{{ g.iface }}</span>
-            <button
-              v-for="name in g.methods"
-              :key="name"
-              type="button"
-              class="btn btn-sm"
-              :class="selectedMethodKey === `${g.iface}::${name}` ? 'btn-primary' : 'btn-outline-secondary'"
-              @click="selectMethod(g.iface, name)"
-            >
-              {{ name }}
-            </button>
+        <template v-if="step === 'method'">
+          <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Method</div>
+          <div
+            class="overflow-auto rounded-3 p-2"
+            style="max-height: 25vh; background-color: #16181b; border: 1px solid #2d3035"
+            data-testid="shell-methods"
+          >
+            <p v-if="methodsByIface.length === 0" class="text-muted mb-0" style="font-size:0.8rem">
+              This module publishes no commands.
+            </p>
+            <div v-for="g in methodsByIface" :key="g.iface" class="d-flex flex-wrap align-items-center gap-1 mb-1">
+              <span class="text-secondary me-1" style="font-size:0.7rem; min-width:5rem">{{ g.iface }}</span>
+              <button
+                v-for="name in g.methods"
+                :key="name"
+                type="button"
+                class="btn btn-sm"
+                :class="selectedMethodKey === `${g.iface}::${name}` ? 'btn-primary' : 'btn-outline-secondary'"
+                @click="selectMethod(g.iface, name)"
+              >
+                {{ name }}
+              </button>
+            </div>
           </div>
-        </div>
+        </template>
+        <button
+          v-else-if="step === 'params'"
+          type="button"
+          class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+          data-testid="shell-method-summary"
+          @click="backToMethodStep"
+        >
+          <span class="text-muted">Method:</span> {{ currentIfaceName }}.{{ currentMethodName }}
+          <i class="bi bi-chevron-right"></i>
+        </button>
       </div>
 
-      <template v-if="currentCommandSchema">
+      <template v-if="step === 'params' && currentCommandSchema">
         <div v-if="currentCommandSchema.params.length" class="mb-2" data-testid="shell-params">
           <div v-for="param in currentCommandSchema.params" :key="param.name" class="mb-2">
             <div class="d-flex align-items-baseline gap-2 mb-1">
