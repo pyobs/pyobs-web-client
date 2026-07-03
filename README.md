@@ -41,6 +41,51 @@ npm run dev
 npm run build
 ```
 
+### Connecting to an XMPP Server
+
+This app authenticates by opening a WebSocket connection directly to an
+ejabberd server (via strophe.js) — there is no HTTP/REST login endpoint and
+no backend of its own. Logging in requires a reachable ejabberd server with
+a registered account, and its `ejabberd_http` listener must map the `/ws`
+path to `ejabberd_http_ws` under `request_handlers` (see ejabberd's
+[WebSocket docs](https://docs.ejabberd.im/admin/configuration/listen/#websocket)),
+e.g. in `ejabberd.yml`:
+
+```yaml
+listen:
+  -
+    port: 5280
+    ip: "::"
+    module: ejabberd_http
+    tls: false
+    request_handlers:
+      /ws: ejabberd_http_ws
+      /admin: ejabberd_web_admin
+```
+
+By default the app connects to `ws(s)://<jid-domain>:5280/ws`, choosing
+`ws://` or `wss://` to match the protocol the frontend itself is served
+over. If your ejabberd's port 5280 listener has `tls: true` but you're
+running the Vite dev server over plain `http://`, override the URL
+explicitly in `.env.local`:
+
+```
+VITE_XMPP_WS_URL=wss://localhost:5280/ws
+```
+
+(Restart `npm run dev` after adding this — Vite only reads env files at
+startup.) This is safe even though the page itself is `http://`: browser
+mixed-content rules only block a secure page from opening an insecure
+connection, not the other way around.
+
+If ejabberd uses a self-signed certificate, the browser's WebSocket API has
+no way to bypass the trust check (unlike `curl -k`), so login will fail
+silently with "Connection failed. Check server address." until the browser
+trusts that cert. Open `https://localhost:5280/admin` (or any path served by
+the same listener) directly once and accept the certificate warning — that
+caches the trust decision for `localhost:5280` and lets the app's `wss://`
+connection through.
+
 ### Run Unit Tests
 
 Fast, no external dependencies — covers `src/pyobs-codec.ts`'s wire-protocol
