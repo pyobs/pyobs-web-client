@@ -54,6 +54,18 @@ Tested and verified:
   command takes a struct/list/dict param), but if one appears, pyobs-core would need
   to publish struct field schemas too before the client could build an input widget
   for it.
+- **pyobs-core 2.0 ACLs** — design only on the pyobs-core side so far, nothing
+  implemented yet (see its own `DEVELOPMENT.md`,
+  [Access Control (ACLs)](https://github.com/pyobs/pyobs-core/blob/develop/DEVELOPMENT.md#access-control-acls)).
+  Reactive handling needs no change here: `executeMethod` (`useXmpp.ts:286-295`)
+  already catches any XMPP IQ-level error generically — its own existing comment
+  reads `// XMPP-level error (item-not-found, forbidden, …)` — and returns it as a
+  plain error result, which already covers the `forbidden` condition this design
+  routes ACL denials through. Still open, blocked on `IModule.get_permitted_methods()`
+  landing in pyobs-core first (its Phase 8): once it exists, `ShellView.vue`'s RPC
+  forms — already built per-module from the live command schema `fetchModuleInfo`
+  fetches — could grey out or hide the methods the connected identity isn't
+  permitted to call, instead of only finding out on submit.
 
 ## Full history
 
