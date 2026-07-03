@@ -3,6 +3,7 @@ import { useXmpp } from '@/composables/useXmpp'
 import DashboardView from '@/views/DashboardView.vue'
 import ShellView from '@/views/ShellView.vue'
 import LoggingView from '@/views/LoggingView.vue'
+import SettingsView from '@/views/SettingsView.vue'
 import LoginView from '@/views/LoginView.vue'
 
 const router = createRouter({
@@ -29,6 +30,12 @@ const router = createRouter({
       path: '/logging',
       name: 'logging',
       component: LoggingView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: SettingsView,
       meta: { requiresAuth: true },
     },
   ],

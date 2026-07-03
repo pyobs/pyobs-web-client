@@ -111,6 +111,15 @@ function navigate(to: string) {
           Logging
         </a>
 
+        <a
+          class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
+          :class="{ active: route.name === 'settings' }"
+          @click="navigate('/settings')"
+        >
+          <i class="bi bi-gear" style="font-size:0.8rem"></i>
+          Settings
+        </a>
+
       </div>
 
       <!-- Logout / user -->

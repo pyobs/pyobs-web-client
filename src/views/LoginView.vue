@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useXmpp } from '@/composables/useXmpp'
 
 const router = useRouter()
-const { status, errorMessage, connect } = useXmpp()
+const { status, errorMessage, connect, recentLogins } = useXmpp()
 
 const jid = ref('')
 const password = ref('')
@@ -59,12 +59,16 @@ async function handleLogin() {
           <input
             v-model="jid"
             type="text"
+            list="recent-logins"
             class="form-control form-control-sm bg-dark border-secondary text-light"
             placeholder="user@xmpp.example.com"
             autocomplete="username"
             :disabled="loading"
             @keyup.enter="handleLogin"
           />
+          <datalist id="recent-logins">
+            <option v-for="recentJid in recentLogins" :key="recentJid" :value="recentJid" />
+          </datalist>
         </div>
 
         <!-- Password -->

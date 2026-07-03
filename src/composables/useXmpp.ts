@@ -47,6 +47,8 @@ const NS_ROSTER = 'jabber:iq:roster'
 const PYOBS_RESOURCE = 'pyobs'
 const SESSION_JID_KEY = 'xmpp_jid'
 const SESSION_PW_KEY = 'xmpp_password'
+const RECENT_LOGINS_KEY = 'pyobs_recent_logins'
+const MAX_RECENT_LOGINS = 10
 const MAX_EVENTS = 500
 const STATE_SUBSCRIBE_RETRIES = 30
 const STATE_SUBSCRIBE_RETRY_WAIT_MS = 1000
@@ -62,6 +64,25 @@ const jid = ref<string>('')
 const errorMessage = ref<string>('')
 const modules = ref<PyobsModule[]>([])
 const events = ref<PyobsEvent[]>([])
+
+// Remembered JIDs only — never passwords. Persisted in localStorage (survives
+// across browser sessions, unlike the sessionStorage-based active-session
+// credentials above) purely as a login-convenience autocomplete list.
+function loadRecentLogins(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_LOGINS_KEY) ?? '[]')
+    return Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string') : []
+  } catch {
+    return []
+  }
+}
+const recentLogins = ref<string[]>(loadRecentLogins())
+
+function rememberLogin(userJid: string): void {
+  const next = [userJid, ...recentLogins.value.filter((j) => j !== userJid)].slice(0, MAX_RECENT_LOGINS)
+  recentLogins.value = next
+  localStorage.setItem(RECENT_LOGINS_KEY, JSON.stringify(next))
+}
 
 // PubSub state: keyed by the real "pyobs:state:{module}:{Interface}:{version}"
 // node string. Ref-counted since ejabberd tracks one real subscription per
@@ -407,6 +428,7 @@ function connect(userJid: string, password: string, silent = false): Promise<voi
         status.value = 'connected'
         sessionStorage.setItem(SESSION_JID_KEY, userJid)
         sessionStorage.setItem(SESSION_PW_KEY, password)
+        rememberLogin(userJid)
         // Register presence handler before sending initial presence so the
         // server's roster-presence flood is captured on arrival
         connection!.addHandler(handlePresence, '', 'presence', '')
@@ -484,6 +506,7 @@ export function useXmpp() {
     errorMessage: readonly(errorMessage),
     modules: readonly(modules),
     events: readonly(events),
+    recentLogins: readonly(recentLogins),
     connect,
     disconnect,
     executeMethod,

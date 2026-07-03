@@ -61,9 +61,21 @@ The two proposals below with real mobile-layout risk are annotated inline
 (Camera page's image sizing, Telescope page's coordinate-form stacking); apply the
 same bar to any new proposal added after this note too.
 
-## Proposed: remember previous logins + per-connection config (VFS endpoints)
+## Implemented: remember previous logins + per-connection config (VFS endpoints)
 
-**Not yet approved for execution — design only, captured here for review.**
+**Done, verified live and via unit tests.** Built exactly per the design below:
+`useXmpp.ts` gained a `localStorage`-backed `recentLogins` list (JIDs only, capped at
+10, moved-to-front on successful connect), surfaced in `LoginView.vue` via a native
+`<datalist>` on the JID input. New `src/composables/useVfsConfig.ts` holds the
+per-bare-JID `vfsEndpoints` store (`localStorage`, `HttpFile`-shaped only) with
+`resolveVfsPath()` and add/update/remove CRUD, and a new `SettingsView.vue` (routed
+at `/settings`, sidebar entry added) manages endpoints for the current account —
+stacked-input form, same styling/mobile pattern as the rest of the app. Unit-tested
+in `src/__tests__/useVfsConfig.spec.ts` (44/44 passing, including per-account
+isolation and path-resolution edge cases: leading slash, no trailing slash on
+`baseUrl`, unknown root, rootless path). Verified live at desktop and mobile
+(390×844) viewports: login datalist populates and fills the JID field, Settings
+add/edit/remove all persist correctly and re-populate the form on edit.
 
 Two related but distinct asks: (1) let the user pick a previously-used JID at login
 instead of retyping it, and (2) a place to store settings specific to a given pyobs
@@ -221,9 +233,9 @@ name on insert (`_insert_module_item`).
 ## Proposed: Camera page — grab & display images from `ICamera` modules
 
 **Not yet approved for execution — design only, captured here for review.**
-**Sequenced after** the "remember previous logins + per-connection config (VFS
-endpoints)" proposal above — this page's image fetch depends on that proposal's
-`resolveVfsPath()` existing, per the user's own framing.
+Its dependency — `resolveVfsPath()` from "Implemented: remember previous logins +
+per-connection config (VFS endpoints)" above — now exists, so this proposal is
+unblocked.
 
 ### Scope
 
@@ -360,16 +372,15 @@ the Camera-page proposal above:
 Feature proposals queued above (each not yet approved for execution — see its own
 section for the full design/reasoning):
 
-- **Remember previous logins + per-connection config (VFS endpoints)** — see
-  "Proposed: remember previous logins + per-connection config (VFS endpoints)".
-  All open questions resolved (per-account config, cap of 10, `HttpFile`-shaped
-  endpoints only) — ready to implement pending go-ahead.
+- ~~Remember previous logins + per-connection config (VFS endpoints)~~ — **done**,
+  see "Implemented: remember previous logins + per-connection config (VFS
+  endpoints)" above.
 - **Dashboard — expandable module list instead of a card grid** — see that section
   above. All open questions resolved (ephemeral expand state, collapse-all/
   expand-all affordance) — ready to implement pending go-ahead.
 - **Camera page** — see "Proposed: Camera page — grab & display images from
-  `ICamera` modules". Sequenced after the VFS proposal; FITS parsing/rendering
-  approach (hand-rolled vs. library) still undecided.
+  `ICamera` modules". Now unblocked (its VFS-resolution dependency is implemented,
+  above); FITS parsing/rendering approach (hand-rolled vs. library) still undecided.
 - **Telescope page** — see "Proposed: Telescope page — for `ITelescope` modules".
   Two open questions still unresolved: whether dedicated Init/Park/Stop buttons are
   worth duplicating with Shell, and whether RA/Dec + Alt/Az should share one page or
