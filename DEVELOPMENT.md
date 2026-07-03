@@ -710,7 +710,9 @@ for wire-format code, so no added test infra (vitest) for this pass either:
   needed today, revisit if pyobs-core ever adds one; would need pyobs-core to publish
   struct field lists the way it already does for enums via `<types>`.
 - pyobs-core's `_capability_type`/`_CAPABILITY_NS` dead code (`xmppcomm.py:33-44`,
-  §3) — worth flagging upstream, doesn't block the client either way.
+  §3) — worth flagging upstream, doesn't block the client either way. **Resolved:**
+  removed upstream in `../pyobs-core@e8ebd46c` ("Remove dead scalar capability
+  serialization helpers from XmppComm").
 
 ## Two corrections found re-verifying against current pyobs-core HEAD (`05275feb`)
 
@@ -806,6 +808,15 @@ even when the client demonstrably sent a real string value (confirmed via raw
 WebSocket frame capture) — this is a pyobs-core server-side validation bug
 (`pyobs/modules/module.py:413`), not a client issue; out of scope for this repo.
 
+**Correction, resolved:** this wasn't a pyobs-core bug — it was a symptom of the
+RPC-params-sent-as-nil client bug fixed below (`456773c`). The missing `xmlns` on
+the RPC value wrapper meant every string param, including `name`, silently
+decoded server-side as empty, which is exactly what made a non-empty client value
+trigger this error. `module.py`'s `if not name: raise ValueError(...)` guard is
+correct, intentional validation — confirmed by `650c411`'s e2e test, which now
+deliberately sends an empty `name` and asserts this exact error as the *expected*
+response.
+
 ## Post-implementation fixes and permanent test suite
 
 Follow-up work after the "Implementation done" pass above, once real usage (and a
@@ -855,7 +866,10 @@ after all.
 
 State as of this update: pyobs-core 2.0 port is implemented, tested (unit +
 e2e), and verified live, with the bugs found during that follow-up round fixed.
-Remaining open items are unchanged from the two flagged above (presence-probe-
-on-connect, `struct<Name>`-typed params) plus the two out-of-scope pyobs-core
-items (dead `_capability_type`/`_CAPABILITY_NS` code, `get_config_value`
-validation bug).
+The two pyobs-core-side items flagged earlier are now both resolved: the dead
+`_capability_type`/`_CAPABILITY_NS` code was removed upstream
+(`../pyobs-core@e8ebd46c`), and the `get_config_value` "validation bug" turned
+out to be a symptom of the client's own RPC-params-sent-as-nil bug (fixed here in
+`456773c`), not a pyobs-core defect — see the correction above. Remaining open
+items are just the two client-side ones: presence-probe-on-connect, and
+`struct<Name>`-typed params (neither needed today).
