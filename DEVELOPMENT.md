@@ -805,3 +805,57 @@ A separate `ValueError: No parameter name given.` surfaced from `get_config_valu
 even when the client demonstrably sent a real string value (confirmed via raw
 WebSocket frame capture) — this is a pyobs-core server-side validation bug
 (`pyobs/modules/module.py:413`), not a client issue; out of scope for this repo.
+
+## Post-implementation fixes and permanent test suite
+
+Follow-up work after the "Implementation done" pass above, once real usage (and a
+new automated test suite) turned up bugs the manual live-verification pass missed.
+Corrects that section's "no added test infra" note — a permanent suite was added
+after all.
+
+- **Added a permanent test suite** (`bd57165`): Vitest + jsdom unit tests for
+  `pyobs-codec.ts` (scalar/list/dict/dataclass decode, encode round-trip including
+  int32-vs-float64 disambiguation by declared type, schema parsing) against
+  fixtures trimmed from real disco#info captures, plus a Playwright e2e suite
+  against the live server — the ad hoc manual verification from the previous
+  section is now a real, repeatable check (`npm run test:unit`).
+- **Fixed: RPC params sent as `<nil/>` instead of real values** (`456773c`):
+  `createNamespacedElement` used `createElementNS` alone, which sets the DOM's
+  internal `namespaceURI` but never adds a serializable `xmlns` attribute —
+  Strophe's hand-rolled `Builder.serialize()` only emits attributes literally
+  present on the element, so the `<value xmlns="urn:pyobs:rpc:1">` wrapper around
+  every RPC param silently went out unnamespaced, and pyobs-core's
+  namespace-keyed lookup found nothing and fell back to nil. This was the root
+  cause behind two follow-on symptoms fixed alongside/after it:
+  - Empty non-optional numeric params fell through to `null` → `<nil/>` even
+    though the schema requires a real number, which pyobs-core rejects outright
+    (`c60b17f`). Fixed by seeding number params to `'0'` by default (mirroring
+    bool's `'true'` default) and making the encode path always resolve
+    non-optional params to a real value.
+  - That fix over-corrected: optional numeric params also defaulted to `'0'`
+    instead of unset, the opposite of correct "leave it nil" behavior
+    (`b8dcbb7`). `defaultParamValue` now keys off optionality first — optional
+    params of any kind default to `''` (→ nil), only non-optional params get a
+    kind-appropriate real default.
+- **Added e2e coverage for pyobs-core's empty-config-name validation**
+  (`650c411`): calls `IConfig.get_config_value` with an intentionally empty
+  name and asserts the exact clean error string, doubling as a regression check
+  that empty non-optional string params go out as a real `<string>`, not
+  `<nil/>` (guards the `456773c`/`c60b17f` class of bug).
+- **Fixed Logging table cell alignment** (`86dede5`): default table
+  `vertical-align` centered short cells (timestamp/level/module) against a
+  multi-line message cell (e.g. a traceback) instead of aligning to its first
+  line — switched to top alignment.
+- **Fixed `KeyValueCard` truncating/hiding data** (`7e602db`): multiline
+  pretty-printed values (e.g. `ITemperatures.readings`, a list of dataclasses)
+  were immediately collapsed back to a cut-off single line by `text-truncate`;
+  now rendered in a wrapping `<pre>` block. Also swapped `text-truncate` for
+  normal wrapping on short inline values, since even a ~44-character value could
+  overflow the card's narrow value column.
+
+State as of this update: pyobs-core 2.0 port is implemented, tested (unit +
+e2e), and verified live, with the bugs found during that follow-up round fixed.
+Remaining open items are unchanged from the two flagged above (presence-probe-
+on-connect, `struct<Name>`-typed params) plus the two out-of-scope pyobs-core
+items (dead `_capability_type`/`_CAPABILITY_NS` code, `get_config_value`
+validation bug).
