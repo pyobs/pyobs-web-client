@@ -873,3 +873,31 @@ out to be a symptom of the client's own RPC-params-sent-as-nil bug (fixed here i
 `456773c`), not a pyobs-core defect — see the correction above. Remaining open
 items are just the two client-side ones: presence-probe-on-connect, and
 `struct<Name>`-typed params (neither needed today).
+
+## Presence-probe-on-connect, done
+
+Implemented the fix flagged above: `useXmpp.ts` gains `probeRosterPresence()`,
+called once right after sending initial presence in `connect()`. It queries the
+account's own roster (`jabber:iq:roster`) and sends a directed
+`<presence type="probe" to="{bareJid}"/>` to every contact returned — this asks
+the server for each contact's *current* presence explicitly, rather than
+depending on the server auto-probing roster contacts on our behalf when it sees
+our initial presence (which RFC 6121 §4.2 expects but isn't guaranteed to be
+configured identically across every ejabberd deployment). Responses come back
+as ordinary presence stanzas and flow through the existing `handlePresence`
+path unchanged — no new logic needed there.
+
+Verified live against the ejabberd server (`admin@localhost`): the roster
+query returned 6 module accounts (`camera`, `roof`, `observer`, `telescope`,
+`mastermind`, `scheduler`), each probed successfully, and the Dashboard
+populated 2 already-online modules within 3 seconds of login. To confirm the
+probe itself (not some other mechanism) was responsible, re-ran the same check
+with the `probeRosterPresence()` call commented out — modules still appeared,
+meaning this particular ejabberd instance already auto-probes on initial
+presence, so the explicit probe is currently redundant here but is the correct,
+standards-based fix for setups where that server-side behavior isn't in place
+(which is exactly the gap the original finding flagged). `type-check`, `build`,
+and the unit suite (38/38) stayed clean throughout.
+
+Only one client-side item remains open: `struct<Name>`-typed params (not
+needed today, no real command uses one).

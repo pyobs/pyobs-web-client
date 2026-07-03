@@ -43,6 +43,7 @@ const NS_PUBSUB = 'http://jabber.org/protocol/pubsub'
 const NS_PUBSUB_EVENT = 'http://jabber.org/protocol/pubsub#event'
 const NS_RPC = 'jabber:iq:rpc'
 const NS_PYOBS_RPC = 'urn:pyobs:rpc:1'
+const NS_ROSTER = 'jabber:iq:roster'
 const PYOBS_RESOURCE = 'pyobs'
 const SESSION_JID_KEY = 'xmpp_jid'
 const SESSION_PW_KEY = 'xmpp_password'
@@ -146,6 +147,25 @@ async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> 
         .c('subscribe', { node, jid: myBareJid })
         .tree(),
     ).catch(() => {})
+  }
+}
+
+// A newly-connected session only learns about modules from presence *pushes*
+// (handlePresence, below) — it has no way to find out about a module that was
+// already online before this session existed, unless the server auto-probes
+// roster contacts on our behalf (not guaranteed across every ejabberd setup,
+// see DEVELOPMENT.md). Fix: explicitly probe every roster contact ourselves
+// right after connecting. Responses come back as ordinary presence stanzas
+// and are handled by the same handlePresence path as any live push.
+async function probeRosterPresence(): Promise<void> {
+  try {
+    const result = await sendIQ($iq({ type: 'get' }).c('query', { xmlns: NS_ROSTER }).tree())
+    for (const item of Array.from(result.getElementsByTagName('item'))) {
+      const bareJid = item.getAttribute('jid')
+      if (bareJid) connection!.send($pres({ to: bareJid, type: 'probe' }))
+    }
+  } catch {
+    // no roster available — nothing to probe
   }
 }
 
@@ -392,6 +412,7 @@ function connect(userJid: string, password: string, silent = false): Promise<voi
         connection!.addHandler(handlePresence, '', 'presence', '')
         connection!.addHandler(handlePubsubMessage, NS_PUBSUB_EVENT, 'message', '')
         connection!.send($pres())
+        probeRosterPresence()
         resolve()
       } else if (st === Strophe.Status.CONNFAIL) {
         // Transient failure — keep credentials so a retry can succeed.
