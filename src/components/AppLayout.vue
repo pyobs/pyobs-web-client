@@ -120,6 +120,19 @@ function navigate(to: string) {
           Settings
         </a>
 
+        <div class="px-2 pb-1 pt-2">
+          <span class="text-uppercase text-muted fw-semibold" style="font-size:0.65rem;letter-spacing:.08em">Modules</span>
+        </div>
+
+        <a
+          class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
+          :class="{ active: route.name === 'roof' }"
+          @click="navigate('/roof')"
+        >
+          <i class="bi bi-house-door" style="font-size:0.8rem"></i>
+          Roof
+        </a>
+
       </div>
 
       <!-- Logout / user -->

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useXmpp } from '@/composables/useXmpp'
 import DashboardView from '@/views/DashboardView.vue'
 import ShellView from '@/views/ShellView.vue'
+import RoofView from '@/views/RoofView.vue'
 import LoggingView from '@/views/LoggingView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 import LoginView from '@/views/LoginView.vue'
@@ -24,6 +25,12 @@ const router = createRouter({
       path: '/shell',
       name: 'shell',
       component: ShellView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/roof',
+      name: 'roof',
+      component: RoofView,
       meta: { requiresAuth: true },
     },
     {
