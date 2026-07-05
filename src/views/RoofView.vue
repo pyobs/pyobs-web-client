@@ -43,7 +43,7 @@ async function run(mod: DeepReadonly<PyobsModule>, action: Action) {
 </script>
 
 <template>
-  <div>
+  <div style="max-width: 800px">
     <h5 class="text-light fw-semibold mb-4">Roof</h5>
 
     <div v-if="roofModules.length === 0" class="text-muted" style="font-size:0.9rem">

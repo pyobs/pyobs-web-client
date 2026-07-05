@@ -35,7 +35,7 @@ function collapseAll() {
 </script>
 
 <template>
-  <div>
+  <div style="max-width: 800px">
     <div class="d-flex align-items-center justify-content-between mb-4">
       <h5 class="text-light fw-semibold mb-0">Dashboard</h5>
       <div v-if="modules.length" class="d-flex gap-2">
