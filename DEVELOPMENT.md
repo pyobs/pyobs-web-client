@@ -173,9 +173,86 @@ equivalent, stored per-account in the browser instead of a config file.
   other backend shapes (`SFTPFile`/`SMBFile`/etc.) supported, since those are
   fundamentally unreachable from a browser anyway.
 
-## Proposed: per-domain WebSocket endpoint config (one install, many servers)
+## Implemented: per-domain WebSocket endpoint config (one install, many servers)
 
-**Not yet approved for execution — design only, captured here for review.**
+**Done, verified live via a temporary Playwright driver (not committed) and the
+existing unit-test setup.** Built per the design below, with the two open questions
+resolved as a `forceSecure` checkbox (not a free-text URL) — see "Decided" below.
+One real bug found and fixed while wiring the UI to a live domain:
+`Strophe.getDomainFromJid('')` throws (empty string is falsy, so its internal
+`getBareJidFromJid` returns `null`, then `.indexOf('@')` on `null` throws), which
+crashed `LoginView`'s render on every keystroke while the JID field was still empty
+— fixed with the same `jid.value ? Strophe.getDomainFromJid(jid.value) : ''` guard
+`useVfsConfig.ts` already uses for the identical pattern.
+
+**Revised after initial implementation, per the user:** no collapsible "Advanced"
+section after all — the checkbox is always visible, and defaults to **checked**
+rather than unchecked. Since the checkbox now shows a checked state before the user
+has ever touched it, a `watch(domain, …, { immediate: true })` in `LoginView.vue`
+persists an explicit `true` override for any newly-seen domain the moment it's
+known (not just on user interaction) — otherwise connecting before ever touching
+the checkbox would silently fall back to auto-detection instead of the (checked)
+state actually shown. Unchecking persists an explicit `false`, same as before.
+
+Separately, `LoginView.vue`'s inputs are now wrapped in a real
+`<form @submit.prevent="handleLogin">` (was a plain `<div>` with a JS-bound button
+click) so the browser's own password manager recognizes it as a login form and
+offers to save/autofill credentials — raised when asked whether "remembering whole
+logins" (JID + password, not just JID) was possible; storing passwords ourselves in
+`localStorage` was rejected as a real security regression (see "Remember previous
+logins" above), so this delegates credential storage to the browser's own
+encrypted store instead. Verified live: it's a real `<form>` element, the `Advanced`
+toggle button (now removed) previously didn't trigger a submit, and pressing Enter
+in either field submits natively.
+
+**Further revised into a two-step login (JID first, password second)**, per the
+user, on the same reasoning: this is the pattern Google/Microsoft's own login pages
+use, and it's compatible with password-manager autocomplete/save *if* the username
+`<input>` stays mounted across steps (`v-show`, never `v-if`) rather than being
+unmounted when the password step appears — password managers correlate the saved
+password to that DOM node, not just to whatever was visible at submit time. Still
+one `<form>`, one `@submit.prevent="handleLogin"`, submitted once at the end.
+- Step 1 (`step === 'jid'`): recent-login chips, the JID input, the `forceSecure`
+  checkbox, and a `type="button"` "Continue" (disabled until `jid` is non-empty) —
+  advances `step` to `'password'` and focuses the password input. Pressing Enter in
+  the JID field does the same via `@keydown.enter.prevent`, rather than relying on
+  the browser's inconsistent single-text-field implicit-submit behavior. Clicking a
+  recent-login chip (`pickRecentLogin`) fills the JID **and** advances straight to
+  the password step itself, per the user — picking a chip is a complete choice of
+  account, so it skips the extra "Continue" click a freshly-typed JID still needs.
+- Step 2 (`step === 'password'`): a plain-text recap of the chosen JID plus a
+  "Change" link (back to step 1, JID preserved), the password input (autofocused
+  via a template ref + `nextTick`), and the real `type="submit"` "Connect" button.
+- Verified live at both desktop and 390×844 mobile: the JID `<input>` node is
+  confirmed still present in the DOM (just hidden) on step 2 with its value
+  intact, the WS checkbox and recent-login chips only show on step 1, the password
+  field receives focus automatically on entering step 2, and "Change" returns to
+  step 1 with the JID preserved. No cross-browser (Firefox/Safari) autofill check
+  done yet — only Chromium, per the caveat already raised when this was proposed.
+
+Verified (via a WebSocket-constructor proxy intercepting the URL Strophe actually
+opens, since no real server needed to be reachable for this check):
+`admin@otherhost` with no override configured → falls through to
+`VITE_XMPP_WS_URL` exactly as designed. Also confirmed at both desktop and a
+390×844 mobile viewport: the checkbox is disabled until a JID with a parseable
+domain is typed, becomes checked and enabled the moment one is, and wraps
+correctly on the narrow viewport.
+
+**Real bug found by the user's own local setup, fixed:** this machine's
+`.env.local` has `VITE_XMPP_WS_URL=ws://localhost:5281/ws` — a non-default
+*port* (`5281`, not `5280`), not just a scheme choice. The first version of
+`buildWsUrl` treated *any* stored override (checked or unchecked) as "ignore
+`VITE_XMPP_WS_URL` entirely, hardcode port `5280`" — so simply typing
+`admin@localhost` (which the pre-checked-by-default watcher immediately persists
+an override for) silently broke this machine's working local connection, and
+there was no UI-reachable way back to `ws://localhost:5281/ws`, since unchecking
+the box still hardcoded port `5280` (`ws://localhost:5280/ws`, still wrong).
+Fixed: the override now only flips `ws:`/`wss:` on top of whatever URL would
+otherwise be built (`VITE_XMPP_WS_URL` if set, else auto-construction), via a
+regex replace on the scheme, instead of replacing the whole URL and hardcoding
+the port. Verified against this exact case: `admin@localhost` with the checkbox
+at its default (checked) → `wss://localhost:5281/ws` (port preserved); unchecked
+→ `ws://localhost:5281/ws`, an exact match for `.env.local`.
 
 ### The problem
 
@@ -245,12 +322,16 @@ same override, unlike VFS credentials which can legitimately differ per account.
 
 ### Decided
 
-- **UI placement: a collapsible "Advanced" section on `LoginView.vue`**, editable
-  without being logged in, confirmed with the user. Still needs to satisfy the
+- **UI placement: always visible on `LoginView.vue`, no collapsible section** —
+  editable without being logged in, confirmed with the user (an earlier pass tried
+  a collapsible "Advanced" section; the user asked for it to be removed so the
+  checkbox is always shown, no extra click needed). Still needs to satisfy the
   standing mobile+desktop constraint like everything else.
 - **Override shape: a checkbox, not a free-text `wsUrl` field**, confirmed with the
   user — see the `forceSecure` reasoning above. No validation question to resolve
   since there's no string to validate.
+- **Default: checked (force secure)**, confirmed with the user — the checkbox
+  starts checked for any domain rather than starting unchecked/auto-detecting.
 
 ## Proposed: Dashboard — expandable module list instead of a card grid
 
@@ -459,11 +540,9 @@ section for the full design/reasoning):
 - ~~Remember previous logins + per-connection config (VFS endpoints)~~ — **done**,
   see "Implemented: remember previous logins + per-connection config (VFS
   endpoints)" above.
-- **Per-domain WebSocket endpoint config (one install, many servers)** — see
-  "Proposed: per-domain WebSocket endpoint config (one install, many servers)".
-  Prompted by a real login failure (`.env.local`'s global override silently
-  redirecting a remote-domain login attempt to `localhost`). Two open questions:
-  UI placement on the pre-login screen, and whether to validate the stored URL.
+- ~~Per-domain WebSocket endpoint config (one install, many servers)~~ — **done**,
+  see "Implemented: per-domain WebSocket endpoint config (one install, many
+  servers)" above.
 - **Dashboard — expandable module list instead of a card grid** — see that section
   above. All open questions resolved (ephemeral expand state, collapse-all/
   expand-all affordance) — ready to implement pending go-ahead.
