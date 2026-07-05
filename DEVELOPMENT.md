@@ -208,19 +208,26 @@ override list — same architecture already built for VFS endpoints
 property of the *server*, so every user connecting to the same domain wants the
 same override, unlike VFS credentials which can legitimately differ per account.
 
-- New composable (e.g. `useServerConfig.ts`): `serverOverrides: Array<{ domain: string; wsUrl: string }>`,
+- New composable (e.g. `useServerConfig.ts`): `serverOverrides: Array<{ domain: string; forceSecure: boolean }>`,
   persisted to `localStorage`, with CRUD functions mirroring `useVfsConfig.ts`'s
-  shape.
-- `buildWsUrl(domain)` checks this list first (exact domain match), falls back to
-  `VITE_XMPP_WS_URL` if still set (keeps today's simple-deployment/zero-config path
-  working), then the existing auto-construction as the final fallback. No behavior
-  change for anyone who never configures an override.
+  shape. **Not a free-text URL field** — `buildWsUrl`'s only actual guess is the
+  scheme (`ws` vs `wss`, inferred from `window.location.protocol`); port (`5280`)
+  and path (`/ws`) are already-fixed constants, not inferred, and the one real
+  failure case on record (self-signed-cert local ejabberd forcing `wss` while the
+  page itself is served over plain `http`) is a scheme mismatch, nothing more. A
+  checkbox ("use secure WebSocket for this server") covers that with no raw string
+  to type or validate.
+- `buildWsUrl(domain)` checks this list first (exact domain match) and, if present,
+  uses `forceSecure` to pick the scheme instead of the `window.location.protocol`
+  inference (port/path unchanged); falls back to `VITE_XMPP_WS_URL` if still set
+  (keeps today's simple-deployment/zero-config path working), then the existing
+  auto-construction as the final fallback. No behavior change for anyone who never
+  configures an override.
 - **Must be editable pre-login** — this is the key architectural difference from
   VFS config: `SettingsView.vue` is gated behind `requiresAuth`, but you need to set
   a server override *before* you can ever successfully connect to that server. This
   config has to live on/near `LoginView.vue` itself, not the authenticated Settings
-  page — e.g. a small collapsible "Advanced" section on the login screen, editable
-  without being logged in.
+  page.
 - Domain is read from whatever's typed into the JID field at connect time
   (`Strophe.getDomainFromJid`), so switching between `admin@localhost` and
   `admin@monet.saao.ac.za` in the same running session, each with its own override
@@ -232,16 +239,18 @@ same override, unlike VFS credentials which can legitimately differ per account.
   this is purely manual, user-supplied config, same as VFS endpoints.
 - Removing `VITE_XMPP_WS_URL` entirely — kept as a lowest-priority fallback for
   today's simple single-server deployments that already rely on it.
+- **Overriding port or path** — no real deployment has needed this yet (see above);
+  if one does, it'd need its own follow-up (either extra fields alongside the
+  checkbox, or falling back to a free-text override), not assumed here.
 
-### Open questions
+### Decided
 
-- Exact placement/UI for the pre-login override editor on `LoginView.vue` — a
-  collapsible section, a small gear/settings icon near the JID field, or something
-  else. Needs to satisfy the standing mobile+desktop constraint like everything
-  else.
-- Whether to validate/normalize the stored `wsUrl` at all (e.g. require `ws://` or
-  `wss://` scheme) or accept it as a raw opaque string, same as `VITE_XMPP_WS_URL`
-  today.
+- **UI placement: a collapsible "Advanced" section on `LoginView.vue`**, editable
+  without being logged in, confirmed with the user. Still needs to satisfy the
+  standing mobile+desktop constraint like everything else.
+- **Override shape: a checkbox, not a free-text `wsUrl` field**, confirmed with the
+  user — see the `forceSecure` reasoning above. No validation question to resolve
+  since there's no string to validate.
 
 ## Proposed: Dashboard — expandable module list instead of a card grid
 
