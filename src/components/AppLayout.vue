@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useXmpp } from '@/composables/useXmpp'
 
 const router = useRouter()
 const route = useRoute()
-const { jid, disconnect } = useXmpp()
+const { jid, disconnect, modules } = useXmpp()
+
+// Device-specific nav links only show up once a matching module is actually
+// online — there can be more than one module implementing a given interface
+// (RoofView itself already lists all of them), so this only needs "at least
+// one", not a specific module.
+const hasRoofModules = computed(() => modules.value.some((m) => 'IRoof' in m.interfaces))
 
 const sidebarOpen = ref(false)
 
@@ -120,18 +126,20 @@ function navigate(to: string) {
           Settings
         </a>
 
-        <div class="px-2 pb-1 pt-2">
-          <span class="text-uppercase text-muted fw-semibold" style="font-size:0.65rem;letter-spacing:.08em">Modules</span>
-        </div>
+        <template v-if="hasRoofModules">
+          <div class="px-2 pb-1 pt-2">
+            <span class="text-uppercase text-muted fw-semibold" style="font-size:0.65rem;letter-spacing:.08em">Modules</span>
+          </div>
 
-        <a
-          class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
-          :class="{ active: route.name === 'roof' }"
-          @click="navigate('/roof')"
-        >
-          <i class="bi bi-house-door" style="font-size:0.8rem"></i>
-          Roof
-        </a>
+          <a
+            class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
+            :class="{ active: route.name === 'roof' }"
+            @click="navigate('/roof')"
+          >
+            <i class="bi bi-house-door" style="font-size:0.8rem"></i>
+            Roof
+          </a>
+        </template>
 
       </div>
 

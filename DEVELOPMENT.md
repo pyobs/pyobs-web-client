@@ -425,14 +425,26 @@ so `IMotion` is the only place the state actually appears).
 
 New files/changes: `src/views/RoofView.vue`, plus a `/roof` route
 (`router/index.ts`) and a "Roof" sidebar entry (`AppLayout.vue`, `bi-house-door`
-icon) between Shell and Logging.
+icon) under a new "Modules" section (below Tools) reserved for device-specific
+pages. Revised after initial implementation, per the user: the sidebar nav link
+(and its "Modules" section header) only render when at least one currently
+online module implements `IRoof` — `hasRoofModules = computed(() =>
+modules.value.some((m) => 'IRoof' in m.interfaces))` in `AppLayout.vue` — since
+there can be more than one such module (`RoofView` itself already lists all of
+them, not just one), this only needs "at least one," not a specific module's
+online state. Directly navigating to `/roof` still works and shows its own
+"No IRoof modules online" empty state even when the sidebar link is hidden.
 
 Verified live at both desktop and 390×844 mobile: the real roof module starts at
 `status: idle`; clicking **Open** calls `init()` and the status card updates via
 live PubSub to `status: initializing` within ~2s (no manual refresh); clicking
 **Stop** mid-motion calls `stop_motion()` and the status returns to `idle`; all
 three buttons correctly disable while any one action is in flight for that
-module; no console errors; layout doesn't overflow on the narrow viewport.
+module; no console errors; layout doesn't overflow on the narrow viewport. The
+conditional-nav-link behavior got an unforced real-world confirmation: partway
+through this pass the `roof` module actually went offline in the test
+environment, and the sidebar correctly dropped the entire "Modules" section
+with no code changes needed to demonstrate it.
 
 ### Grounding
 
