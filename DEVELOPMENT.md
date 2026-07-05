@@ -333,9 +333,23 @@ same override, unlike VFS credentials which can legitimately differ per account.
 - **Default: checked (force secure)**, confirmed with the user — the checkbox
   starts checked for any domain rather than starting unchecked/auto-detecting.
 
-## Proposed: Dashboard — expandable module list instead of a card grid
+## Implemented: Dashboard — expandable module list instead of a card grid
 
-**Not yet approved for execution — design only, captured here for review.**
+**Done, verified live against the real ejabberd server (`admin@localhost`, real
+`camera`/`telescope` modules) at both desktop and 390×844 mobile.** Built exactly
+per the design below — no deviations. `DashboardView.vue` now renders a
+single-column list of rows sorted by `mod.name`, collapsed by default (status dot,
+name, JID, chevron only), with a module's interface badges/`ModuleStateCard`s/
+`KeyValueCard`s gated behind `v-if="expanded.has(mod.jid)"` and revealed by
+clicking anywhere on the row header. "Expand all"/"Collapse all" buttons sit next
+to the heading. Confirmed live: both modules start collapsed; expanding `camera`
+alone leaves `telescope` collapsed and renders its badges/state cards (`ICooling`,
+`IExposure`, etc.) with live values; "Collapse all" hides them again; no console
+errors; layout wraps correctly on the narrow viewport (name/JID truncate with
+`text-truncate`/`min-width:0` rather than overflowing, chevron pinned via
+`flex-shrink-0`). Confirms the subscribe-on-expand/unsubscribe-on-collapse
+efficiency side note below, since `ModuleStateCard` mounting/unmounting under the
+`v-if` is what drives `useXmpp`'s ref-counted `subscribeState`.
 
 Current `DashboardView.vue` renders a responsive grid (`row g-3`, `col-sm-6 col-lg-4`)
 of cards, one per module, each **permanently fully expanded**: interface badges, every
@@ -543,9 +557,8 @@ section for the full design/reasoning):
 - ~~Per-domain WebSocket endpoint config (one install, many servers)~~ — **done**,
   see "Implemented: per-domain WebSocket endpoint config (one install, many
   servers)" above.
-- **Dashboard — expandable module list instead of a card grid** — see that section
-  above. All open questions resolved (ephemeral expand state, collapse-all/
-  expand-all affordance) — ready to implement pending go-ahead.
+- ~~Dashboard — expandable module list instead of a card grid~~ — **done**, see
+  "Implemented: Dashboard — expandable module list instead of a card grid" above.
 - **Camera page** — see "Proposed: Camera page — grab & display images from
   `ICamera` modules". Now unblocked (its VFS-resolution dependency is implemented,
   above); FITS parsing/rendering approach (hand-rolled vs. library) still undecided.
