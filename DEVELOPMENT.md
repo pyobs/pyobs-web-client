@@ -651,6 +651,21 @@ section for the full design/reasoning):
 - **ACL-aware Shell forms** — now unblocked (`IModule.get_permitted_methods()`
   landed upstream, see the ACL entry below) but not yet designed. Needs its own
   "Proposed" write-up before implementing, per this project's design-first workflow.
+- **`IDataSequence` — new upstream interface, no client support yet.** Landed after
+  the "Proposed: Camera page" write-up above was drafted, so that proposal doesn't
+  account for it: `grab_sequence(count, delay)` (fire-and-forget, runs server-side),
+  `abort_sequence()`, and `state = DataSequenceState(count_total, count_left, time)`.
+  Relevant directly to the Camera page proposal — worth folding in (a "grab N"
+  control alongside single-shot `grab_data()`) before that page is designed, not
+  after, to avoid redesigning it twice.
+- **Non-sidereal tracking — four new upstream interfaces, no client support yet.**
+  Also post-dates the "Proposed: Telescope page" write-up: `ITrackingMode`
+  (discrete sidereal/solar/lunar/off rates), `ITrackingRate` (continuous RA/Dec
+  offset), `IPointingBody` (`track_body("moon" | "mars" | ...)`), and
+  `IPointingOrbitalElements` (`track_orbital_elements(...)` for asteroids/comets).
+  `DummyRaDecTelescope`/`DummyAltAzTelescope` implement all four, so there's a real
+  module to test against without hardware. Same as `IDataSequence` above — worth
+  folding into the Telescope page's design pass rather than bolting on later.
 
 Smaller/technical items:
 
@@ -666,17 +681,23 @@ Smaller/technical items:
   nothing implemented yet" — that's stale, corrected here). Re-checked
   `pyobs/modules/module.py` directly rather than trusting the earlier note:
   - **Reactive handling already works, confirmed, no client change needed — but for
-    a different reason than previously written here.** The earlier text claimed
-    `executeMethod`'s generic XMPP IQ-level error catch (`useXmpp.ts:289-293`,
-    `// XMPP-level error (item-not-found, forbidden, …)`) covers ACL denials. That
-    was wrong: `module.py:391-393` raises `exc.ForbiddenError` from inside RPC
-    dispatch, and `rpc.py:218-227` catches it and sends it through the *same
-    generic fault path* every other exception uses (`fault_to_xml`) — not a
-    special XMPP-level "forbidden" stanza. So a denied call surfaces as an
-    ordinary RPC fault, `{exception: "ForbiddenError", message: "..."}`, decoded by
-    `findRpcFault` (`useXmpp.ts:243`) exactly like the already-tested
-    `get_config_value` `ValueError` fault. Still zero client changes needed
-    reactively — just corrected *why*.
+    a third, different reason than either previous version of this note claimed.**
+    Re-checked again against current `develop` (past `0d1c9929`, up to `ef466ebe`
+    / `v2.0.0.dev53`): `ForbiddenError` is now special-cased in
+    `pyobs/comm/xmpp/rpc.py:239-241` and sent via
+    `self._client.plugin["xep_0009"].forbidden(iq).send()` — a real XMPP IQ-level
+    `forbidden` condition, *not* routed through `fault_to_xml` like every other
+    exception. So on the wire it is indistinguishable from any other XMPP-level
+    IQ error (`item-not-found`, etc.) and is caught by `executeMethod`'s generic
+    `try`/`catch` around `sendIQ` (`useXmpp.ts:314-323`, the
+    `// XMPP-level error (item-not-found, forbidden, …)` branch) — **not**
+    `findRpcFault`. It never reaches `findRpcFault`, so no `errorClass` is set on
+    this path; the caller just gets a plain error message. Still zero client
+    changes needed for today's UI (the message renders fine either way), but if
+    future work ever wants to distinguish "denied by ACL" from other XMPP-level
+    errors (e.g. to style it differently, or to cross-check it against
+    `get_permitted_methods()`), it has to branch on this catch block, not on
+    `errorClass`/`findRpcFault`.
   - **The proactive half is now unblocked.** `IModule.get_permitted_methods()`
     exists (`pyobs/interfaces/IModule.py:29`, implemented in `module.py:598`) — the
     dependency this item was waiting on has landed. `ShellView.vue`'s RPC forms
@@ -685,6 +706,20 @@ Smaller/technical items:
     isn't permitted to call, instead of only finding out on submit. Not designed
     in detail yet — worth its own "Proposed" write-up (in the style of the other
     proposals above) before implementing, per this project's design-first workflow.
+- **Exception-handling rewrite upstream — no client change needed today, but
+  `findRpcFault` is now reading a richer wire format than it uses.** Since this
+  project last checked, pyobs-core's exception system was rebuilt: domain
+  exceptions (e.g. `FocusError`) now cross the wire as their real registered name
+  (resolved via a fully-qualified-name registry) instead of a generic wrapper; an
+  unresolvable one arrives as `UnclassifiedError` with the original type name
+  preserved; and every fault now carries a `call_id` (XEP-0009's own per-call IQ
+  id) so a caller-side error and the module's origin-side log line can be matched
+  up. `findRpcFault` (`useXmpp.ts:271-282`) only reads `exception`/`message` off
+  the fault — it doesn't surface `call_id`. Not needed for anything today (no UI
+  currently shows raw fault details to a user), but worth picking up `call_id`
+  onto `RpcResult` if/when a debugging-oriented view (e.g. a fault detail panel in
+  Shell) is ever designed, so an operator can correlate a client-side error with
+  the matching server log line without cross-referencing timestamps by hand.
 
 ## Full history
 
