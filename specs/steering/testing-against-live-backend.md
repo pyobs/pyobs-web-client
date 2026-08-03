@@ -105,7 +105,7 @@ pick it up.
 
 ## Worked example: verifying `EventsView.vue`
 
-This is the exact sequence used to manually verify `specs/plans/events-page.md`
+This is the exact sequence used to manually verify `specs/design/events-page.md`
 against a live backend:
 
 ```sh
