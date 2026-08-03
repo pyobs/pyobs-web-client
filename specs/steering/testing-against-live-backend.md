@@ -1,0 +1,150 @@
+# Testing against a live backend
+
+This client has no mocked backend for manual testing (the e2e suite doesn't
+either, see `README.md`'s "Run End-to-End Tests") — verifying a change means
+running the real thing against a real ejabberd server with real pyobs-core
+dummy modules attached. `testing/pyobs-gui-configs/` gives you a ready-made
+set of module configs for that, ported from `pyobs-gui`'s own `test/*.yaml`
+(the Qt client's equivalent widget-parity test matrix) — no need to hand-roll
+a config from scratch for each new page.
+
+## Layout
+
+`testing/pyobs-gui-configs/xmpp/` holds the adapted configs, one per
+[`pyobs-gui`'s own `test/*.yaml`](https://github.com/pyobs/pyobs-gui/tree/master/test)
+(the upstream source — not duplicated here, per `CLAUDE.md`'s "Cross-repo
+context"; diff against it directly if you want to see what changed). Each
+file is individually verified to start cleanly against a local ejabberd —
+see its header comment (which links the specific original it came from) for
+exactly what it needs.
+
+## Why they need adapting
+
+`pyobs-gui`'s test configs wire every dummy module together with the GUI
+itself in one process via `pyobs.comm.local.LocalComm` — an in-process
+transport with no network involved, since the Qt GUI is just another
+submodule in the same `MultiModule`. This client is the opposite: a browser
+tab connecting over real XMPP as its own independent identity, so it can
+never be "just another submodule" in that process. The adaptation is
+mechanical, applied uniformly:
+
+1. Drop the `gui:` submodule entirely — this client logs in separately
+   instead.
+2. Replace every remaining submodule's
+   `comm: {class: pyobs.comm.local.LocalComm, name: X}` with:
+   ```yaml
+   comm:
+     class: pyobs.comm.xmpp.XmppComm
+     domain: localhost
+     use_tls: True
+     ignore_cert_errors: True
+     user: X
+     password: pyobs
+   ```
+   (`X` = the same name the module already had — keeps `pyobs-gui`'s own
+   per-widget test scenarios recognizable.)
+
+**Trap already hit once**: if you factor the XMPP block into a YAML anchor
+for reuse across submodules (as `full.yaml` does — 8 submodules, all
+identical `domain`/`use_tls`/`ignore_cert_errors`), do **not** name the
+anchor's own top-level key `comm:`. `MultiModule` reads its *own* top-level
+`comm:` key too, and will try to open the bare anchor (no `user`/`password`)
+as its own connection, failing with `ValueError: No XMPP client.` on
+startup. Name the anchor key something else (`_comm_base: &comm`, per
+`xmpp/full.yaml`) so only the intentional per-submodule `<<: *comm` merges
+pick it up.
+
+## Prerequisites
+
+- A local ejabberd reachable at `localhost:5222` (server-to-module) and
+  `localhost:5281` (WebSocket, for the browser) — already running as a
+  system service in this dev environment; `ss -tln | grep -E "5222|5281"`
+  confirms.
+- An ejabberd account per module name you intend to run, all on domain
+  `localhost`, all with password `pyobs` (matching every `xmpp/*.yaml`
+  file). Check what's already registered:
+  ```sh
+  ejabberdctl registered_users localhost
+  ```
+  Register anything missing (needs to run as the `ejabberd` user):
+  ```sh
+  sudo -u ejabberd ejabberdctl register <name> localhost pyobs
+  ```
+  `admin` (this client's own login, see below) and most single-widget module
+  names (`roof`, `telescope`, `camera`, `mode`, `acquisition`, `autofocus`)
+  tend to already exist from other local pyobs testing; `guiding`, `video`,
+  and `spectrograph` are more likely to need registering.
+- A Python environment with `pyobs-core` installed to actually run the
+  modules. `testing/.venv` is a dedicated venv for exactly this (gitignored —
+  not committed), created with:
+  ```sh
+  uv venv --python 3.13 testing/.venv
+  uv pip install --python testing/.venv 'pyobs-core[full]==2.0.0.dev53'
+  ```
+  Recreate it the same way if it's missing or you need a newer pinned
+  version. Every verification in this doc used it:
+  ```sh
+  testing/.venv/bin/pyobs testing/pyobs-gui-configs/xmpp/roof.yaml
+  ```
+
+## Running the client itself
+
+1. `npm run dev` (see `README.md`).
+2. `.env.local` needs `VITE_XMPP_WS_URL=ws://localhost:5281/ws` for a local
+   ejabberd without a valid TLS cert — otherwise the client defaults to
+   `wss://`. Vite only reads env files at startup; restart after changing.
+3. On the login page, **uncheck "Force secure WebSocket"** before
+   connecting. It defaults to checked for any domain the client hasn't seen
+   before, which rewrites the `ws://` override from `.env.local` back to
+   `wss://` and breaks the connection with `net::ERR_CONNECTION_RESET` —
+   this bit the first attempt at this. It remembers your choice per-domain
+   (`useServerConfig`) after that.
+4. Log in as `admin@localhost` / `pyobs` (or whatever account you're using —
+   the ACL test configs below assume `admin`, see their header comments if
+   you log in as something else).
+
+## Worked example: verifying `EventsView.vue`
+
+This is the exact sequence used to manually verify `specs/plans/events-page.md`
+against a live backend:
+
+```sh
+# terminal 1 — a module to generate events
+testing/.venv/bin/pyobs testing/pyobs-gui-configs/xmpp/roof.yaml
+
+# terminal 2 — the client
+npm run dev
+```
+
+Log in as `admin@localhost` / `pyobs` (remember to uncheck "Force secure
+WebSocket" first). The Dashboard should show `roof` online. Open Shell,
+select the `roof` module, run `IRoof.init` — this fires
+`MotionStatusChangedEvent` (twice: `initializing`, then `idle`) and
+`RoofOpenedEvent`. Open Events and confirm they showed up, `LogEvent`
+excluded.
+
+## Known limitation: event/log "Sender" column
+
+While doing the above, every event's Sender column (`EventsView.vue` and the
+pre-existing `LoggingView.vue`'s module filter) showed `pubsub.localhost`
+instead of the actual module name, for every event type except `LogEvent`
+(which only looks correct because it happens to carry `data.sender` from
+Python's own logging record — `LoggingView.vue` doesn't even display that
+field as the Sender column).
+
+Root cause, confirmed by sniffing the raw XMPP frames: `useXmpp.ts`'s event
+decoder derives the module from the notification stanza's `from` attribute
+(`Strophe.getNodeFromJid(message.getAttribute('from'))`), assuming true PEP
+semantics (`from` = the publishing module's own bare JID) — which is what
+`pyobs-core`'s `xmppcomm.py` *does* call
+(`self.client.plugin["xep_0163"].publish(...)`, confirmed at
+`xmppcomm.py:752-774`). But every notification observed against this local
+ejabberd actually arrives `from='pubsub.localhost'` (the pubsub component),
+never the module's own JID — so the module identity isn't recoverable
+client-side as things stand: not in `from`, not in the pubsub node name
+(`urn:pyobs:event:{ClassName}:{version}`, no module in it), not in the
+`<item>` (no `publisher` attribute either). Unconfirmed whether this is an
+ejabberd config gap on this particular dev instance (e.g. `mod_pep` not
+enabled for this custom node namespace) or something true of the wire
+protocol more broadly — needs checking against a real observatory's ejabberd
+before deciding where the fix belongs.

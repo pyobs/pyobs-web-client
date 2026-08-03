@@ -43,3 +43,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Python venv for testing/pyobs-gui-configs (see specs/steering/testing-against-live-backend.md)
+testing/.venv

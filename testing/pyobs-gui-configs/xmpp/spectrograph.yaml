@@ -1,0 +1,17 @@
+# XMPP-adapted from https://github.com/pyobs/pyobs-gui/blob/master/test/spectrograph.yaml — see
+# specs/steering/testing-against-live-backend.md for the transformation.
+# Requires an ejabberd account "spectrograph" on domain "localhost". Run with:
+#   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/spectrograph.yaml
+class: pyobs.modules.MultiModule
+
+modules:
+  spectrograph:
+    class: pyobs.modules.camera.DummySpectrograph
+    name: spectrograph
+    comm:
+      class: pyobs.comm.xmpp.XmppComm
+      domain: localhost
+      use_tls: True
+      ignore_cert_errors: True
+      user: spectrograph
+      password: pyobs

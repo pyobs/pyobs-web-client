@@ -119,6 +119,15 @@ function navigate(to: string) {
 
         <a
           class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
+          :class="{ active: route.name === 'events' }"
+          @click="navigate('/events')"
+        >
+          <i class="bi bi-broadcast" style="font-size:0.8rem"></i>
+          Events
+        </a>
+
+        <a
+          class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
           :class="{ active: route.name === 'settings' }"
           @click="navigate('/settings')"
         >
