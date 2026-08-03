@@ -49,6 +49,15 @@ Tested and verified:
   (roster query returns module accounts, directed probes populate the Dashboard on a
   fresh session).
 
+## Design history and planning
+
+New design docs, implementation plans, and ADRs belong in `specs/` (see
+`specs/README.md`) going forward, not inline in this file. This doc's existing
+Implemented/Proposed sections below stay as-is (not migrated) — they remain the
+record for everything designed before `specs/` existed; the Todo section still
+links out to whichever of the two (this file or `specs/`) currently holds a
+given item's write-up.
+
 ## Standing constraint: every design must work on mobile *and* desktop
 
 Applies to all proposals below (and anything future) — not something to weigh
