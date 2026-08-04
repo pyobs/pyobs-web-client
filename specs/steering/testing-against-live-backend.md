@@ -123,28 +123,37 @@ select the `roof` module, run `IRoof.init` — this fires
 `RoofOpenedEvent`. Open Events and confirm they showed up, `LogEvent`
 excluded.
 
-## Known limitation: event/log "Sender" column
+## Fixed: event/log "Sender" column showing `pubsub.localhost`
 
-While doing the above, every event's Sender column (`EventsView.vue` and the
-pre-existing `LoggingView.vue`'s module filter) showed `pubsub.localhost`
-instead of the actual module name, for every event type except `LogEvent`
-(which only looks correct because it happens to carry `data.sender` from
-Python's own logging record — `LoggingView.vue` doesn't even display that
-field as the Sender column).
+Earlier testing in this project reported every event's Sender column
+(`EventsView.vue`, `LoggingView.vue`'s module filter) showing
+`pubsub.localhost` instead of the real module name, and initially
+misdiagnosed this as `useXmpp.ts` reading the wrong attribute — it wasn't.
+**Live pushes always carried the correct `from` (the module's own bare
+JID)**; `Strophe.getNodeFromJid(message.getAttribute('from'))` was correct
+the whole time. Confirmed by instrumenting the handler directly: the same
+event `uuid` arrived twice in one test, once as a live push
+(`from='roof@localhost'`, correct) and once moments later
+(`from='pubsub.localhost'`, wrong) — which pointed at the real cause.
 
-Root cause, confirmed by sniffing the raw XMPP frames: `useXmpp.ts`'s event
-decoder derives the module from the notification stanza's `from` attribute
-(`Strophe.getNodeFromJid(message.getAttribute('from'))`), assuming true PEP
-semantics (`from` = the publishing module's own bare JID) — which is what
-`pyobs-core`'s `xmppcomm.py` *does* call
-(`self.client.plugin["xep_0163"].publish(...)`, confirmed at
-`xmppcomm.py:752-774`). But every notification observed against this local
-ejabberd actually arrives `from='pubsub.localhost'` (the pubsub component),
-never the module's own JID — so the module identity isn't recoverable
-client-side as things stand: not in `from`, not in the pubsub node name
-(`urn:pyobs:event:{ClassName}:{version}`, no module in it), not in the
-`<item>` (no `publisher` attribute either). Unconfirmed whether this is an
-ejabberd config gap on this particular dev instance (e.g. `mod_pep` not
-enabled for this custom node namespace) or something true of the wire
-protocol more broadly — needs checking against a real observatory's ejabberd
-before deciding where the fix belongs.
+**Root cause**: ejabberd resends an event node's last-published ("current")
+item on every new subscription — which happens on every reconnect, i.e.
+every page load — and that resend arrives attributed to the pubsub service
+itself, not the original publisher. Only the initial retained-item replay
+is mislabeled; anything that fires while already connected was never wrong.
+
+**Fix, in `useXmpp.ts`**: rather than trust that replay's `from`,
+`fetchModuleInfo`'s subscribe loop now also fires a targeted
+`pubsub#items get` (`fetchCurrentEventItem`) addressed directly to the
+module's own bare JID right after subscribing — since the caller already
+knows which module it just asked, there's no `from` to get wrong. This
+races the (possibly mis-attributed) auto-push; `upsertEvent` resolves the
+race by `uuid`, keeping whichever copy has a real module identity regardless
+of arrival order.
+
+**Residual, understood and left as-is**: a node's *current* item can be
+corrected this way, but an item that was already stale by the time this fix
+shipped — since replaced as "current" by something newer — has no live data
+left to re-fetch, so it keeps showing `pubsub.localhost` forever. Harmless
+in practice (it's dead history, not live state), and self-resolves the next
+time that node's value actually changes.

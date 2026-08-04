@@ -30,14 +30,16 @@ other event types from earlier, unrelated test sessions) also rendered
 correctly, giving broader type coverage than the fresh single-module test
 alone.
 
-**Real bug found during verification, not fixed here**: the Sender column
-shows `pubsub.localhost` instead of the actual module name, for every event
-type except `LogEvent`. Root cause and full writeup in
-`specs/steering/testing-against-live-backend.md`'s "Known limitation:
-event/log 'Sender' column" — it's a pre-existing issue in `useXmpp.ts`'s
-module-from-JID derivation (also affects `LoggingView.vue`'s module filter),
-not something introduced by this page, and needs a decision (ejabberd config
-vs. wire protocol vs. accepted limitation) before it can be fixed.
+**Real bug found during verification, later fixed (not by this page's
+scope, but worth the pointer)**: the Sender column initially showed
+`pubsub.localhost` instead of the actual module name, for every event type
+except `LogEvent`. Root cause and fix in
+`specs/steering/testing-against-live-backend.md`'s "Fixed: event/log
+'Sender' column showing `pubsub.localhost`" — turned out to be ejabberd
+mis-attributing retained-item replay on reconnect, not the client-side
+`from`-parsing bug it initially looked like; fixed in `useXmpp.ts` via a
+targeted current-item fetch after each subscribe (also fixes
+`LoggingView.vue`'s module filter, which shared the same underlying data).
 
 ## Design
 
@@ -61,7 +63,7 @@ vs. wire protocol vs. accepted limitation) before it can be fixed.
 ## Not in scope
 
 - **Sending/simulating events** — `pyobs-gui`'s `eventswidget.py` pairs its
-  event table with a "send event" testing tool. Split out to its own plan:
-  `specs/plans/events-page-send-tool.md`.
+  event table with a "send event" testing tool. Split out to its own doc:
+  `specs/design/events-page-send-tool.md`.
 - **Filtering** — deliberately excluded, matching `pyobs-polaris`'s own
   reversal (see Design above).

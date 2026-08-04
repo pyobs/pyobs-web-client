@@ -121,6 +121,34 @@ function pubsubServiceFor(bareJid: string): string {
   return `pubsub.${Strophe.getDomainFromJid(bareJid)}`
 }
 
+// Adds an event to the ring buffer, or — if the same uuid is already present
+// — keeps whichever copy has a real module identity. Needed because ejabberd
+// resends an event node's last-published item on every (re)subscribe (e.g.
+// every reconnect), and that resend arrives with `from` set to the pubsub
+// service itself rather than the original publisher's JID, unlike a genuine
+// live push (which does carry the correct `from`) — see
+// specs/steering/testing-against-live-backend.md's "Known limitation".
+// Confirmed live: the exact same uuid can arrive twice, once correctly
+// attributed (a live push) and once not (retained-item replay), racing in
+// either order — this makes the outcome order-independent.
+function upsertEvent(ev: PyobsEvent): void {
+  if (!ev.uuid) {
+    events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
+    return
+  }
+  const pubsubHost = pubsubServiceFor(jid.value)
+  const idx = events.value.findIndex((e) => e.uuid === ev.uuid)
+  if (idx === -1) {
+    events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
+    return
+  }
+  if (events.value[idx]!.module === pubsubHost && ev.module !== pubsubHost) {
+    const next = [...events.value]
+    next[idx] = ev
+    events.value = next
+  }
+}
+
 // ── module discovery: one disco#info query returns everything ──────────────
 // (interface schemas — commands/state/types — plus capabilities), per
 // pyobs-core 2.0's `_get_disco_info`. Nothing is pre-generated; the schema is
@@ -182,7 +210,37 @@ async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> 
         .c('subscribe', { node, jid: myBareJid })
         .tree(),
     ).catch(() => {})
+    // Also actively fetch the current item via a targeted IQ-get, addressed
+    // to bareJid directly — rather than relying on ejabberd's own
+    // resend-on-subscribe push, whose `from` is wrong (see upsertEvent's
+    // comment). We already know which module this is since we're the one
+    // asking, so the module identity here is never in question — this races
+    // harmlessly against the (possibly mis-attributed) auto-push, resolved
+    // by upsertEvent whichever order they arrive in.
+    fetchCurrentEventItem(bareJid, name, node, schema).catch(() => {})
   }
+}
+
+async function fetchCurrentEventItem(bareJid: string, moduleName: string, node: string, schema: EventSchema): Promise<void> {
+  const result = await sendIQ(
+    $iq({ to: bareJid, type: 'get' })
+      .c('pubsub', { xmlns: NS_PUBSUB })
+      .c('items', { node, max_items: '1' })
+      .tree(),
+  )
+  const itemEl = Array.from(result.getElementsByTagName('items')[0]?.children ?? []).find(
+    (c) => localTag(c) === 'item',
+  )
+  const payloadEl = itemEl?.firstElementChild
+  if (!payloadEl) return // nothing published on this node yet — normal, not every event has fired
+  const raw = JSON.parse(payloadEl.textContent ?? '{}')
+  upsertEvent({
+    type: raw.type ?? schema.name,
+    module: moduleName,
+    timestamp: raw.timestamp ?? Date.now() / 1000,
+    uuid: raw.uuid ?? '',
+    data: raw.data ?? {},
+  })
 }
 
 // A newly-connected session only learns about modules from presence *pushes*
@@ -265,7 +323,7 @@ function handlePubsubMessage(message: Element): boolean {
       uuid: raw.uuid ?? '',
       data: raw.data ?? {},
     }
-    events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
+    upsertEvent(ev)
   } catch {
     // malformed payload — ignore
   }
@@ -369,7 +427,7 @@ async function publishEvent(eventName: string, version: number, data: Record<str
   )
 
   const ev: PyobsEvent = { type: eventName, module: Strophe.getNodeFromJid(jid.value) ?? jid.value, timestamp, uuid, data }
-  events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
+  upsertEvent(ev)
 }
 
 // ── state subscription (reference-counted, mirrors XmppComm's own model) ───
