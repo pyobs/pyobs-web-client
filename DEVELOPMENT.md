@@ -256,6 +256,14 @@ section for the full design/reasoning):
   chart components). Type-checks, builds, existing unit tests pass, and
   live-verified against `pyobs.modules.pointing.DummyAutoGuiding`
   (`testing/pyobs-gui-configs/xmpp/guiding.yaml`).
+- ~~`IAcquisition` widget~~ — **done**, plan at
+  `specs/plans/acquisition-widget.md` (`AcquisitionView.vue`, new
+  hand-rolled `DistanceChart.vue` canvas component, reusing
+  `OffsetScatterChart.vue` from the AutoGuiding widget for the offset
+  trajectory). Charts stack vertically rather than side by side, same
+  choice `AutoGuidingView.vue` made. Type-checks, builds, and existing unit
+  tests pass; live-verified against `pyobs.modules.pointing.DummyAcquisition`
+  (`testing/pyobs-gui-configs/xmpp/acquisition.yaml`).
 - ~~Interface nav sections with per-module routes~~ — **done**, design at
   `specs/design/interface-nav-per-module-routes.md`. Replaced the
   one-link-per-interface sidebar/aggregated-page pattern with per-module
