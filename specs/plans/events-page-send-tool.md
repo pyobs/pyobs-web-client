@@ -1,6 +1,7 @@
 # Plan: send event tool
 
-Status: proposed, follow-up to the Events page. Not yet implemented.
+Status: done. Implemented in `EventsView.vue` (event-type picker sourced
+from `mod.events`, param form, `publishEvent`, sender toggle).
 Repos: pyobs-web-client (all implementation here)
 
 Split out from `specs/design/events-page.md` once that page shipped — see
@@ -65,19 +66,15 @@ you're pointed at anyway.
   exactly, which fires under the GUI's own identity too, never impersonates
   the module it's testing against.
 
-## Open questions
+## Open questions (resolved)
 
-- **Does this client see its own published event echoed back into its own
-  `events` ring buffer?** Depends on whether a client is subscribed to
-  PubSub updates from its own JID by default under this project's existing
-  subscription setup — needs live verification against a real server, not
-  assumed either way. If not self-delivered, the tool would need to
-  optimistically append the fabricated event to the local `events` buffer
-  itself immediately on publish (same "assume success, reconcile later"
-  shape as everything else in this app that doesn't wait for a round trip)
-  rather than relying on the echo.
-- Whether this belongs on the Events page itself (a "Send" button/dialog
-  alongside the table, matching `pyobs-gui`'s own layout) or as a separate
-  Shell-adjacent tool — not decided; leaning toward the Events page itself
-  since it's the natural place an operator would already be looking while
-  testing.
+Both resolved during implementation — see `specs/design/events-page-send-tool.md`
+("Outcome" section) for the full account, including two real design
+corrections (flattened module-first picker; upstream `pyobs-core` event-role
+fix) not anticipated in this plan:
+
+- **Self-echo**: not observed live. `publishEvent()` optimistically appends
+  the fabricated event to the local `events` ring buffer immediately after a
+  successful publish, as this plan's fallback proposed.
+- **Placement**: lives on the Events page itself, as a collapsible "Send
+  event" panel above the table.
