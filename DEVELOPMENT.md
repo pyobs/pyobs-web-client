@@ -245,12 +245,17 @@ section for the full design/reasoning):
   `TimeSeriesChart.vue` canvas component). Type-checks, builds, and existing
   unit tests pass; not yet verified live against a real `MockWeather` module
   — do that before calling this fully done.
-- ~~`IAutoFocus` widget~~ — **implemented**, plan at
-  `specs/plans/autofocus-widget.md` (`AutoFocusView.vue`, new hand-rolled
-  `FocusCurveChart.vue` canvas scatter-chart component). Type-checks,
-  builds, and existing unit tests pass; not yet verified live against a
-  real `IAutoFocus` module (`DummyAutoFocus` in `pyobs-core`) — do that
-  before calling this fully done.
+- ~~`IAutoFocus` widget~~ — **done**, plan at `specs/plans/autofocus-widget.md`
+  (`AutoFocusView.vue`, new hand-rolled `FocusCurveChart.vue` canvas
+  scatter-chart component). Type-checks, builds, existing unit tests pass,
+  and live-verified against `pyobs.modules.focus.DummyAutoFocus`
+  (`testing/pyobs-gui-configs/xmpp/autofocus.yaml`).
+- ~~`IAutoGuiding` widget~~ — **done**, plan at
+  `specs/plans/autoguiding-widget.md` (`AutoGuidingView.vue`, new
+  hand-rolled `OffsetMagnitudeChart.vue`/`OffsetScatterChart.vue` canvas
+  chart components). Type-checks, builds, existing unit tests pass, and
+  live-verified against `pyobs.modules.pointing.DummyAutoGuiding`
+  (`testing/pyobs-gui-configs/xmpp/guiding.yaml`).
 - ~~Interface nav sections with per-module routes~~ — **done**, design at
   `specs/design/interface-nav-per-module-routes.md`. Replaced the
   one-link-per-interface sidebar/aggregated-page pattern with per-module

@@ -25,6 +25,9 @@ const weatherModules = computed(() =>
 const autoFocusModules = computed(() =>
   modules.value.filter((m) => 'IAutoFocus' in m.interfaces).sort((a, b) => a.name.localeCompare(b.name)),
 )
+const autoGuidingModules = computed(() =>
+  modules.value.filter((m) => 'IAutoGuiding' in m.interfaces).sort((a, b) => a.name.localeCompare(b.name)),
+)
 
 const sidebarOpen = ref(false)
 
@@ -150,7 +153,7 @@ const appVersion = __APP_VERSION__
           Settings
         </a>
 
-        <template v-if="roofModules.length > 0 || modeModules.length > 0 || weatherModules.length > 0 || autoFocusModules.length > 0">
+        <template v-if="roofModules.length > 0 || modeModules.length > 0 || weatherModules.length > 0 || autoFocusModules.length > 0 || autoGuidingModules.length > 0">
           <div class="px-2 pb-1 pt-2">
             <span class="text-uppercase text-muted fw-semibold" style="font-size:0.65rem;letter-spacing:.08em">Modules</span>
           </div>
@@ -254,6 +257,32 @@ const appVersion = __APP_VERSION__
               class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 ps-4"
               :class="{ active: route.name === 'autofocus' && route.params.jid === m.jid }"
               @click="navigate(`/autofocus/${m.jid}`)"
+            >
+              {{ m.name }}
+            </a>
+          </template>
+
+          <a
+            v-if="autoGuidingModules.length === 1"
+            class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
+            :class="{ active: route.name === 'autoguiding' }"
+            @click="navigate(`/autoguiding/${autoGuidingModules[0]!.jid}`)"
+          >
+            <i class="bi bi-compass" style="font-size:0.8rem"></i>
+            {{ interfaceLabel('IAutoGuiding') }}
+          </a>
+
+          <template v-else-if="autoGuidingModules.length > 1">
+            <div class="px-2 pb-1 pt-1 d-flex align-items-center gap-2">
+              <i class="bi bi-compass text-muted" style="font-size:0.8rem"></i>
+              <span class="text-muted" style="font-size:0.8rem">{{ interfaceLabel('IAutoGuiding') }}</span>
+            </div>
+            <a
+              v-for="m in autoGuidingModules"
+              :key="m.jid"
+              class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 ps-4"
+              :class="{ active: route.name === 'autoguiding' && route.params.jid === m.jid }"
+              @click="navigate(`/autoguiding/${m.jid}`)"
             >
               {{ m.name }}
             </a>
