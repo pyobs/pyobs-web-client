@@ -1,7 +1,8 @@
 # Plan: Camera page — grab & display images from `ICamera` modules
 
-Status: proposed, not yet implemented. Split into four phases (below);
-none started.
+Status: split into four phases (below). Phases 1-2 done and live-verified
+(including two real bugs found and fixed along the way — see their
+sections). Phases 3-4 not yet designed in detail.
 Repos: pyobs-web-client (all implementation here)
 
 Supersedes DEVELOPMENT.md's "Proposed: Camera page" section (kept there as
@@ -72,6 +73,55 @@ dependency belongs to phase 2.
   call returns. An image taken by another client/script while this page is
   open does not appear. Follow-up if/when shared-observing-session use comes
   up.
+
+**Live-verified, with two real bugs found and fixed along the way, plus one
+still-open external blocker:**
+
+- **RPC transport bug (fixed in `useXmpp.ts`), affects more than Camera.**
+  `grab_data()` was the first slow, `timeout`-decorated RPC call this client
+  had ever issued. `pyobs-core`'s `xmppcomm.py` responds to those in two
+  stages: an immediate `<methodTimeout>` ack (buying more time, reusing the
+  *same* IQ id), then a second, separate, unsolicited `<iq>` — same id —
+  carrying the real `<methodResponse>`/`<fault>`. Strophe's one-shot
+  `sendIQ` resolves on the first id match and never sees the second, so
+  `executeMethod` silently returned `{success: true, value: null}` — the
+  actual grab happened server-side, the client just never learned the
+  result. Fixed with a new `sendRpcIQ()` using a persistent
+  `Strophe.addHandler` that filters out `methodTimeout` acks and only
+  resolves on the real response. Confirmed live against `DummyCamera`.
+  Any other slow RPC call anywhere in this app would have hit the same
+  bug — this wasn't Camera-specific, just the first path to exercise it.
+- **VFS `HttpFile` LocalFile-only test config gap**: `xmpp/camera.yaml`'s
+  original `cache` VFS root was `pyobs.vfs.LocalFile` (copied from
+  `pyobs-gui`'s own test config) — unreachable from a browser. Added
+  `testing/pyobs-gui-configs/xmpp/httpfilecache.yaml` (`HttpFileCache`, no
+  XMPP account needed — it's a plain HTTP server, not RPC-callable) and
+  repointed `camera.yaml`'s `cache` root at it via `HttpFile`.
+- **CORS blocker: resolved upstream.** Filed as
+  [pyobs/pyobs-core#725](https://github.com/pyobs/pyobs-core/issues/725);
+  fixed same-day in `pyobs-core` commit `9bb4314b` (adds CORS headers to
+  `HttpFileCache`, plus an unrelated auth gap the fix surfaced — see below).
+  **Full round trip now confirmed live**: Expose → RPC → real VFS path →
+  fetch → gunzip → FITS decode → canvas render, no errors, real pixel data
+  (`DummyCamera`'s simulated sensor noise), verified at both desktop and
+  mobile (390×844, no horizontal overflow, canvas scales to fit) viewports.
+  Tested against `../pyobs-core` installed *editably* into `testing/.venv`
+  (`uv pip install --python testing/.venv -e '../pyobs-core[full]'`,
+  2.0.0.dev60) since the fix isn't in a published release yet — this
+  diverges from `specs/steering/testing-against-live-backend.md`'s pinned
+  `2.0.0.dev53`; re-pin that doc to the real release once one exists.
+- **Auth-model mismatch, found via the same upstream commit.** Fixing CORS
+  surfaced that `HttpFileCache` never actually checked the Basic Auth
+  credentials `pyobs.vfs.HttpFile` was sending — so `9bb4314b` also
+  replaced Basic Auth (`username`/`password`) with an opt-in Bearer token
+  (`token` param) across both `HttpFileCache` and `HttpFile`. This client's
+  `useVfsConfig.ts`/`SettingsView.vue`/`CameraView.vue` still model the old
+  `username`/`password` Basic Auth shape (per
+  `specs/design/login-memory-and-vfs-config.md`) — harmless for the no-auth
+  case just tested (no token configured server-side), but stale for any
+  deployment that turns auth on. Not fixed as part of this plan — needs its
+  own follow-up once the pyobs-core release ships, touching a design
+  previously marked "done."
 
 ## Phase 3: Interface groups
 
@@ -157,28 +207,43 @@ targets) before handing bytes to fitsjs.
 
 Phase 1:
 
-- [ ] Add `fitsjs` as a dependency; confirm its actual public API against the
-      installed package (README/docs at implementation time) rather than this
-      plan's assumptions — not yet verified hands-on.
-- [ ] Confirm `DecompressionStream('gzip')` (or an equivalent) handles the
-      `.fits.gz` case end to end; fall back to detecting uncompressed `.fits`
-      and skipping decompression.
-- [ ] Standalone widget: decode + rasterize to `<canvas>`, verified against a
-      static fixture file (not yet a live module).
-- [ ] Canvas sizing: `max-width:100%`, height auto, verified with an actual
-      mobile-viewport (390×844) screenshot pass per
-      `specs/steering/mobile-and-desktop.md`.
+- [x] **Library decision reversed**: not `fitsjs`. Hands-on investigation
+      (see git history on this branch) found `fitsjs` untyped, CJS-only,
+      and — critically — its actual pixel-decode path spins up a Web Worker
+      via a Blob URL, which can't be unit-tested under jsdom. Two other npm
+      candidates (`fits-reader`, `fits-reader-js`) were also rejected
+      (Node-only / undocumented minified blob respectively). Hand-rolled a
+      minimal parser instead, in a new npm-workspace package
+      **`packages/pyobs-fits`** (zero dependencies, framework-agnostic, own
+      README explaining why it's in-tree rather than a separate repo for
+      now) — covers exactly `grab_data()`'s actual output (single
+      uncompressed 2D image HDU), not the full FITS standard. 14 unit tests,
+      all passing.
+- [x] Confirmed `DecompressionStream('gzip')` handles the `.fits.gz` case
+      end to end (`packages/pyobs-fits/src/gzip.ts`, tested in
+      `gzip.spec.ts` against real `CompressionStream` output); passes
+      non-gzip bytes through unchanged.
+- [x] Standalone widget (`src/components/FitsCanvas.vue`) decodes +
+      rasterizes to `<canvas>`, verified against a static synthetic fixture
+      in a real browser (Vite dev server, manual pass) — confirmed correct
+      vertical flip (FITS row 1 = bottom) and stretch.
+- [x] Canvas sizing: `max-width:100%`, height auto — confirmed with an
+      actual mobile-viewport (390×844) screenshot pass, no horizontal
+      overflow, canvas scales to fit.
 
 Phase 2:
 
-- [ ] `CameraView.vue`: module list + card, mirroring `RoofView.vue`'s
+- [x] `CameraView.vue`: module list + card, mirroring `RoofView.vue`'s
       structure (status dot, name/jid header, `ModuleStateCard` for
       `IExposure`, action buttons, inline error alert on fault).
-- [ ] Expose button → `executeMethod(..., 'grab_data', ...)` → on success,
-      fetch + decompress + decode + rasterize via the phase 1 widget.
-- [ ] Manual verification against a real/dummy `ICamera` module (e.g.
-      `DummyCamera` in `../pyobs-core`, if one exists — confirm before relying
-      on it) rather than only unit-testing the codec in isolation.
+- [x] Expose button → `executeMethod(..., 'grab_data', ...)` → on success,
+      resolve VFS path, fetch bytes, hand off to the phase 1 widget.
+- [x] Manual verification against `DummyCamera` (`../pyobs-core`) — found
+      and fixed the `sendRpcIQ` transport bug above; confirmed `grab_data()`
+      returns a real path over the wire.
+- [x] Full fetch-and-render round trip against a real file — confirmed live
+      once pyobs/pyobs-core#725 landed (see above).
+- [x] Canvas sizing on an actual mobile-viewport (390×844) screenshot pass.
 
 Phase 3 and phase 4 checklists: not yet written — each needs its own design
 pass first (see those sections above).
