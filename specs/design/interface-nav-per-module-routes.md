@@ -69,6 +69,25 @@ today's `hasRoofModules`, but the full list, not just `.some(...)`).
   accordion/collapse state — keeps interaction to a single click and avoids
   extra state to manage on mobile.
 - **Zero online modules**: no entry at all, same as today.
+- **Transition between the two**: driven by the same reactive `computed`
+  list as everything else here — no separate state. A second module
+  connecting mid-session flips a bare link into a header+sublinks
+  immediately; dropping back to one does the reverse.
+
+**Interface label**: derived from the interface name, not a hand-maintained
+lookup table — strip the leading `I`, then split on capital letters and
+join with spaces (`IMode` → "Mode", `IStructuredConfig` → "Structured
+Config"). Add an explicit override map only if a future interface name
+doesn't split sensibly this way.
+
+**Redirect mechanics**: handled inside the view component, not a
+router-level `redirect`. The component already needs a reactive
+`computed`/`watchEffect` over the `modules` list for the "module goes
+offline, fall through to empty state live" behavior above — an
+`onMounted`/`watch` in the same component that calls `router.replace` when
+`:jid` is absent reuses that same computed source of truth, instead of
+splitting "pick the first module" logic between the router config and the
+component and risking them drifting apart.
 
 **View-level change**: `RoofView.vue`'s current "loop over all modules,
 render a card per module" body becomes "resolve one module from the route
@@ -85,7 +104,8 @@ same reasoning `roof-page.md` used originally.
 - **Roof migrates too**: even though multi-`IRoof` will stay rare, moving it
   onto this pattern now keeps one nav mechanism instead of two, and it
   degrades to exactly today's UX (one link, `/roof` redirecting to the sole
-  module) whenever there's only one roof online.
+  module) whenever there's only one roof online. Included in the same
+  implementation pass as this design, not deferred.
 - **Redirect-to-first over a picker page**: chosen over showing a picker
   when `:jid` is omitted, to keep the zero-multi-instance case (today's
   reality for Roof, likely common at first for other interfaces too) a
