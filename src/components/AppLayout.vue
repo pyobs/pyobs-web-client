@@ -19,6 +19,9 @@ const roofModules = computed(() =>
 const modeModules = computed(() =>
   modules.value.filter((m) => 'IMode' in m.interfaces).sort((a, b) => a.name.localeCompare(b.name)),
 )
+const weatherModules = computed(() =>
+  modules.value.filter((m) => 'IWeather' in m.interfaces).sort((a, b) => a.name.localeCompare(b.name)),
+)
 
 const sidebarOpen = ref(false)
 
@@ -144,7 +147,7 @@ const appVersion = __APP_VERSION__
           Settings
         </a>
 
-        <template v-if="roofModules.length > 0 || modeModules.length > 0">
+        <template v-if="roofModules.length > 0 || modeModules.length > 0 || weatherModules.length > 0">
           <div class="px-2 pb-1 pt-2">
             <span class="text-uppercase text-muted fw-semibold" style="font-size:0.65rem;letter-spacing:.08em">Modules</span>
           </div>
@@ -196,6 +199,32 @@ const appVersion = __APP_VERSION__
               class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 ps-4"
               :class="{ active: route.name === 'mode' && route.params.jid === m.jid }"
               @click="navigate(`/mode/${m.jid}`)"
+            >
+              {{ m.name }}
+            </a>
+          </template>
+
+          <a
+            v-if="weatherModules.length === 1"
+            class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
+            :class="{ active: route.name === 'weather' }"
+            @click="navigate(`/weather/${weatherModules[0]!.jid}`)"
+          >
+            <i class="bi bi-cloud-sun" style="font-size:0.8rem"></i>
+            {{ interfaceLabel('IWeather') }}
+          </a>
+
+          <template v-else-if="weatherModules.length > 1">
+            <div class="px-2 pb-1 pt-1 d-flex align-items-center gap-2">
+              <i class="bi bi-cloud-sun text-muted" style="font-size:0.8rem"></i>
+              <span class="text-muted" style="font-size:0.8rem">{{ interfaceLabel('IWeather') }}</span>
+            </div>
+            <a
+              v-for="m in weatherModules"
+              :key="m.jid"
+              class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 ps-4"
+              :class="{ active: route.name === 'weather' && route.params.jid === m.jid }"
+              @click="navigate(`/weather/${m.jid}`)"
             >
               {{ m.name }}
             </a>

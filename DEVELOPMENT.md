@@ -238,6 +238,13 @@ section for the full design/reasoning):
   "Implemented: Dashboard — expandable module list instead of a card grid" above.
 - ~~Roof page~~ — **done**, see "Implemented: Roof page — status +
   Open/Close/Stop for `IRoof` modules" above.
+- ~~`IMode` widget~~ — **done**, plan at `specs/plans/mode-widget.md`
+  (`ModeView.vue`, #10).
+- ~~`IWeather` widget~~ — **implemented**, plan at
+  `specs/plans/weather-widget.md` (`WeatherView.vue`, new hand-rolled
+  `TimeSeriesChart.vue` canvas component). Type-checks, builds, and existing
+  unit tests pass; not yet verified live against a real `MockWeather` module
+  — do that before calling this fully done.
 - ~~Interface nav sections with per-module routes~~ — **done**, design at
   `specs/design/interface-nav-per-module-routes.md`. Replaced the
   one-link-per-interface sidebar/aggregated-page pattern with per-module
