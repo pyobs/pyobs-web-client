@@ -245,6 +245,12 @@ section for the full design/reasoning):
   `TimeSeriesChart.vue` canvas component). Type-checks, builds, and existing
   unit tests pass; not yet verified live against a real `MockWeather` module
   — do that before calling this fully done.
+- ~~`IAutoFocus` widget~~ — **implemented**, plan at
+  `specs/plans/autofocus-widget.md` (`AutoFocusView.vue`, new hand-rolled
+  `FocusCurveChart.vue` canvas scatter-chart component). Type-checks,
+  builds, and existing unit tests pass; not yet verified live against a
+  real `IAutoFocus` module (`DummyAutoFocus` in `pyobs-core`) — do that
+  before calling this fully done.
 - ~~Interface nav sections with per-module routes~~ — **done**, design at
   `specs/design/interface-nav-per-module-routes.md`. Replaced the
   one-link-per-interface sidebar/aggregated-page pattern with per-module

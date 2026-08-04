@@ -5,6 +5,7 @@ import ShellView from '@/views/ShellView.vue'
 import RoofView from '@/views/RoofView.vue'
 import ModeView from '@/views/ModeView.vue'
 import WeatherView from '@/views/WeatherView.vue'
+import AutoFocusView from '@/views/AutoFocusView.vue'
 import LoggingView from '@/views/LoggingView.vue'
 import EventsView from '@/views/EventsView.vue'
 import SettingsView from '@/views/SettingsView.vue'
@@ -46,6 +47,12 @@ const router = createRouter({
       path: '/weather/:jid?',
       name: 'weather',
       component: WeatherView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/autofocus/:jid?',
+      name: 'autofocus',
+      component: AutoFocusView,
       meta: { requiresAuth: true },
     },
     {
