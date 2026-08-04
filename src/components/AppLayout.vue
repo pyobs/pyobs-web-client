@@ -32,6 +32,8 @@ function navigate(to: string) {
   router.push(to)
   closeSidebar()
 }
+
+const appVersion = __APP_VERSION__
 </script>
 
 <template>
@@ -64,7 +66,7 @@ function navigate(to: string) {
           <i class="bi bi-telescope fs-5 text-primary"></i>
           <div>
             <div class="fw-semibold text-light lh-1">pyobs</div>
-            <div class="text-muted" style="font-size:0.7rem">Web Client</div>
+            <div class="text-muted" style="font-size:0.7rem">Web Client v{{ appVersion }}</div>
           </div>
         </div>
       </div>
@@ -74,7 +76,7 @@ function navigate(to: string) {
         <i class="bi bi-telescope fs-5 text-primary"></i>
         <div class="me-auto">
           <div class="fw-semibold text-light lh-1">pyobs</div>
-          <div class="text-muted" style="font-size:0.7rem">Web Client</div>
+          <div class="text-muted" style="font-size:0.7rem">Web Client v{{ appVersion }}</div>
         </div>
         <button class="btn btn-sm btn-outline-secondary" @click="closeSidebar">
           <i class="bi bi-x-lg"></i>
