@@ -1,8 +1,19 @@
 {
   "name": "pyobs-web-client",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "Vue 3 web client for pyobs, the Institute for Astrophysics Göttingen's telescope-control framework",
+  "license": "MIT",
+  "author": "Tim-Oliver Husser <thusser@uni-goettingen.de>",
+  "homepage": "https://pyobs.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pyobs/pyobs-web-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pyobs/pyobs-web-client/issues"
+  },
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
