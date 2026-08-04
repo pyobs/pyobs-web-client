@@ -1,17 +1,19 @@
 # Plan: Camera page — grab & display images from `ICamera` modules
 
-Status: split into four phases (below). Phases 1-2 done and live-verified
-(including two real bugs found and fixed along the way — see their
-sections). Phases 3-4 not yet designed in detail.
+Status: split into three phases (below), all done and live-verified
+(including real bugs found and fixed along the way — see their sections).
+A fourth phase (temperature/cooling status, `ICooling`) was scoped
+originally but scrapped from this plan — deliberately taken up later as
+its own thing, not because it's unwanted.
 Repos: pyobs-web-client (all implementation here)
 
 Supersedes DEVELOPMENT.md's "Proposed: Camera page" section (kept there as
 historical record, not deleted) — this plan is the current source of truth for
 scope and open questions going forward.
 
-**Phasing.** Originally scoped as one v1 pass; split into four phases to
+**Phasing.** Originally scoped as one v1 pass; split into phases to
 de-risk the actual hard part (FITS decode/render) before wiring it to a live
-page, and to sequence the page's growth from "grab and view" to full
+page, and to sequence the page's growth from "grab and view" toward
 `pyobs-gui` `CameraWidget` parity:
 
 1. **FITS-display widget**, standalone — decode/render pipeline only, no
@@ -21,7 +23,6 @@ page, and to sequence the page's growth from "grab and view" to full
 3. **Interface groups**: dedicated controls for `IWindow`/`IBinning`/gain/
    filters/image format/type — reverses this plan's original call to leave
    these to Shell's generic RPC forms (see "Scope reversal" note below).
-4. **Temperature/cooling status**: `ICooling` controls.
 
 Each phase's own scope/checklist is under its own heading below; shared
 material (FITS handling, cross-check against `pyobs-polaris`) is unchanged
@@ -125,56 +126,73 @@ still-open external blocker:**
 
 ## Phase 3: Interface groups
 
+**Done, live-verified, two real bugs found and fixed along the way.**
+
 **Scope reversal.** This plan originally ruled out dedicated controls for
 `IWindow`/`IBinning`/gain/filters/image format/type, reasoning that Shell's
 generic RPC param forms already handle them and the page's job should stay
 "grab an image and see it" (see the old "Not yet decided / explicitly
-deferred" section this replaces). Decision reversed: build dedicated controls
-for these directly on `CameraView.vue`. Not yet designed in detail — form
-layout, whether inline on the module card or a per-module settings panel —
-but `pyobs-gui`'s `camerawidget.py` (`../pyobs-gui/pyobs_gui/camerawidget.py`)
-is a concrete reference for both which interfaces group together and the
-capability/state pattern to follow:
+deferred" section this replaced). Decision reversed: built dedicated
+controls directly on `CameraView.vue`, grounded in `pyobs-gui`'s
+`camerawidget.py` for which interfaces group together.
 
-- **Per-interface, each independently optional** (checked via
-  `has_proxy`/gated on `m.interfaces`, exactly this client's existing
-  pattern elsewhere): `IWindow` (left/top/width/height, capped by
-  `get_capabilities`' `full_frame_*`), `IBinning` (binning combo, populated
-  from capabilities' `binnings` list), `IImageFormat` (format combo from
-  capabilities), `IExposureTime` (exposure time + unit), `IGain`
-  (gain/offset), `IImageType` (OBJECT/BIAS/DARK/FLAT combo), `IFilters`
-  (filter select — `pyobs-gui` gives it its own sidebar `FilterWidget`
-  rather than folding into the main form).
-- Values are set immediately before each `expose()` call from the current
-  form state (`camerawidget.py:271-330`), not as a separate "apply settings"
-  step — worth deciding whether to match that or make settings persist
-  independently of exposing.
-- `pyobs-gui` also subscribes to each interface's own state (`_update_binning`,
-  `_update_gain`, etc.) to keep the form in sync if changed elsewhere (e.g.
-  another client) — same live-sync expectation this client already applies
-  to `ModuleStateCard`.
-- `IDataSequence`/broadcast toggle (`camerawidget.py:331-349`) is `pyobs-gui`
-  scope, not this phase — stays deferred per this plan's existing
-  single-shot-only call (see Phase 2).
+**Two design questions this plan left open, resolved with the user before
+implementing:**
 
-## Phase 4: Temperature/cooling status
+- **Apply model — batched, matches `pyobs-gui`, not one Set button per
+  interface.** Considered and rejected reusing this app's own Shell/Events
+  idiom (`ParamForm.vue` + a "Set" button per interface, applied
+  immediately) — six independent buttons is worse UX than one combined
+  form. Instead: all fields staged in one form (`settingsParams`), applied
+  as one RPC call per configured interface immediately before each
+  `grab_data()` call, matching `camerawidget.py:271-330` — no separate
+  "apply settings" step at all, matching or missing settings groups affect
+  nothing until the next Expose.
+- **Layout — separate collapsible panel**, not inline on the main card —
+  keeps the card focused on status + Expose; a "Settings" toggle reveals
+  the per-interface form group, closed by default.
+- **`IFilters` deferred** — `DummyCamera` doesn't implement it, so it
+  couldn't be live-verified; left for whenever a real filter-wheel-equipped
+  module is available.
 
-Two separate interfaces, per `pyobs-gui`'s split into `CoolingWidget`
-(`../pyobs-gui/pyobs_gui/coolingwidget.py`) and `TemperaturesWidget`
-(`../pyobs-gui/pyobs_gui/temperatureswidget.py`) — worth keeping separate
-here too rather than merging into one "temperature" panel, since they're
-different interfaces with different shapes:
+**Interfaces covered**: `IWindow` (left/top/width/height), `IBinning`
+(x/y), `IImageFormat` (fmt, enum), `IExposureTime` (exposure_time),
+`IGain` (two separate commands, `set_gain`+`set_offset`, combined into one
+form group), `IImageType` (image_type, enum) — each independently gated on
+`interfaceName in currentModule.interfaces`, reusing `ParamForm.vue` purely
+for field rendering (not its per-command-submit flow). `pyobs-gui`'s
+live-state-sync (subscribing to each interface's own state to keep the
+form in sync with other clients) and capabilities-populated dropdowns
+(binning combo from `binnings` list, format combo from capabilities) were
+**not** built — left as a follow-up if the current guessed-defaults
+approach (below) proves confusing in practice, not because they're hard,
+just out of this pass's scope.
+- `IDataSequence`/broadcast toggle (`camerawidget.py:331-349`) is
+  `pyobs-gui` scope, not this phase — stays deferred per this plan's
+  existing single-shot-only call (see Phase 2).
 
-- **`ICooling`**: single setpoint control — enabled toggle + target
-  temperature, `set_cooling(enabled, temp)`; status display shows current
-  setpoint and cooler power (`%`) when enabled, "OFF" when not
-  (`coolingwidget.py:36-42`).
-- **`ITemperatures`**: read-only, multiple named sensor readings
-  (`state.readings`, each `{name, value}`) plus a history plot
-  (`temperaturesplotwidget.py`) — this is near-identical in shape to
-  `WeatherView.vue`'s already-built per-sensor tile + bounded history-array
-  pattern (see `specs/plans/weather-widget.md`); reuse that pattern/its
-  `TimeSeriesChart.vue` rather than building a second one from scratch.
+**Two real bugs found via live testing against `DummyCamera`, both the same
+root cause**: `defaultParamValue()`'s generic blank/zero seeding is fine for
+Shell (a human always reviews params before Execute) but wrong for a panel
+meant to work with zero configuration:
+
+1. Required enum fields (`IImageFormat.set_image_format`'s `fmt`) seeded
+   blank → server rejected the very first Expose with
+   `'' is not a valid ImageFormat`. Fixed by seeding required enums with
+   their first available option instead.
+2. `IWindow`'s `width`/`height` seeded `'0'` (the generic non-optional-number
+   default) → a zero-size window crashed `grab_data()` deep in
+   `DummyCamera`'s image generation (`zero-size array to reduction
+   operation minimum which has no identity`). Fixed with capability-aware
+   seeding: `IWindow` defaults to the module's full frame
+   (`WindowCapabilities.full_frame_*`), `IBinning` defaults to 1×1.
+
+Confirmed live end-to-end after both fixes: all six settings groups
+rendered, custom exposure time (3s) and gain (42) values applied, guessed
+defaults (full-frame window, 1×1 binning, first enum option for
+format/type) all accepted server-side — `camera.log` shows every
+`set_*` call landing before a clean `grab_data()` completion, no errors on
+the client.
 
 ## FITS handling
 
@@ -245,8 +263,19 @@ Phase 2:
       once pyobs/pyobs-core#725 landed (see above).
 - [x] Canvas sizing on an actual mobile-viewport (390×844) screenshot pass.
 
-Phase 3 and phase 4 checklists: not yet written — each needs its own design
-pass first (see those sections above).
+Phase 3:
+
+- [x] `settingsGroups` computed: `IWindow`/`IBinning`/`IImageFormat`/
+      `IExposureTime`/`IGain`/`IImageType`, each gated on
+      `interfaceName in currentModule.interfaces`, built from the module's
+      own command schemas (no hardcoded field lists).
+- [x] Collapsible "Settings" panel, `ParamForm.vue` per group, capability-
+      and enum-aware default seeding (see the two bugs found above).
+- [x] `expose()` applies every configured group's RPC(s) before
+      `grab_data()`, aborting (no grab) on the first `set_*` failure.
+- [x] Manual verification against `DummyCamera` — found and fixed both
+      seeding bugs above; confirmed all six groups apply correctly and a
+      full Expose completes cleanly with both defaulted and custom values.
 
 ## Not yet decided / explicitly deferred
 
@@ -257,6 +286,9 @@ pass first (see those sections above).
   before decode) if decode/rasterize proves too slow or memory-heavy on phone
   hardware — genuinely unknown until tested against a real frame size, not
   assumed either way.
+- **Temperature/cooling status** (`ICooling`/`ITemperatures`) — scoped
+  originally as this plan's phase 4, scrapped from here deliberately, to be
+  picked up later as its own thing (own plan doc, when that happens).
 
 ## Cross-check against `pyobs-polaris`'s independent `ICamera` implementation
 
