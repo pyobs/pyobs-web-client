@@ -2,16 +2,20 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useXmpp } from '@/composables/useXmpp'
+import { interfaceLabel } from '@/utils/interfaceLabel'
 
 const router = useRouter()
 const route = useRoute()
 const { jid, disconnect, modules } = useXmpp()
 
-// Device-specific nav links only show up once a matching module is actually
-// online — there can be more than one module implementing a given interface
-// (RoofView itself already lists all of them), so this only needs "at least
-// one", not a specific module.
-const hasRoofModules = computed(() => modules.value.some((m) => 'IRoof' in m.interfaces))
+// One sidebar entry per multi-instance interface: a single link when
+// exactly one module implementing it is online (no header/indent overhead
+// for the common case), or a section header with one sub-link per module
+// when there are several. See
+// specs/design/interface-nav-per-module-routes.md.
+const roofModules = computed(() =>
+  modules.value.filter((m) => 'IRoof' in m.interfaces).sort((a, b) => a.name.localeCompare(b.name)),
+)
 
 const sidebarOpen = ref(false)
 
@@ -137,19 +141,36 @@ const appVersion = __APP_VERSION__
           Settings
         </a>
 
-        <template v-if="hasRoofModules">
+        <template v-if="roofModules.length > 0">
           <div class="px-2 pb-1 pt-2">
             <span class="text-uppercase text-muted fw-semibold" style="font-size:0.65rem;letter-spacing:.08em">Modules</span>
           </div>
 
           <a
+            v-if="roofModules.length === 1"
             class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
             :class="{ active: route.name === 'roof' }"
-            @click="navigate('/roof')"
+            @click="navigate(`/roof/${roofModules[0]!.jid}`)"
           >
             <i class="bi bi-house-door" style="font-size:0.8rem"></i>
-            Roof
+            {{ interfaceLabel('IRoof') }}
           </a>
+
+          <template v-else>
+            <div class="px-2 pb-1 pt-1 d-flex align-items-center gap-2">
+              <i class="bi bi-house-door text-muted" style="font-size:0.8rem"></i>
+              <span class="text-muted" style="font-size:0.8rem">{{ interfaceLabel('IRoof') }}</span>
+            </div>
+            <a
+              v-for="m in roofModules"
+              :key="m.jid"
+              class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 ps-4"
+              :class="{ active: route.name === 'roof' && route.params.jid === m.jid }"
+              @click="navigate(`/roof/${m.jid}`)"
+            >
+              {{ m.name }}
+            </a>
+          </template>
         </template>
 
       </div>
