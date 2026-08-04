@@ -3,6 +3,7 @@ import { useXmpp } from '@/composables/useXmpp'
 import DashboardView from '@/views/DashboardView.vue'
 import ShellView from '@/views/ShellView.vue'
 import RoofView from '@/views/RoofView.vue'
+import ModeView from '@/views/ModeView.vue'
 import LoggingView from '@/views/LoggingView.vue'
 import EventsView from '@/views/EventsView.vue'
 import SettingsView from '@/views/SettingsView.vue'
@@ -32,6 +33,12 @@ const router = createRouter({
       path: '/roof/:jid?',
       name: 'roof',
       component: RoofView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/mode/:jid?',
+      name: 'mode',
+      component: ModeView,
       meta: { requiresAuth: true },
     },
     {
