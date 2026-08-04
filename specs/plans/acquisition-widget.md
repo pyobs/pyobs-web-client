@@ -1,6 +1,9 @@
 # Plan: `IAcquisition` widget
 
-Status: proposed, not yet implemented.
+Status: done. See `AcquisitionView.vue`, new `DistanceChart.vue` canvas
+component, reused `OffsetScatterChart.vue`. Charts stack vertically (same
+choice as `AutoGuidingView.vue`), sidestepping the side-by-side layout risk
+flagged below rather than fighting it.
 Repos: pyobs-web-client (all implementation here)
 
 Gap identified by comparing this project's pages against `pyobs-gui`'s

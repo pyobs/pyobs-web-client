@@ -23,6 +23,7 @@ const NAV_INTERFACES = [
   { interfaceName: 'IWeather', icon: 'bi-cloud-sun' },
   { interfaceName: 'IAutoFocus', icon: 'bi-bullseye' },
   { interfaceName: 'IAutoGuiding', icon: 'bi-compass' },
+  { interfaceName: 'IAcquisition', icon: 'bi-crosshair' },
 ] as const
 
 const navSections = computed(() =>
