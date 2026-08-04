@@ -44,6 +44,7 @@ const NS_PUBSUB = 'http://jabber.org/protocol/pubsub'
 const NS_PUBSUB_EVENT = 'http://jabber.org/protocol/pubsub#event'
 const NS_RPC = 'jabber:iq:rpc'
 const NS_PYOBS_RPC = 'urn:pyobs:rpc:1'
+const NS_PYOBS_EVENT = 'pyobs:event'
 const NS_ROSTER = 'jabber:iq:roster'
 const PYOBS_RESOURCE = 'pyobs'
 const SESSION_JID_KEY = 'xmpp_jid'
@@ -120,6 +121,34 @@ function pubsubServiceFor(bareJid: string): string {
   return `pubsub.${Strophe.getDomainFromJid(bareJid)}`
 }
 
+// Adds an event to the ring buffer, or — if the same uuid is already present
+// — keeps whichever copy has a real module identity. Needed because ejabberd
+// resends an event node's last-published item on every (re)subscribe (e.g.
+// every reconnect), and that resend arrives with `from` set to the pubsub
+// service itself rather than the original publisher's JID, unlike a genuine
+// live push (which does carry the correct `from`) — see
+// specs/steering/testing-against-live-backend.md's "Known limitation".
+// Confirmed live: the exact same uuid can arrive twice, once correctly
+// attributed (a live push) and once not (retained-item replay), racing in
+// either order — this makes the outcome order-independent.
+function upsertEvent(ev: PyobsEvent): void {
+  if (!ev.uuid) {
+    events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
+    return
+  }
+  const pubsubHost = pubsubServiceFor(jid.value)
+  const idx = events.value.findIndex((e) => e.uuid === ev.uuid)
+  if (idx === -1) {
+    events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
+    return
+  }
+  if (events.value[idx]!.module === pubsubHost && ev.module !== pubsubHost) {
+    const next = [...events.value]
+    next[idx] = ev
+    events.value = next
+  }
+}
+
 // ── module discovery: one disco#info query returns everything ──────────────
 // (interface schemas — commands/state/types — plus capabilities), per
 // pyobs-core 2.0's `_get_disco_info`. Nothing is pre-generated; the schema is
@@ -164,10 +193,16 @@ async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> 
     { jid: bareJid, fullJid, name, interfaces, events: eventSchemas, capabilities },
   ]
 
-  // Subscribe to every event this module publishes (PEP — hosted on the
-  // module's own bare JID, not a separate pubsub service, unlike state below).
+  // Subscribe to every event this module actually publishes (PEP — hosted on
+  // the module's own bare JID, not a separate pubsub service, unlike state
+  // below) — role.includes('send') excludes subscribe-only entries (e.g. a
+  // camera module's BadWeatherEvent, which it only reacts to and never
+  // publishes on its own node); subscribing to those would just be a
+  // guaranteed-empty subscription against a node the module never publishes
+  // to. See ../pyobs-core/specs/plans/event-role-advertising.md.
   const myBareJid = Strophe.getBareJidFromJid(jid.value)
   for (const schema of Object.values(eventSchemas)) {
+    if (!schema.role.includes('send')) continue
     const node = `urn:pyobs:event:${schema.name}:${schema.version}`
     sendIQ(
       $iq({ to: bareJid, type: 'set' })
@@ -175,7 +210,37 @@ async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> 
         .c('subscribe', { node, jid: myBareJid })
         .tree(),
     ).catch(() => {})
+    // Also actively fetch the current item via a targeted IQ-get, addressed
+    // to bareJid directly — rather than relying on ejabberd's own
+    // resend-on-subscribe push, whose `from` is wrong (see upsertEvent's
+    // comment). We already know which module this is since we're the one
+    // asking, so the module identity here is never in question — this races
+    // harmlessly against the (possibly mis-attributed) auto-push, resolved
+    // by upsertEvent whichever order they arrive in.
+    fetchCurrentEventItem(bareJid, name, node, schema).catch(() => {})
   }
+}
+
+async function fetchCurrentEventItem(bareJid: string, moduleName: string, node: string, schema: EventSchema): Promise<void> {
+  const result = await sendIQ(
+    $iq({ to: bareJid, type: 'get' })
+      .c('pubsub', { xmlns: NS_PUBSUB })
+      .c('items', { node, max_items: '1' })
+      .tree(),
+  )
+  const itemEl = Array.from(result.getElementsByTagName('items')[0]?.children ?? []).find(
+    (c) => localTag(c) === 'item',
+  )
+  const payloadEl = itemEl?.firstElementChild
+  if (!payloadEl) return // nothing published on this node yet — normal, not every event has fired
+  const raw = JSON.parse(payloadEl.textContent ?? '{}')
+  upsertEvent({
+    type: raw.type ?? schema.name,
+    module: moduleName,
+    timestamp: raw.timestamp ?? Date.now() / 1000,
+    uuid: raw.uuid ?? '',
+    data: raw.data ?? {},
+  })
 }
 
 // A newly-connected session only learns about modules from presence *pushes*
@@ -258,7 +323,7 @@ function handlePubsubMessage(message: Element): boolean {
       uuid: raw.uuid ?? '',
       data: raw.data ?? {},
     }
-    events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
+    upsertEvent(ev)
   } catch {
     // malformed payload — ignore
   }
@@ -328,6 +393,41 @@ async function executeMethod(fullJid: string, methodName: string, params: unknow
   }
 
   return { success: true, value: parseRpcReturn(result) }
+}
+
+// Publishes a fabricated event under this client's own JID (XEP-0163 PEP
+// self-publish — no `to` attribute — matching xmppcomm.py's own send_event(),
+// see specs/design/events-page-send-tool.md). `data` is plain JSON, not
+// XML-wrapped like RPC params: confirmed against a live wire capture (see
+// specs/steering/testing-against-live-backend.md) that event payloads are a
+// bare JSON string, e.g. {"status": "parked", "interfaces": {}}.
+//
+// Appends optimistically to the local `events` ring buffer rather than
+// waiting for a PubSub echo: live-verified against a real ejabberd that this
+// client does not reliably see its own publish pushed back to itself (see
+// specs/design/events-page-send-tool.md's "Outcome" — resolved empirically,
+// not assumed). Same "assume success, reconcile later" shape as the rest of
+// this app.
+async function publishEvent(eventName: string, version: number, data: Record<string, unknown>): Promise<void> {
+  if (!connection) throw new Error('Not connected')
+
+  const timestamp = Date.now() / 1000
+  const uuid = crypto.randomUUID()
+  const payload = JSON.stringify({ type: eventName, timestamp, uuid, data })
+  const payloadEl = createNamespacedElement(NS_PYOBS_EVENT, 'event')
+  payloadEl.textContent = payload
+
+  await sendIQ(
+    $iq({ type: 'set' })
+      .c('pubsub', { xmlns: NS_PUBSUB })
+      .c('publish', { node: `urn:pyobs:event:${eventName}:${version}` })
+      .c('item', { id: 'current' })
+      .cnode(payloadEl)
+      .tree(),
+  )
+
+  const ev: PyobsEvent = { type: eventName, module: Strophe.getNodeFromJid(jid.value) ?? jid.value, timestamp, uuid, data }
+  upsertEvent(ev)
 }
 
 // ── state subscription (reference-counted, mirrors XmppComm's own model) ───
@@ -517,6 +617,7 @@ export function useXmpp() {
     connect,
     disconnect,
     executeMethod,
+    publishEvent,
     subscribeState,
     clearEvents: () => { events.value = [] },
   }

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
-import type { CommandSchema, WireType } from '@/pyobs-codec'
+import type { CommandSchema } from '@/pyobs-codec'
+import { hasUnsupportedField, defaultParamValue, paramValueFromString } from '@/pyobs-codec'
+import ParamForm from '@/components/ParamForm.vue'
 
 const { modules, executeMethod } = useXmpp()
 
@@ -57,54 +59,7 @@ const currentEnums = computed(
     (selectedModule.value?.interfaces[currentIfaceName.value]?.enums as Record<string, string[]> | undefined) ?? {},
 )
 
-function unwrapOptional(type: WireType): { inner: WireType; optional: boolean } {
-  return typeof type === 'object' && type.kind === 'optional' ? { inner: type.inner, optional: true } : { inner: type, optional: false }
-}
-
-type WidgetKind = 'bool' | 'number' | 'string' | 'enum' | 'unsupported'
-
-function widgetKind(type: WireType): WidgetKind {
-  if (type === 'bool') return 'bool'
-  if (type === 'int32' || type === 'float64') return 'number'
-  if (type === 'string' || type === 'datetime') return 'string'
-  if (typeof type === 'object' && type.kind === 'enum') return 'enum'
-  return 'unsupported' // array/struct/any — pyobs-core doesn't publish enough schema to build these
-}
-
-function enumOptions(type: WireType): string[] {
-  const { inner } = unwrapOptional(type)
-  return typeof inner === 'object' && inner.kind === 'enum' ? (currentEnums.value[inner.name] ?? []) : []
-}
-
-const hasUnsupportedParam = computed(() =>
-  (currentCommandSchema.value?.params ?? []).some((p) => widgetKind(unwrapOptional(p.type).inner) === 'unsupported'),
-)
-
-function formatWireType(type: WireType): string {
-  if (typeof type === 'string') return type
-  if (type.kind === 'enum') return `enum(${type.name})`
-  if (type.kind === 'struct') return `struct<${type.name}>`
-  if (type.kind === 'array') return `array<${formatWireType(type.item)}>`
-  return `optional<${formatWireType(type.inner)}>`
-}
-
-// A <select> whose bound value doesn't match any of its <option>s renders
-// blank instead of showing the placeholder — seed every param with a value
-// that actually matches one of its widget's options (bool has no empty
-// option, so it needs 'true' rather than ''). Non-optional number params
-// also need a real seeded value: an empty number input must never silently
-// become nil for a non-optional int32/float64 param (pyobs-core rejects it,
-// e.g. a "%d format: a real number is required, not NoneType" crash).
-// Optional params of any kind default to '' regardless — that's the one
-// value execute() maps to nil, which is the correct default for "unset".
-function defaultParamValue(type: WireType): string {
-  const { inner, optional } = unwrapOptional(type)
-  if (optional) return ''
-  const kind = widgetKind(inner)
-  if (kind === 'bool') return 'true'
-  if (kind === 'number') return '0'
-  return ''
-}
+const hasUnsupportedParam = computed(() => hasUnsupportedField(currentCommandSchema.value?.params ?? []))
 
 function selectModule(jid: string) {
   selectedJid.value = jid
@@ -166,17 +121,7 @@ async function execute() {
   const iface = currentIfaceName.value
   const method = currentMethodName.value
 
-  const params = schema.params.map((p) => {
-    const { inner, optional } = unwrapOptional(p.type)
-    const raw = paramValues.value[p.name]
-    if (optional && (raw === undefined || raw === '')) return null
-    const kind = widgetKind(inner)
-    if (kind === 'bool') return raw === 'true'
-    // Optional + empty was already handled above and returned null; a
-    // non-optional number must always resolve to a real number, never nil.
-    if (kind === 'number') return Number(raw || 0)
-    return raw ?? ''
-  })
+  const params = schema.params.map((p) => paramValueFromString(paramValues.value[p.name], p.type))
 
   const paramsDisplay = schema.params.map((p, i) => `${p.name}=${formatParamForDisplay(params[i])}`).join(', ')
 
@@ -322,44 +267,12 @@ async function execute() {
       </div>
 
       <template v-if="step === 'params' && currentCommandSchema">
-        <div v-if="currentCommandSchema.params.length" class="mb-2" data-testid="shell-params">
-          <div v-for="param in currentCommandSchema.params" :key="param.name" class="mb-2">
-            <div class="d-flex align-items-baseline gap-2 mb-1">
-              <label class="form-label mb-0 text-muted" style="font-size:0.8rem">
-                {{ param.name }}
-                <span v-if="unwrapOptional(param.type).optional" class="text-secondary" style="font-size:0.7rem">(optional)</span>
-              </label>
-              <span class="text-secondary" style="font-size:0.7rem">
-                {{ formatWireType(param.type) }}
-                <span v-if="param.unit">({{ param.unit }})</span>
-              </span>
-            </div>
-            <select
-              v-if="widgetKind(unwrapOptional(param.type).inner) === 'bool'"
-              v-model="paramValues[param.name]"
-              class="form-select form-select-sm bg-dark border-secondary text-light"
-            >
-              <option value="true">true</option>
-              <option value="false">false</option>
-            </select>
-            <select
-              v-else-if="widgetKind(unwrapOptional(param.type).inner) === 'enum'"
-              v-model="paramValues[param.name]"
-              class="form-select form-select-sm bg-dark border-secondary text-light"
-            >
-              <option value="">—</option>
-              <option v-for="opt in enumOptions(param.type)" :key="opt" :value="opt">{{ opt }}</option>
-            </select>
-            <input
-              v-else-if="widgetKind(unwrapOptional(param.type).inner) !== 'unsupported'"
-              v-model="paramValues[param.name]"
-              :type="widgetKind(unwrapOptional(param.type).inner) === 'number' ? 'number' : 'text'"
-              class="form-control form-control-sm bg-dark border-secondary text-light"
-            />
-            <span v-else class="text-danger" style="font-size:0.75rem">unsupported param type</span>
-          </div>
-        </div>
-        <p v-else class="text-muted mb-2" style="font-size:0.85rem">No parameters.</p>
+        <ParamForm
+          v-model="paramValues"
+          :fields="currentCommandSchema.params"
+          :enums="currentEnums"
+          testid="shell-params"
+        />
 
         <button
           class="btn btn-primary btn-sm"

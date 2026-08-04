@@ -1,0 +1,99 @@
+# XMPP-adapted from https://github.com/pyobs/pyobs-gui/blob/master/test/full.yaml — see
+# specs/steering/testing-against-live-backend.md for the transformation.
+# Requires ejabberd accounts "camera", "telescope", "roof", "mode", "video",
+# "autofocus", "acquisition", "guiding" on domain "localhost". Run with:
+#   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/full.yaml
+class: pyobs.modules.MultiModule
+
+location:
+  longitude: 9.944722
+  latitude: 51.560583
+  elevation: 201
+
+vfs: &vfs
+  class: pyobs.vfs.VirtualFileSystem
+  roots:
+    cache:
+      class: pyobs.vfs.LocalFile
+      root: /tmp/pyobs-test/
+    webcam:
+      class: pyobs.vfs.HttpFile
+      download: http://localhost:37077/
+
+# Anchor only — deliberately not the top-level "comm:" key, which MultiModule
+# itself would otherwise pick up and try to open as its own (credential-less)
+# comm object.
+_comm_base: &comm
+  class: pyobs.comm.xmpp.XmppComm
+  domain: localhost
+  use_tls: True
+  ignore_cert_errors: True
+
+modules:
+  camera:
+    class: pyobs.modules.camera.DummyCamera
+    name: camera
+    telescope: telescope
+    vfs: *vfs
+    comm:
+      <<: *comm
+      user: camera
+      password: pyobs
+
+  telescope:
+    class: pyobs.modules.telescope.DummyAltAzTelescope
+    name: telescope
+    comm:
+      <<: *comm
+      user: telescope
+      password: pyobs
+
+  roof:
+    class: pyobs.modules.roof.DummyRoof
+    name: roof
+    comm:
+      <<: *comm
+      user: roof
+      password: pyobs
+
+  mode:
+    class: pyobs.modules.utils.dummymode.DummyMode
+    name: mode
+    comm:
+      <<: *comm
+      user: mode
+      password: pyobs
+
+  video:
+    class: pyobs.modules.camera.dummyvideo.DummyVideo
+    name: video
+    port: 37077
+    vfs: *vfs
+    comm:
+      <<: *comm
+      user: video
+      password: pyobs
+
+  autofocus:
+    class: pyobs.modules.focus.DummyAutoFocus
+    name: autofocus
+    comm:
+      <<: *comm
+      user: autofocus
+      password: pyobs
+
+  acquisition:
+    class: pyobs.modules.pointing.DummyAcquisition
+    name: acquisition
+    comm:
+      <<: *comm
+      user: acquisition
+      password: pyobs
+
+  guiding:
+    class: pyobs.modules.pointing.DummyAutoGuiding
+    name: guiding
+    comm:
+      <<: *comm
+      user: guiding
+      password: pyobs

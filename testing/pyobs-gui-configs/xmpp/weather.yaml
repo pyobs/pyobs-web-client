@@ -1,0 +1,23 @@
+# Not ported from pyobs-gui/test/ — pyobs-gui has no dedicated weather test
+# config of its own (its widgets don't include a weather one). Added directly
+# for this client's Events "Send event" tool: BadWeatherEvent/GoodWeatherEvent
+# only appear in that tool's picker if some currently-online module actually
+# declares them, and pyobs.modules.weather.MockWeather is the module that
+# does — a real pyobs-core built-in with no required config, no VFS/location
+# dependency. See specs/steering/testing-against-live-backend.md.
+#
+# Requires an ejabberd account "weather" on domain "localhost". Run with:
+#   testing/.venv/bin/pyobs testing/pyobs-gui-configs/xmpp/weather.yaml
+class: pyobs.modules.MultiModule
+
+modules:
+  weather:
+    class: pyobs.modules.weather.MockWeather
+    name: weather
+    comm:
+      class: pyobs.comm.xmpp.XmppComm
+      domain: localhost
+      use_tls: True
+      ignore_cert_errors: True
+      user: weather
+      password: pyobs

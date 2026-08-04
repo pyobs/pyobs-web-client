@@ -1,0 +1,30 @@
+# XMPP-adapted from https://github.com/pyobs/pyobs-gui/blob/master/test/camera.yaml — see
+# specs/steering/testing-against-live-backend.md for the transformation.
+# Requires an ejabberd account "camera" on domain "localhost". Run with:
+#   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/camera.yaml
+class: pyobs.modules.MultiModule
+
+location:
+  longitude: 9.944722
+  latitude: 51.560583
+  elevation: 201
+
+vfs: &vfs
+  class: pyobs.vfs.VirtualFileSystem
+  roots:
+    cache:
+      class: pyobs.vfs.LocalFile
+      root: /tmp/pyobs-test/
+
+modules:
+  camera:
+    class: pyobs.modules.camera.DummyCamera
+    name: camera
+    vfs: *vfs
+    comm:
+      class: pyobs.comm.xmpp.XmppComm
+      domain: localhost
+      use_tls: True
+      ignore_cert_errors: True
+      user: camera
+      password: pyobs

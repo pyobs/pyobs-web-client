@@ -1,0 +1,20 @@
+# XMPP-adapted from https://github.com/pyobs/pyobs-gui/blob/master/test/roof.yaml — see
+# specs/steering/testing-against-live-backend.md for the transformation.
+# Requires an ejabberd account "roof" on domain "localhost". Run with:
+#   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/roof.yaml
+#
+# This is the exact config used to manually verify EventsView.vue (see
+# specs/plans/events-page.md) against a live backend.
+class: pyobs.modules.MultiModule
+
+modules:
+  roof:
+    class: pyobs.modules.roof.DummyRoof
+    name: roof
+    comm:
+      class: pyobs.comm.xmpp.XmppComm
+      domain: localhost
+      use_tls: True
+      ignore_cert_errors: True
+      user: roof
+      password: pyobs

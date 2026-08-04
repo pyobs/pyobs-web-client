@@ -1,0 +1,37 @@
+# XMPP-adapted from https://github.com/pyobs/pyobs-gui/blob/master/test/telescope_acl.yaml — see
+# specs/steering/testing-against-live-backend.md for the transformation.
+#
+# ACL note: the original's "acl.allow" key names the LocalComm identity of the
+# embedded pyobs_gui.GUI submodule ("gui"). This client has no equivalent
+# embedded identity — the ACL check is against whatever JID you log into the
+# web client with. The "admin" key below matches this repo's usual test
+# login (admin@localhost, see the steering doc) — change it if you log in as
+# a different account.
+#
+# Expected result: init/move_radec/set_offsets_radec stay enabled, but
+# park/stop_motion and the horizontal (Alt/Az) move+offset controls should
+# render disabled/greyed out.
+#
+# Requires an ejabberd account "telescope" on domain "localhost". Run with:
+#   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/telescope_acl.yaml
+class: pyobs.modules.MultiModule
+
+location:
+  longitude: 9.944722
+  latitude: 51.560583
+  elevation: 201
+
+modules:
+  telescope:
+    class: pyobs.modules.telescope.DummyAltAzTelescope
+    name: telescope
+    comm:
+      class: pyobs.comm.xmpp.XmppComm
+      domain: localhost
+      use_tls: True
+      ignore_cert_errors: True
+      user: telescope
+      password: pyobs
+    acl:
+      allow:
+        admin: [init, move_radec, set_offsets_radec]

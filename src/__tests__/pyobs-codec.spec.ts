@@ -317,4 +317,24 @@ describe('parseEventSchema', () => {
     expect(schema.enums).toEqual({})
     expect(schema.fields.map((f) => f.name)).toEqual(['time', 'level', 'line'])
   })
+
+  it("parses role='send' (a module that only emits the event)", () => {
+    const event = el("<event xmlns='urn:pyobs:event:NewImageEvent:1' name='NewImageEvent' role='send'/>")
+    expect(parseEventSchema(event).role).toBe('send')
+  })
+
+  it("parses role='subscribe' (a module that only reacts to the event, e.g. camera + BadWeatherEvent)", () => {
+    const event = el("<event xmlns='urn:pyobs:event:BadWeatherEvent:1' name='BadWeatherEvent' role='subscribe'/>")
+    expect(parseEventSchema(event).role).toBe('subscribe')
+  })
+
+  it("parses role='send subscribe' (a module that both emits and self-handles the event)", () => {
+    const event = el("<event xmlns='urn:pyobs:event:GoodWeatherEvent:1' name='GoodWeatherEvent' role='send subscribe'/>")
+    expect(parseEventSchema(event).role).toBe('send subscribe')
+  })
+
+  it("defaults to role='send subscribe' when the attribute is missing (pre-role-advertising server)", () => {
+    const event = el("<event xmlns='urn:pyobs:event:LogEvent:1' name='LogEvent'/>")
+    expect(parseEventSchema(event).role).toBe('send subscribe')
+  })
 })
