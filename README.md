@@ -41,6 +41,15 @@ npm run dev
 npm run build
 ```
 
+### Deployment
+
+This is a static SPA with no backend of its own — build it and serve the
+`dist/` folder with any static file host. An example nginx config is in
+`deploy/nginx.conf`; the two things it needs are a `try_files` fallback to
+`index.html` for `vue-router`'s client-side routes, and (if TLS terminates
+in front of nginx, e.g. a load balancer) that terminator must also handle
+`wss://`, not just `https://` — see the WebSocket/mixed-content notes below.
+
 ### Connecting to an XMPP Server
 
 This app authenticates by opening a WebSocket connection directly to an
