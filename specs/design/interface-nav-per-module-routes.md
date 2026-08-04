@@ -1,6 +1,7 @@
 # Interface nav sections with per-module routes (Camera, Mode, Roof, ...)
 
-Status: proposed.
+Status: implemented (Roof migrated onto the pattern; `ICamera`/`IMode` will
+land on it once those views exist).
 
 ## The problem
 

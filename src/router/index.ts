@@ -29,7 +29,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/roof',
+      path: '/roof/:jid?',
       name: 'roof',
       component: RoofView,
       meta: { requiresAuth: true },
