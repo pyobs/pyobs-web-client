@@ -152,6 +152,79 @@ export function valueToXml(value: unknown, type: WireType): Element {
   throw new Error(`Cannot encode a value for wire type ${JSON.stringify(type)}`)
 }
 
+// ── shared param-form logic (Shell's RPC params, events' send-tool data) ───
+// One codec for "a WireType-typed field driven by a plain string form input"
+// — used for RPC call params (still wrapped via valueToXml for the wire) and
+// event data (built straight as JSON, no XML wrapping), so both stay in sync
+// with exactly one implementation of "what does this wire type look like as
+// a widget, and how does a string back out of it".
+
+export type WidgetKind = 'bool' | 'number' | 'string' | 'enum' | 'unsupported'
+
+export function unwrapOptional(type: WireType): { inner: WireType; optional: boolean } {
+  return typeof type === 'object' && type.kind === 'optional'
+    ? { inner: type.inner, optional: true }
+    : { inner: type, optional: false }
+}
+
+export function widgetKind(type: WireType): WidgetKind {
+  if (type === 'bool') return 'bool'
+  if (type === 'int32' || type === 'float64') return 'number'
+  if (type === 'string' || type === 'datetime') return 'string'
+  if (typeof type === 'object' && type.kind === 'enum') return 'enum'
+  return 'unsupported' // array/struct/any — pyobs-core doesn't publish enough schema to build these
+}
+
+export function enumOptions(type: WireType, enums: Record<string, string[]>): string[] {
+  const { inner } = unwrapOptional(type)
+  return typeof inner === 'object' && inner.kind === 'enum' ? (enums[inner.name] ?? []) : []
+}
+
+export function formatWireType(type: WireType): string {
+  if (typeof type === 'string') return type
+  if (type.kind === 'enum') return `enum(${type.name})`
+  if (type.kind === 'struct') return `struct<${type.name}>`
+  if (type.kind === 'array') return `array<${formatWireType(type.item)}>`
+  return `optional<${formatWireType(type.inner)}>`
+}
+
+export function hasUnsupportedField(fields: FieldSchema[]): boolean {
+  return fields.some((f) => widgetKind(unwrapOptional(f.type).inner) === 'unsupported')
+}
+
+// A <select> whose bound value doesn't match any of its <option>s renders
+// blank instead of showing the placeholder — seed every param with a value
+// that actually matches one of its widget's options (bool has no empty
+// option, so it needs 'true' rather than ''). Non-optional number params
+// also need a real seeded value: an empty number input must never silently
+// become nil for a non-optional int32/float64 param (pyobs-core rejects it,
+// e.g. a "%d format: a real number is required, not NoneType" crash).
+// Optional params of any kind default to '' regardless — that's the one
+// value paramValueFromString maps to null, the correct default for "unset".
+export function defaultParamValue(type: WireType): string {
+  const { inner, optional } = unwrapOptional(type)
+  if (optional) return ''
+  const kind = widgetKind(inner)
+  if (kind === 'bool') return 'true'
+  if (kind === 'number') return '0'
+  return ''
+}
+
+// Converts a raw string form value into a plain JS value matching its
+// WireType — the counterpart to defaultParamValue. Callers that need it on
+// the wire as XML (RPC params) still pass the result through valueToXml;
+// callers that need plain JSON (event data) can use it directly.
+export function paramValueFromString(raw: string | undefined, type: WireType): unknown {
+  const { inner, optional } = unwrapOptional(type)
+  if (optional && (raw === undefined || raw === '')) return null
+  const kind = widgetKind(inner)
+  if (kind === 'bool') return raw === 'true'
+  // Optional + empty was already handled above and returned null; a
+  // non-optional number must always resolve to a real number, never nil.
+  if (kind === 'number') return Number(raw || 0)
+  return raw ?? ''
+}
+
 // ── versioned feature/namespace strings: urn:pyobs:{kind}:{name}:{version} ─
 
 export type VersionedFeature = { name: string; version: number }
@@ -184,9 +257,21 @@ export type InterfaceSchema = {
   commands: Record<string, CommandSchema>
   state: StateSchema | null
 }
+// 'send': the module publishes this event. 'subscribe': the module only
+// reacts to it (registered a handler, never emits it itself) — e.g. a
+// camera module reacting to BadWeatherEvent by aborting an exposure, never
+// publishing BadWeatherEvent itself. 'send subscribe': both (registered
+// itself as both a sender and its own handler). See
+// ../pyobs-core/specs/plans/event-role-advertising.md — before this, a
+// module's disco#info conflated both into one undifferentiated list, so a
+// client had no way to tell "who actually emits this" from "who just
+// reacts to it".
+export type EventRole = 'send' | 'subscribe' | 'send subscribe'
+
 export type EventSchema = {
   name: string
   version: number
+  role: EventRole
   enums: Record<string, string[]>
   fields: FieldSchema[]
 }
@@ -237,14 +322,25 @@ export function parseInterfaceSchema(el: Element): InterfaceSchema {
   return { name, version, enums, commands, state }
 }
 
+function parseEventRole(raw: string | null): EventRole {
+  const value = (raw ?? '').trim()
+  if (value === 'send' || value === 'subscribe' || value === 'send subscribe') return value
+  // No/unrecognized role attribute — an older pyobs-core server predating
+  // this attribute. Fall back to the pre-fix assumption every consumer
+  // already made (send and subscribe conflated into one undifferentiated
+  // list) rather than silently hiding the event or guessing wrong.
+  return 'send subscribe'
+}
+
 export function parseEventSchema(el: Element): EventSchema {
   const ref = parseVersionedFeature('event', el.namespaceURI ?? '')
   const name = ref?.name ?? el.getAttribute('name') ?? ''
   const version = ref?.version ?? 1
+  const role = parseEventRole(el.getAttribute('role'))
 
   let enums: Record<string, string[]> = {}
   const typesEl = Array.from(el.children).find((c) => localTag(c) === 'types')
   if (typesEl) enums = parseEnums(typesEl)
 
-  return { name, version, enums, fields: parseFields(el, 'field') }
+  return { name, version, role, enums, fields: parseFields(el, 'field') }
 }

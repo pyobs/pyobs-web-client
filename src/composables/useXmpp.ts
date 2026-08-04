@@ -44,6 +44,7 @@ const NS_PUBSUB = 'http://jabber.org/protocol/pubsub'
 const NS_PUBSUB_EVENT = 'http://jabber.org/protocol/pubsub#event'
 const NS_RPC = 'jabber:iq:rpc'
 const NS_PYOBS_RPC = 'urn:pyobs:rpc:1'
+const NS_PYOBS_EVENT = 'pyobs:event'
 const NS_ROSTER = 'jabber:iq:roster'
 const PYOBS_RESOURCE = 'pyobs'
 const SESSION_JID_KEY = 'xmpp_jid'
@@ -164,10 +165,16 @@ async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> 
     { jid: bareJid, fullJid, name, interfaces, events: eventSchemas, capabilities },
   ]
 
-  // Subscribe to every event this module publishes (PEP — hosted on the
-  // module's own bare JID, not a separate pubsub service, unlike state below).
+  // Subscribe to every event this module actually publishes (PEP — hosted on
+  // the module's own bare JID, not a separate pubsub service, unlike state
+  // below) — role.includes('send') excludes subscribe-only entries (e.g. a
+  // camera module's BadWeatherEvent, which it only reacts to and never
+  // publishes on its own node); subscribing to those would just be a
+  // guaranteed-empty subscription against a node the module never publishes
+  // to. See ../pyobs-core/specs/plans/event-role-advertising.md.
   const myBareJid = Strophe.getBareJidFromJid(jid.value)
   for (const schema of Object.values(eventSchemas)) {
+    if (!schema.role.includes('send')) continue
     const node = `urn:pyobs:event:${schema.name}:${schema.version}`
     sendIQ(
       $iq({ to: bareJid, type: 'set' })
@@ -328,6 +335,41 @@ async function executeMethod(fullJid: string, methodName: string, params: unknow
   }
 
   return { success: true, value: parseRpcReturn(result) }
+}
+
+// Publishes a fabricated event under this client's own JID (XEP-0163 PEP
+// self-publish — no `to` attribute — matching xmppcomm.py's own send_event(),
+// see specs/design/events-page-send-tool.md). `data` is plain JSON, not
+// XML-wrapped like RPC params: confirmed against a live wire capture (see
+// specs/steering/testing-against-live-backend.md) that event payloads are a
+// bare JSON string, e.g. {"status": "parked", "interfaces": {}}.
+//
+// Appends optimistically to the local `events` ring buffer rather than
+// waiting for a PubSub echo: live-verified against a real ejabberd that this
+// client does not reliably see its own publish pushed back to itself (see
+// specs/design/events-page-send-tool.md's "Outcome" — resolved empirically,
+// not assumed). Same "assume success, reconcile later" shape as the rest of
+// this app.
+async function publishEvent(eventName: string, version: number, data: Record<string, unknown>): Promise<void> {
+  if (!connection) throw new Error('Not connected')
+
+  const timestamp = Date.now() / 1000
+  const uuid = crypto.randomUUID()
+  const payload = JSON.stringify({ type: eventName, timestamp, uuid, data })
+  const payloadEl = createNamespacedElement(NS_PYOBS_EVENT, 'event')
+  payloadEl.textContent = payload
+
+  await sendIQ(
+    $iq({ type: 'set' })
+      .c('pubsub', { xmlns: NS_PUBSUB })
+      .c('publish', { node: `urn:pyobs:event:${eventName}:${version}` })
+      .c('item', { id: 'current' })
+      .cnode(payloadEl)
+      .tree(),
+  )
+
+  const ev: PyobsEvent = { type: eventName, module: Strophe.getNodeFromJid(jid.value) ?? jid.value, timestamp, uuid, data }
+  events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
 }
 
 // ── state subscription (reference-counted, mirrors XmppComm's own model) ───
@@ -517,6 +559,7 @@ export function useXmpp() {
     connect,
     disconnect,
     executeMethod,
+    publishEvent,
     subscribeState,
     clearEvents: () => { events.value = [] },
   }
