@@ -77,6 +77,7 @@ async function run(mod: DeepReadonly<PyobsModule>, action: Action) {
 
     <div v-else class="d-flex flex-column gap-2">
       <div
+        :key="currentModule.jid"
         class="rounded-3 p-3"
         style="background-color:#1a1d21; border:1px solid #2d3035"
       >

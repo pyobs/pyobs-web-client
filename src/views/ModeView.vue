@@ -44,7 +44,7 @@ watchEffect(() => {
     </div>
 
     <div v-else class="d-flex flex-column gap-2">
-      <ModeModuleCard :mod="currentModule" />
+      <ModeModuleCard :key="currentModule.jid" :mod="currentModule" />
     </div>
   </div>
 </template>
