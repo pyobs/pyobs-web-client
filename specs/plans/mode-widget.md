@@ -1,6 +1,7 @@
 # Plan: `IMode` widget
 
-Status: proposed, not yet implemented.
+Status: **done**. Implemented as `ModeView.vue` (see DEVELOPMENT.md's Todo
+entry and PR #10).
 Repos: pyobs-web-client (all implementation here)
 
 Gap identified by comparing this project's pages against `pyobs-gui`'s

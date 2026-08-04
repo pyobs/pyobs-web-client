@@ -1,6 +1,8 @@
 # Plan: `IAutoFocus` widget
 
-Status: proposed, not yet implemented.
+Status: **done**. Implemented as `AutoFocusView.vue`/`FocusCurveChart.vue`,
+type-checks, builds, existing unit tests pass, and live-verified against
+`pyobs-core`'s `DummyAutoFocus` (`pyobs/modules/focus/dummyautofocus.py`).
 Repos: pyobs-web-client (all implementation here)
 
 Gap identified by comparing this project's pages against `pyobs-gui`'s

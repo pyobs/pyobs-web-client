@@ -13,11 +13,29 @@ const { jid, disconnect, modules } = useXmpp()
 // for the common case), or a section header with one sub-link per module
 // when there are several. See
 // specs/design/interface-nav-per-module-routes.md.
-const roofModules = computed(() =>
-  modules.value.filter((m) => 'IRoof' in m.interfaces).sort((a, b) => a.name.localeCompare(b.name)),
-)
-const modeModules = computed(() =>
-  modules.value.filter((m) => 'IMode' in m.interfaces).sort((a, b) => a.name.localeCompare(b.name)),
+//
+// Route name is mechanical (interface name minus leading "I", lowercased —
+// "IAutoGuiding" -> "autoguiding") and matches every route in router/index.ts,
+// so only the interface name and icon need spelling out per entry.
+const NAV_INTERFACES = [
+  { interfaceName: 'IRoof', icon: 'bi-house-door' },
+  { interfaceName: 'IMode', icon: 'bi-sliders' },
+  { interfaceName: 'IWeather', icon: 'bi-cloud-sun' },
+  { interfaceName: 'IAutoFocus', icon: 'bi-bullseye' },
+  { interfaceName: 'IAutoGuiding', icon: 'bi-compass' },
+  { interfaceName: 'IAcquisition', icon: 'bi-crosshair' },
+] as const
+
+const navSections = computed(() =>
+  NAV_INTERFACES.map(({ interfaceName, icon }) => ({
+    interfaceName,
+    icon,
+    routeName: interfaceName.slice(1).toLowerCase(),
+    label: interfaceLabel(interfaceName),
+    modules: modules.value
+      .filter((m) => interfaceName in m.interfaces)
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  })).filter((section) => section.modules.length > 0),
 )
 
 const sidebarOpen = ref(false)
@@ -144,61 +162,37 @@ const appVersion = __APP_VERSION__
           Settings
         </a>
 
-        <template v-if="roofModules.length > 0 || modeModules.length > 0">
+        <template v-if="navSections.length > 0">
           <div class="px-2 pb-1 pt-2">
             <span class="text-uppercase text-muted fw-semibold" style="font-size:0.65rem;letter-spacing:.08em">Modules</span>
           </div>
 
-          <a
-            v-if="roofModules.length === 1"
-            class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
-            :class="{ active: route.name === 'roof' }"
-            @click="navigate(`/roof/${roofModules[0]!.jid}`)"
-          >
-            <i class="bi bi-house-door" style="font-size:0.8rem"></i>
-            {{ interfaceLabel('IRoof') }}
-          </a>
-
-          <template v-else-if="roofModules.length > 1">
-            <div class="px-2 pb-1 pt-1 d-flex align-items-center gap-2">
-              <i class="bi bi-house-door text-muted" style="font-size:0.8rem"></i>
-              <span class="text-muted" style="font-size:0.8rem">{{ interfaceLabel('IRoof') }}</span>
-            </div>
+          <template v-for="section in navSections" :key="section.interfaceName">
             <a
-              v-for="m in roofModules"
-              :key="m.jid"
-              class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 ps-4"
-              :class="{ active: route.name === 'roof' && route.params.jid === m.jid }"
-              @click="navigate(`/roof/${m.jid}`)"
+              v-if="section.modules.length === 1"
+              class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
+              :class="{ active: route.name === section.routeName }"
+              @click="navigate(`/${section.routeName}/${section.modules[0]!.jid}`)"
             >
-              {{ m.name }}
+              <i :class="section.icon" style="font-size:0.8rem"></i>
+              {{ section.label }}
             </a>
-          </template>
 
-          <a
-            v-if="modeModules.length === 1"
-            class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
-            :class="{ active: route.name === 'mode' }"
-            @click="navigate(`/mode/${modeModules[0]!.jid}`)"
-          >
-            <i class="bi bi-sliders" style="font-size:0.8rem"></i>
-            {{ interfaceLabel('IMode') }}
-          </a>
-
-          <template v-else-if="modeModules.length > 1">
-            <div class="px-2 pb-1 pt-1 d-flex align-items-center gap-2">
-              <i class="bi bi-sliders text-muted" style="font-size:0.8rem"></i>
-              <span class="text-muted" style="font-size:0.8rem">{{ interfaceLabel('IMode') }}</span>
-            </div>
-            <a
-              v-for="m in modeModules"
-              :key="m.jid"
-              class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 ps-4"
-              :class="{ active: route.name === 'mode' && route.params.jid === m.jid }"
-              @click="navigate(`/mode/${m.jid}`)"
-            >
-              {{ m.name }}
-            </a>
+            <template v-else>
+              <div class="px-2 pb-1 pt-1 d-flex align-items-center gap-2">
+                <i :class="section.icon" class="text-muted" style="font-size:0.8rem"></i>
+                <span class="text-muted" style="font-size:0.8rem">{{ section.label }}</span>
+              </div>
+              <a
+                v-for="m in section.modules"
+                :key="m.jid"
+                class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 ps-4"
+                :class="{ active: route.name === section.routeName && route.params.jid === m.jid }"
+                @click="navigate(`/${section.routeName}/${m.jid}`)"
+              >
+                {{ m.name }}
+              </a>
+            </template>
           </template>
         </template>
 

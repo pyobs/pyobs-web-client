@@ -238,6 +238,32 @@ section for the full design/reasoning):
   "Implemented: Dashboard — expandable module list instead of a card grid" above.
 - ~~Roof page~~ — **done**, see "Implemented: Roof page — status +
   Open/Close/Stop for `IRoof` modules" above.
+- ~~`IMode` widget~~ — **done**, plan at `specs/plans/mode-widget.md`
+  (`ModeView.vue`, #10).
+- ~~`IWeather` widget~~ — **implemented**, plan at
+  `specs/plans/weather-widget.md` (`WeatherView.vue`, new hand-rolled
+  `TimeSeriesChart.vue` canvas component). Type-checks, builds, and existing
+  unit tests pass; not yet verified live against a real `MockWeather` module
+  — do that before calling this fully done.
+- ~~`IAutoFocus` widget~~ — **done**, plan at `specs/plans/autofocus-widget.md`
+  (`AutoFocusView.vue`, new hand-rolled `FocusCurveChart.vue` canvas
+  scatter-chart component). Type-checks, builds, existing unit tests pass,
+  and live-verified against `pyobs.modules.focus.DummyAutoFocus`
+  (`testing/pyobs-gui-configs/xmpp/autofocus.yaml`).
+- ~~`IAutoGuiding` widget~~ — **done**, plan at
+  `specs/plans/autoguiding-widget.md` (`AutoGuidingView.vue`, new
+  hand-rolled `OffsetMagnitudeChart.vue`/`OffsetScatterChart.vue` canvas
+  chart components). Type-checks, builds, existing unit tests pass, and
+  live-verified against `pyobs.modules.pointing.DummyAutoGuiding`
+  (`testing/pyobs-gui-configs/xmpp/guiding.yaml`).
+- ~~`IAcquisition` widget~~ — **done**, plan at
+  `specs/plans/acquisition-widget.md` (`AcquisitionView.vue`, new
+  hand-rolled `DistanceChart.vue` canvas component, reusing
+  `OffsetScatterChart.vue` from the AutoGuiding widget for the offset
+  trajectory). Charts stack vertically rather than side by side, same
+  choice `AutoGuidingView.vue` made. Type-checks, builds, and existing unit
+  tests pass; live-verified against `pyobs.modules.pointing.DummyAcquisition`
+  (`testing/pyobs-gui-configs/xmpp/acquisition.yaml`).
 - ~~Interface nav sections with per-module routes~~ — **done**, design at
   `specs/design/interface-nav-per-module-routes.md`. Replaced the
   one-link-per-interface sidebar/aggregated-page pattern with per-module

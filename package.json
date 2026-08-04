@@ -1,6 +1,6 @@
 {
   "name": "pyobs-web-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Vue 3 web client for pyobs, the Institute for Astrophysics Göttingen's telescope-control framework",
