@@ -52,6 +52,8 @@ const forceSecure = computed<boolean>({
   },
 })
 
+const appVersion = __APP_VERSION__
+
 function pickRecentLogin(recentJid: string) {
   jid.value = recentJid
   goToPassword()
@@ -83,6 +85,7 @@ async function handleLogin() {
         <i class="bi bi-telescope text-primary" style="font-size: 2.5rem"></i>
         <h5 class="text-light mt-2 mb-0 fw-semibold">pyobs Web Client</h5>
         <p class="text-muted mb-0" style="font-size:0.8rem">Sign in to continue</p>
+        <p class="text-muted mb-0" style="font-size:0.7rem">v{{ appVersion }}</p>
       </div>
 
       <!-- Card -->
