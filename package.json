@@ -3,6 +3,9 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "description": "Vue 3 web client for pyobs, the Institute for Astrophysics Göttingen's telescope-control framework",
   "license": "MIT",
   "author": "Tim-Oliver Husser <thusser@uni-goettingen.de>",
@@ -27,6 +30,7 @@
   "dependencies": {
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
+    "pyobs-fits": "^0.1.0",
     "strophe.js": "^4.0.0",
     "vue": "^3.5.38",
     "vue-router": "^5.2.0"

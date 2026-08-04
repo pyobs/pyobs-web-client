@@ -1,6 +1,9 @@
 # XMPP-adapted from https://github.com/pyobs/pyobs-gui/blob/master/test/camera.yaml — see
 # specs/steering/testing-against-live-backend.md for the transformation.
-# Requires an ejabberd account "camera" on domain "localhost". Run with:
+# Requires an ejabberd account "camera" on domain "localhost". Also requires
+# xmpp/httpfilecache.yaml running (the "cache" VFS root below points at it,
+# not a LocalFile path — a browser client, unlike pyobs-gui, can't reach
+# LocalFile at all, only HttpFile). Run both, then:
 #   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/camera.yaml
 class: pyobs.modules.MultiModule
 
@@ -13,8 +16,9 @@ vfs: &vfs
   class: pyobs.vfs.VirtualFileSystem
   roots:
     cache:
-      class: pyobs.vfs.LocalFile
-      root: /tmp/pyobs-test/
+      class: pyobs.vfs.HttpFile
+      download: http://localhost:37075/
+      upload: http://localhost:37075/
 
 modules:
   camera:
