@@ -16,7 +16,8 @@ const props = defineProps<{
 const canvasRef = ref<HTMLCanvasElement>()
 
 const SIZE = 300 // square plot — required for true equal-aspect scaling
-const PADDING = { top: 10, right: 10, bottom: 20, left: 36 }
+// Room on the bottom/left for a tick-value row plus the axis-label row below/left of it.
+const PADDING = { top: 10, right: 14, bottom: 34, left: 50 }
 
 function draw() {
   const canvas = canvasRef.value
@@ -97,14 +98,36 @@ function draw() {
     ctx.fill()
   }
 
-  // axis labels
+  // axis tick values — edges (±halfRange) and origin, drawn outside the box
+  // (below it for x, left of it for y) so they don't collide with plotted
+  // points or the crosshair itself.
+  const fmt = (v: number) => v.toFixed(v < 10 ? 2 : 1)
   ctx.fillStyle = '#8a8f98'
+  ctx.font = '9px sans-serif'
+
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText(`-${fmt(halfRange)}`, plotLeft, plotBottom + 3)
+  ctx.textAlign = 'center'
+  ctx.fillText('0', cx, plotBottom + 3)
+  ctx.textAlign = 'right'
+  ctx.fillText(fmt(halfRange), plotRight, plotBottom + 3)
+
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'top'
+  ctx.fillText(fmt(halfRange), plotLeft - 4, plotTop)
+  ctx.textBaseline = 'middle'
+  ctx.fillText('0', plotLeft - 4, cy)
+  ctx.textBaseline = 'bottom'
+  ctx.fillText(`-${fmt(halfRange)}`, plotLeft - 4, plotBottom)
+
+  // axis labels
   ctx.font = '10px sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
-  ctx.fillText(props.xLabel, cx, plotBottom + 4)
+  ctx.fillText(props.xLabel, cx, plotBottom + 15)
   ctx.save()
-  ctx.translate(plotLeft - 8, cy)
+  ctx.translate(10, cy)
   ctx.rotate(-Math.PI / 2)
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
