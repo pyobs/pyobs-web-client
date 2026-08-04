@@ -238,6 +238,14 @@ section for the full design/reasoning):
   "Implemented: Dashboard — expandable module list instead of a card grid" above.
 - ~~Roof page~~ — **done**, see "Implemented: Roof page — status +
   Open/Close/Stop for `IRoof` modules" above.
+- **Interface nav sections with per-module routes** — design moved to
+  `specs/design/interface-nav-per-module-routes.md`. Replaces today's
+  one-link-per-interface sidebar/aggregated-page pattern (`RoofView.vue`,
+  fine for `IRoof` since multi-roof is rare) with per-module routes
+  (`/cameras/:jid?`) and grouped sidebar sub-links, needed before
+  `ICamera`/`IMode` pages land since multiple online instances will be the
+  normal case for those. Roof migrates onto the same pattern too. Not yet
+  implemented — blocks the Camera page item below on the nav side.
 - **Camera page** — plan moved to `specs/plans/camera-page.md` (single-shot
   `grab_data()` + fitsjs decode/render; `IDataSequence` and `NewImageEvent`
   deliberately deferred, see that plan and the two below).
