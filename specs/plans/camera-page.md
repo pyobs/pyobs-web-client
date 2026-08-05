@@ -5,6 +5,7 @@ Status: split into three phases (below), all done and live-verified
 A fourth phase (temperature/cooling status, `ICooling`) was scoped
 originally but scrapped from this plan — deliberately taken up later as
 its own thing, not because it's unwanted.
+
 Repos: pyobs-web-client (all implementation here)
 
 Supersedes DEVELOPMENT.md's "Proposed: Camera page" section (kept there as

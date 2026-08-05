@@ -4,6 +4,7 @@ Status: blocked on upstream — not actionable in this repo alone until
 `../pyobs-core` publishes struct field schemas on the wire. Captured as a plan
 so the dependency and its trigger condition are tracked, not because there's
 client-side design work to do yet.
+
 Repos: pyobs-web-client (consumer); `../pyobs-core` (wire-format change this
 actually depends on, not yet proposed or implemented there)
 

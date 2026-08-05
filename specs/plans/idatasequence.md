@@ -4,6 +4,7 @@ Status: proposed, not yet designed in detail. Depends on
 `specs/plans/camera-page.md` shipping first (single-shot `grab_data()` +
 FITS decode/render pipeline) — this plan only adds the counted-sequence
 mechanic on top of that already-working display path, not a second one.
+
 Repos: pyobs-web-client (all implementation here)
 
 Supersedes the "`IDataSequence`" Todo item in `DEVELOPMENT.md`, and the

@@ -2,6 +2,7 @@
 
 Status: done. Implemented (`WeatherView.vue`, `TimeSeriesChart.vue`) and
 verified live against `pyobs.modules.weather.MockWeather`.
+
 Repos: pyobs-web-client (all implementation here)
 
 Gap identified by comparing this project's pages against `pyobs-gui`'s

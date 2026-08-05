@@ -4,6 +4,7 @@ Status: implemented (`AutoGuidingView.vue`, `OffsetMagnitudeChart.vue`,
 `OffsetScatterChart.vue`). Type-checks, builds, and existing unit tests
 pass; live-verified against `pyobs.modules.pointing.DummyAutoGuiding`
 (`testing/pyobs-gui-configs/xmpp/guiding.yaml`).
+
 Repos: pyobs-web-client (all implementation here)
 
 Gap identified by comparing this project's pages against `pyobs-gui`'s

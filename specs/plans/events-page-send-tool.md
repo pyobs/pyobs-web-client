@@ -2,6 +2,7 @@
 
 Status: done. Implemented in `EventsView.vue` (event-type picker sourced
 from `mod.events`, param form, `publishEvent`, sender toggle).
+
 Repos: pyobs-web-client (all implementation here)
 
 Split out from `specs/design/events-page.md` once that page shipped — see

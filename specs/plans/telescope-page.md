@@ -1,6 +1,7 @@
 # Plan: Telescope page — for `ITelescope` modules
 
 Status: proposed, not yet implemented — two open questions below unresolved.
+
 Repos: pyobs-web-client (all implementation here)
 
 Supersedes DEVELOPMENT.md's "Proposed: Telescope page" section (kept there as
