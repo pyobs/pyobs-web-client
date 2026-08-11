@@ -36,7 +36,7 @@ function persist(bareJid: string, endpoints: VfsEndpoint[]): void {
 
 export function useVfsConfig() {
   const { jid } = useXmpp()
-  const bareJid = computed(() => (jid.value ? Strophe.getBareJidFromJid(jid.value) : ''))
+  const bareJid = computed(() => (jid.value ? (Strophe.getBareJidFromJid(jid.value) ?? '') : ''))
 
   const vfsEndpoints = computed<VfsEndpoint[]>(() => store.value[bareJid.value] ?? [])
 

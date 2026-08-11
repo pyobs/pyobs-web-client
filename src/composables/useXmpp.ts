@@ -266,7 +266,7 @@ async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> 
   // publishes on its own node); subscribing to those would just be a
   // guaranteed-empty subscription against a node the module never publishes
   // to. See ../pyobs-core/specs/plans/event-role-advertising.md.
-  const myBareJid = Strophe.getBareJidFromJid(jid.value)
+  const myBareJid = Strophe.getBareJidFromJid(jid.value) ?? jid.value
   for (const schema of Object.values(eventSchemas)) {
     if (!schema.role.includes('send')) continue
     const node = `urn:pyobs:event:${schema.name}:${schema.version}`
@@ -337,6 +337,7 @@ function handlePresence(presence: Element): boolean {
 
   const type = presence.getAttribute('type') ?? 'available'
   const bareJid = Strophe.getBareJidFromJid(from)
+  if (!bareJid) return true
 
   if (type === 'unavailable') {
     modules.value = modules.value.filter((m) => m.jid !== bareJid)
@@ -504,7 +505,7 @@ function stateNode(moduleUsername: string, interfaceName: string, version: numbe
 
 async function subscribeWithRetry(bareJid: string, node: string): Promise<void> {
   const pubsubService = pubsubServiceFor(bareJid)
-  const myBareJid = Strophe.getBareJidFromJid(jid.value)
+  const myBareJid = Strophe.getBareJidFromJid(jid.value) ?? jid.value
 
   for (let attempt = 0; attempt < STATE_SUBSCRIBE_RETRIES; attempt++) {
     try {
@@ -564,7 +565,7 @@ function subscribeState(bareJid: string, interfaceName: string, version: number)
       stateRefCounts.delete(node)
       stateSubscribing.delete(node)
       const pubsubService = pubsubServiceFor(bareJid)
-      const myBareJid = Strophe.getBareJidFromJid(jid.value)
+      const myBareJid = Strophe.getBareJidFromJid(jid.value) ?? jid.value
       sendIQ(
         $iq({ to: pubsubService, type: 'set' })
           .c('pubsub', { xmlns: NS_PUBSUB })
@@ -589,6 +590,12 @@ function connect(userJid: string, password: string, silent = false): Promise<voi
     jid.value = userJid
 
     const domain = Strophe.getDomainFromJid(userJid)
+    if (!domain) {
+      status.value = 'error'
+      errorMessage.value = 'Invalid JID. Check server address.'
+      reject(new Error(`Invalid JID, no domain found: ${userJid}`))
+      return
+    }
     const wsUrl = buildWsUrl(domain)
 
     connection = new Strophe.Connection(wsUrl)

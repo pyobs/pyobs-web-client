@@ -30,7 +30,7 @@ function goBackToJid() {
   step.value = 'jid'
 }
 
-const domain = computed(() => (jid.value ? Strophe.getDomainFromJid(jid.value) : ''))
+const domain = computed(() => (jid.value ? (Strophe.getDomainFromJid(jid.value) ?? '') : ''))
 
 // The checkbox defaults to checked, so a newly-seen domain needs an explicit
 // `true` override persisted the moment it's known — otherwise connecting before
