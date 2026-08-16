@@ -1,6 +1,6 @@
 # Plan: VFS endpoint auth — Basic Auth → Bearer token
 
-Status: proposed, blocked on a `pyobs-core` release. No design questions —
+Status: proposed (unblocked — the `pyobs-core` release has shipped). No design questions;
 mechanical follow-through of an upstream API change.
 Repos: pyobs-web-client (all implementation here)
 
@@ -31,11 +31,11 @@ there's no way to enter a token today.
 
 Orthogonal to that plan's actual scope ("grab an image and see it") — VFS
 endpoint config is shared infrastructure any `IData`/`IVideo`-shaped path
-resolution depends on, not Camera-specific. Also blocked on an actual
-`pyobs-core` release (the fix currently only exists in an unpublished commit
+resolution depends on, not Camera-specific. Was blocked on an actual
+`pyobs-core` release (at the time the fix only existed in an unpublished commit
 — see camera-page.md's phase 2 notes on the editable-install workaround used
-to verify against it); no reason to rush a client-side change against an API
-that isn't shipped yet.
+to verify against it); that release has since shipped, so this is no longer
+blocked, just not yet implemented on the client.
 
 ## Scope
 
@@ -62,8 +62,7 @@ that isn't shipped yet.
 
 ## Blocked on
 
-A published `pyobs-core` release containing commit `9bb4314b` (or later).
-`specs/steering/testing-against-live-backend.md`'s pinned
-`pyobs-core[full]==2.0.0.dev53` needs bumping to that release too, for
-`testing/.venv` to pick it up normally instead of the editable-install
-workaround.
+Resolved: the `pyobs-core` release containing commit `9bb4314b` has shipped (now at `2.0.0.dev76`).
+Remaining action: `specs/steering/testing-against-live-backend.md`'s pinned
+`pyobs-core[full]==2.0.0.dev53` needs bumping to that release, for `testing/.venv` to pick it up
+normally instead of the editable-install workaround.

@@ -22,4 +22,4 @@ Implementation plans, checklist-style.
   params. **blocked on upstream**
 - [telescope-page.md](telescope-page.md) — telescope page for `ITelescope` modules. **proposed**
 - [vfs-token-auth.md](vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token).
-  **proposed, blocked on a pyobs-core release**
+  **proposed**
