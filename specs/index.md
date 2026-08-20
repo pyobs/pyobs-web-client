@@ -40,6 +40,8 @@ link to them instead:
 - `pyobs-core/specs/steering/pyobs-project-tiers.md`,
   `connected-projects-version-policy.md`, `fleet-tooling-consistency.md` —
   fleet-wide conventions this repo falls under.
+- `pyobs-core/specs/steering/fleet-open-items.md` — standing snapshot of open
+  issues and plans across the fleet; this repo's open plans are listed there.
 
 If a doc concerns both repos going forward, default to putting it in
 `pyobs-core/specs/` with a `Repos:` line (matching existing convention) unless
