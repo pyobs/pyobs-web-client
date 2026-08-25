@@ -16,3 +16,9 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   config (one install, many servers). *implemented, closed*
 - [roof-page.md](roof-page.md) — roof page status + Open/Close/Stop for `IRoof` modules.
   *implemented, closed*
+- [pyobs-2-0-wire-protocol-client.md](pyobs-2-0-wire-protocol-client.md) — this client's own
+  implementation of the pyobs-core 2.0 wire protocol (codec, `useXmpp.ts`, generic
+  capability/state rendering). *implemented, closed*
+- [acl-reactive-error-handling.md](acl-reactive-error-handling.md) — ACL denial reaches the client
+  as a plain XMPP-level IQ error, not through `findRpcFault`; no client change needed today.
+  *implemented, closed*

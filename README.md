@@ -1,5 +1,11 @@
 # pyobs-web-client
 
+A [pyobs](https://www.pyobs.org) GUI client for telescope fleets, written in TypeScript/Vue 3.
+
+## Documentation
+
+Full docs, including a per-view catalog: https://docs.pyobs.org/projects/pyobs-web-client/
+
 This template should help get you started developing with Vue 3 in Vite.
 
 ## Recommended IDE Setup

@@ -46,3 +46,6 @@ __screenshots__/
 
 # Python venv for testing/pyobs-gui-configs (see specs/steering/testing-against-live-backend.md)
 testing/.venv
+
+# Sphinx docs build output (docs/source/ is committed, this is generated)
+docs/build/
