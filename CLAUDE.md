@@ -21,14 +21,13 @@ current implementation status.
   Decision Outcome, Consequences).
 - **`specs/steering/`** — standing, topic-scoped contributor guidance.
 
-See `specs/README.md` for the full convention, including how this relates to
+See `specs/index.md` for the full convention, including how this relates to
 `pyobs-core`'s own `specs/` tree (some docs — the wire protocol, fleet-wide
 steering — genuinely live there instead, tagged `Repos:`).
 
 `DEVELOPMENT.md` (repo root) is the condensed, current-state overview: what the
-client does today, what's tested, what's still open (Todo section). It predates
-`specs/` and keeps its existing Implemented/Proposed write-ups inline rather
-than migrated; new ones go in `specs/` instead.
+client does today, what's tested, what's still open (Todo section). All design docs,
+implementation plans, and ADRs belong in `specs/`, not inline in `DEVELOPMENT.md`.
 
 ## Standing constraint
 

@@ -117,6 +117,72 @@ function sendIQ(stanza: Element): Promise<Element> {
   })
 }
 
+// RPC calls need their own send path, not the generic sendIQ() above: for a
+// call the server expects to run long (xmppcomm.py's `method.timeout`
+// decorator, e.g. ICamera.grab_data()), pyobs-core first sends an immediate
+// <query xmlns="jabber:iq:rpc"><methodTimeout>...</methodTimeout></query>
+// IQ result — just an ack buying more time, reusing the *same* IQ id — then
+// later sends a second, separate, unsolicited <iq> (same id) carrying the
+// real <methodResponse>/<fault>. Strophe's sendIQ resolves on the first
+// id-matching response and stops listening, so it silently returns that
+// ack's empty payload as the "result" for any call slow enough to trigger
+// this — confirmed live via ICamera.grab_data() on this branch. A
+// persistent Strophe.addHandler, filtering out methodTimeout acks and only
+// resolving on the real response/fault, is required instead.
+function sendRpcIQ(stanza: Element, timeoutMs = 30000): Promise<Element> {
+  return new Promise((resolve, reject) => {
+    if (!connection) {
+      reject(new Error('Not connected'))
+      return
+    }
+    const conn = connection
+
+    let id = stanza.getAttribute('id')
+    if (!id) {
+      id = conn.getUniqueId('rpc')
+      stanza.setAttribute('id', id)
+    }
+
+    let handlerRef: ReturnType<InstanceType<typeof Strophe.Connection>['addHandler']>
+    let timer: ReturnType<typeof setTimeout>
+
+    function finish(fn: () => void) {
+      clearTimeout(timer)
+      conn.deleteHandler(handlerRef)
+      fn()
+    }
+
+    function armTimeout() {
+      clearTimeout(timer)
+      timer = setTimeout(() => finish(() => reject(new Error('RPC timed out'))), timeoutMs)
+    }
+
+    handlerRef = conn.addHandler(
+      (iq: Element) => {
+        if (iq.getAttribute('type') === 'error') {
+          finish(() => reject(iq))
+          return false
+        }
+        const query = Array.from(iq.children).find((c) => localTag(c) === 'query' && c.getAttribute('xmlns') === NS_RPC)
+        const isTimeoutAck = query ? Array.from(query.children).some((c) => localTag(c) === 'methodTimeout') : false
+        if (isTimeoutAck) {
+          armTimeout() // still working — keep listening for the real response
+          return true
+        }
+        finish(() => resolve(iq))
+        return false
+      },
+      '',
+      'iq',
+      '',
+      id,
+    )
+
+    armTimeout()
+    conn.send(stanza)
+  })
+}
+
 function pubsubServiceFor(bareJid: string): string {
   return `pubsub.${Strophe.getDomainFromJid(bareJid)}`
 }
@@ -200,7 +266,7 @@ async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> 
   // publishes on its own node); subscribing to those would just be a
   // guaranteed-empty subscription against a node the module never publishes
   // to. See ../pyobs-core/specs/plans/event-role-advertising.md.
-  const myBareJid = Strophe.getBareJidFromJid(jid.value)
+  const myBareJid = Strophe.getBareJidFromJid(jid.value) ?? jid.value
   for (const schema of Object.values(eventSchemas)) {
     if (!schema.role.includes('send')) continue
     const node = `urn:pyobs:event:${schema.name}:${schema.version}`
@@ -271,6 +337,7 @@ function handlePresence(presence: Element): boolean {
 
   const type = presence.getAttribute('type') ?? 'available'
   const bareJid = Strophe.getBareJidFromJid(from)
+  if (!bareJid) return true
 
   if (type === 'unavailable') {
     modules.value = modules.value.filter((m) => m.jid !== bareJid)
@@ -378,7 +445,7 @@ async function executeMethod(fullJid: string, methodName: string, params: unknow
 
   let result: Element
   try {
-    result = await sendIQ(builder.tree())
+    result = await sendRpcIQ(builder.tree())
   } catch (err: unknown) {
     // XMPP-level error (item-not-found, forbidden, …)
     const msg = err instanceof Element
@@ -438,7 +505,7 @@ function stateNode(moduleUsername: string, interfaceName: string, version: numbe
 
 async function subscribeWithRetry(bareJid: string, node: string): Promise<void> {
   const pubsubService = pubsubServiceFor(bareJid)
-  const myBareJid = Strophe.getBareJidFromJid(jid.value)
+  const myBareJid = Strophe.getBareJidFromJid(jid.value) ?? jid.value
 
   for (let attempt = 0; attempt < STATE_SUBSCRIBE_RETRIES; attempt++) {
     try {
@@ -498,7 +565,7 @@ function subscribeState(bareJid: string, interfaceName: string, version: number)
       stateRefCounts.delete(node)
       stateSubscribing.delete(node)
       const pubsubService = pubsubServiceFor(bareJid)
-      const myBareJid = Strophe.getBareJidFromJid(jid.value)
+      const myBareJid = Strophe.getBareJidFromJid(jid.value) ?? jid.value
       sendIQ(
         $iq({ to: pubsubService, type: 'set' })
           .c('pubsub', { xmlns: NS_PUBSUB })
@@ -523,6 +590,12 @@ function connect(userJid: string, password: string, silent = false): Promise<voi
     jid.value = userJid
 
     const domain = Strophe.getDomainFromJid(userJid)
+    if (!domain) {
+      status.value = 'error'
+      errorMessage.value = 'Invalid JID. Check server address.'
+      reject(new Error(`Invalid JID, no domain found: ${userJid}`))
+      return
+    }
     const wsUrl = buildWsUrl(domain)
 
     connection = new Strophe.Connection(wsUrl)

@@ -2,6 +2,7 @@
 
 Status: proposed, small — no design questions, just not implemented yet
 because nothing currently consumes it.
+
 Repos: pyobs-web-client (all implementation here)
 
 Supersedes the exception-registry/`call_id` note added to

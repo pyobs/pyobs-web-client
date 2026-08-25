@@ -19,6 +19,7 @@ const { jid, disconnect, modules } = useXmpp()
 // so only the interface name and icon need spelling out per entry.
 const NAV_INTERFACES = [
   { interfaceName: 'IRoof', icon: 'bi-house-door' },
+  { interfaceName: 'ICamera', icon: 'bi-camera' },
   { interfaceName: 'IMode', icon: 'bi-sliders' },
   { interfaceName: 'IWeather', icon: 'bi-cloud-sun' },
   { interfaceName: 'IAutoFocus', icon: 'bi-bullseye' },

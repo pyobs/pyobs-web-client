@@ -1,0 +1,8 @@
+# Standalone HTTP file cache, backing the "cache" VFS root used by
+# xmpp/camera.yaml's DummyCamera (which otherwise writes to a LocalFile path
+# unreachable from a browser). No XMPP account needed — it isn't RPC-callable,
+# just a plain HTTP server (pyobs.modules.utils.HttpFileCache) the browser
+# client's own VFS endpoint config (Settings) points at directly. Run with:
+#   testing/.venv/bin/pyobs testing/pyobs-gui-configs/xmpp/httpfilecache.yaml
+class: pyobs.modules.utils.HttpFileCache
+port: 37075

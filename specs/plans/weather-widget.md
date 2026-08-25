@@ -1,7 +1,8 @@
 # Plan: `IWeather` widget
 
-Status: implemented (`WeatherView.vue`, `TimeSeriesChart.vue`), not yet
-verified live against a real `MockWeather` module.
+Status: done. Implemented (`WeatherView.vue`, `TimeSeriesChart.vue`) and
+verified live against `pyobs.modules.weather.MockWeather`.
+
 Repos: pyobs-web-client (all implementation here)
 
 Gap identified by comparing this project's pages against `pyobs-gui`'s

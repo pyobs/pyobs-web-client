@@ -36,7 +36,7 @@ function persist(bareJid: string, endpoints: VfsEndpoint[]): void {
 
 export function useVfsConfig() {
   const { jid } = useXmpp()
-  const bareJid = computed(() => (jid.value ? Strophe.getBareJidFromJid(jid.value) : ''))
+  const bareJid = computed(() => (jid.value ? (Strophe.getBareJidFromJid(jid.value) ?? '') : ''))
 
   const vfsEndpoints = computed<VfsEndpoint[]>(() => store.value[bareJid.value] ?? [])
 
@@ -58,9 +58,11 @@ export function useVfsConfig() {
   }
 
   // Splits the root off a VFS-style path (mirrors pyobs-core's
-  // VirtualFileSystem.split_root), resolves it against a configured endpoint, and
-  // returns a real fetchable URL — or null if no endpoint covers that root.
-  function resolveVfsPath(path: string): string | null {
+  // VirtualFileSystem.split_root) and resolves it against a configured
+  // endpoint — the matched endpoint (for its optional Basic Auth
+  // credentials) plus the real fetchable URL, or null if no endpoint covers
+  // that root.
+  function resolveVfsEndpoint(path: string): { endpoint: VfsEndpoint; url: string } | null {
     const clean = path.startsWith('/') ? path.slice(1) : path
     const slash = clean.indexOf('/')
     if (slash === -1) return null
@@ -69,8 +71,12 @@ export function useVfsConfig() {
     const endpoint = vfsEndpoints.value.find((e) => e.root === root)
     if (!endpoint) return null
     const base = endpoint.baseUrl.endsWith('/') ? endpoint.baseUrl : `${endpoint.baseUrl}/`
-    return base + rest
+    return { endpoint, url: base + rest }
   }
 
-  return { vfsEndpoints, addEndpoint, updateEndpoint, removeEndpoint, resolveVfsPath }
+  function resolveVfsPath(path: string): string | null {
+    return resolveVfsEndpoint(path)?.url ?? null
+  }
+
+  return { vfsEndpoints, addEndpoint, updateEndpoint, removeEndpoint, resolveVfsPath, resolveVfsEndpoint }
 }

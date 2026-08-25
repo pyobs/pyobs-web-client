@@ -1,6 +1,9 @@
 # Remember previous logins + per-connection config (VFS endpoints)
 
-Status: implemented, closed.
+Status: implemented, closed. **Partially stale**: the VFS endpoint
+auth model below (`username`/`password`, HTTP Basic Auth) no longer matches
+`pyobs-core`'s `HttpFile`/`HttpFileCache` as of commit `9bb4314b`, which
+replaced it with a Bearer `token` — see `specs/plans/vfs-token-auth.md`.
 
 Two related but distinct asks: (1) let the user pick a previously-used JID at
 login instead of retyping it, and (2) a place to store settings specific to a

@@ -30,7 +30,7 @@ function goBackToJid() {
   step.value = 'jid'
 }
 
-const domain = computed(() => (jid.value ? Strophe.getDomainFromJid(jid.value) : ''))
+const domain = computed(() => (jid.value ? (Strophe.getDomainFromJid(jid.value) ?? '') : ''))
 
 // The checkbox defaults to checked, so a newly-seen domain needs an explicit
 // `true` override persisted the moment it's known — otherwise connecting before
@@ -51,6 +51,8 @@ const forceSecure = computed<boolean>({
     setForceSecure(domain.value, value)
   },
 })
+
+const appVersion = __APP_VERSION__
 
 function pickRecentLogin(recentJid: string) {
   jid.value = recentJid
@@ -83,6 +85,7 @@ async function handleLogin() {
         <i class="bi bi-telescope text-primary" style="font-size: 2.5rem"></i>
         <h5 class="text-light mt-2 mb-0 fw-semibold">pyobs Web Client</h5>
         <p class="text-muted mb-0" style="font-size:0.8rem">Sign in to continue</p>
+        <p class="text-muted mb-0" style="font-size:0.7rem">v{{ appVersion }}</p>
       </div>
 
       <!-- Card -->
