@@ -36,9 +36,8 @@ env var in ``.env.local``::
     VITE_XMPP_WS_URL=wss://localhost:5280/ws
 
 At runtime, a user logs in with a JID + password against whichever server that resolves to; the
-app remembers previous logins and per-connection VFS endpoint config locally (see
-``specs/design/login-memory-and-vfs-config.md``, ``specs/design/per-domain-websocket-config.md``)
-— nothing further to configure ahead of time.
+app remembers previous logins and per-connection VFS endpoint config locally — nothing further to
+configure ahead of time.
 
 
 Views
@@ -89,10 +88,8 @@ Drives ``IAcquisition`` — includes a hand-rolled ``DistanceChart``, reusing
 CameraView
 ==========
 Drives ``ICamera`` — Expose button, live ``IExposure`` state, and client-side FITS decode/render
-(``packages/pyobs-fits``, a hand-rolled decoder — see
-``specs/adrs/0001-hand-rolled-fits-decoder-not-npm-library.md``) of the grabbed image, plus a
-collapsible settings panel for ``IWindow``/``IBinning``/``IImageFormat``/``IExposureTime``/
-``IGain``/``IImageType``.
+(``packages/pyobs-fits``, a hand-rolled decoder) of the grabbed image, plus a collapsible settings
+panel for ``IWindow``/``IBinning``/``IImageFormat``/``IExposureTime``/``IGain``/``IImageType``.
 
 LoggingView
 ===========
