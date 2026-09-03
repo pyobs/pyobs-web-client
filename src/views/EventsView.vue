@@ -123,13 +123,13 @@ async function send() {
 <template>
   <div class="d-flex flex-column" style="height: calc(100vh - 6rem)">
     <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-      <h5 class="text-light fw-semibold mb-0">Events</h5>
+      <h5 class="text-body fw-semibold mb-0">Events</h5>
       <button class="btn btn-outline-secondary btn-sm ms-auto" @click="toggleSender">
         <i class="bi bi-send me-1"></i>Send event
       </button>
     </div>
 
-    <div v-if="showSender" class="flex-shrink-0 mb-3 rounded-3 p-3" style="background-color: #16181b; border: 1px solid #2d3035">
+    <div v-if="showSender" class="flex-shrink-0 mb-3 rounded-3 p-3 pyobs-panel-alt">
       <div class="mb-2">
         <template v-if="step === 'event'">
           <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Event</div>

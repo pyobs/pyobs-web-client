@@ -27,7 +27,7 @@ const paramValues = defineModel<Record<string, string>>({ required: true })
       <select
         v-if="widgetKind(unwrapOptional(param.type).inner) === 'bool'"
         v-model="paramValues[param.name]"
-        class="form-select form-select-sm bg-dark border-secondary text-light"
+        class="form-select form-select-sm"
       >
         <option value="true">true</option>
         <option value="false">false</option>
@@ -35,7 +35,7 @@ const paramValues = defineModel<Record<string, string>>({ required: true })
       <select
         v-else-if="widgetKind(unwrapOptional(param.type).inner) === 'enum'"
         v-model="paramValues[param.name]"
-        class="form-select form-select-sm bg-dark border-secondary text-light"
+        class="form-select form-select-sm"
       >
         <option value="">—</option>
         <option v-for="opt in enumOptions(param.type, enums)" :key="opt" :value="opt">{{ opt }}</option>
@@ -44,7 +44,7 @@ const paramValues = defineModel<Record<string, string>>({ required: true })
         v-else-if="widgetKind(unwrapOptional(param.type).inner) !== 'unsupported'"
         v-model="paramValues[param.name]"
         :type="widgetKind(unwrapOptional(param.type).inner) === 'number' ? 'number' : 'text'"
-        class="form-control form-control-sm bg-dark border-secondary text-light"
+        class="form-control form-control-sm"
       />
       <span v-else class="text-danger" style="font-size:0.75rem">unsupported param type</span>
     </div>

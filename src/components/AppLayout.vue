@@ -2,11 +2,13 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useXmpp } from '@/composables/useXmpp'
+import { useTheme } from '@/composables/useTheme'
 import { interfaceLabel } from '@/utils/interfaceLabel'
 
 const router = useRouter()
 const route = useRoute()
 const { jid, disconnect, modules } = useXmpp()
+const { cycleTheme, themeIcon, themeLabel } = useTheme()
 
 // One sidebar entry per multi-instance interface: a single link when
 // exactly one module implementing it is online (no header/indent overhead
@@ -65,11 +67,14 @@ const appVersion = __APP_VERSION__
 <template>
   <!-- Mobile top navbar -->
   <nav
-    class="d-lg-none d-flex align-items-center px-3 bg-dark border-bottom border-secondary-subtle sticky-top"
+    class="d-lg-none d-flex align-items-center px-3 app-chrome border-bottom border-secondary-subtle sticky-top"
     style="height:52px; z-index:1043"
   >
     <i class="bi bi-telescope text-primary me-2"></i>
-    <span class="text-light fw-semibold me-auto">pyobs</span>
+    <span class="text-body fw-semibold me-auto">pyobs</span>
+    <button class="btn btn-outline-secondary btn-sm me-2" :title="themeLabel" @click="cycleTheme">
+      <i class="bi" :class="themeIcon"></i>
+    </button>
     <button class="btn btn-outline-secondary btn-sm" @click="toggleSidebar">
       <i class="bi bi-list fs-5"></i>
     </button>
@@ -91,7 +96,7 @@ const appVersion = __APP_VERSION__
         <div class="d-flex align-items-center gap-2">
           <i class="bi bi-telescope fs-5 text-primary"></i>
           <div>
-            <div class="fw-semibold text-light lh-1">pyobs</div>
+            <div class="fw-semibold text-body lh-1">pyobs</div>
             <div class="text-muted" style="font-size:0.7rem">Web Client v{{ appVersion }}</div>
           </div>
         </div>
@@ -101,7 +106,7 @@ const appVersion = __APP_VERSION__
       <div class="p-3 border-bottom border-secondary-subtle d-flex d-lg-none align-items-center gap-2">
         <i class="bi bi-telescope fs-5 text-primary"></i>
         <div class="me-auto">
-          <div class="fw-semibold text-light lh-1">pyobs</div>
+          <div class="fw-semibold text-body lh-1">pyobs</div>
           <div class="text-muted" style="font-size:0.7rem">Web Client v{{ appVersion }}</div>
         </div>
         <button class="btn btn-sm btn-outline-secondary" @click="closeSidebar">
@@ -199,8 +204,16 @@ const appVersion = __APP_VERSION__
 
       </div>
 
-      <!-- Logout / user -->
+      <!-- Theme / logout -->
       <div class="p-2 border-top border-secondary-subtle">
+        <button
+          class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 w-100 border-0 bg-transparent text-start"
+          :title="themeLabel"
+          @click="cycleTheme"
+        >
+          <i class="bi" :class="themeIcon" style="font-size:0.8rem"></i>
+          <span>{{ themeLabel }}</span>
+        </button>
         <button
           class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 w-100 border-0 bg-transparent text-start"
           @click="handleLogout"

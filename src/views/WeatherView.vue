@@ -84,7 +84,7 @@ onUnmounted(() => stopSubscription?.())
 
 <template>
   <div style="max-width: 800px">
-    <h5 class="text-light fw-semibold mb-4">Weather</h5>
+    <h5 class="text-body fw-semibold mb-4">Weather</h5>
 
     <div v-if="weatherModules.length === 0" class="text-muted" style="font-size:0.9rem">
       <i class="bi bi-info-circle me-1"></i>
@@ -99,12 +99,11 @@ onUnmounted(() => stopSubscription?.())
     <div v-else class="d-flex flex-column gap-3">
       <div
         :key="currentModule.jid"
-        class="rounded-3 p-3"
-        style="background-color:#1a1d21; border:1px solid #2d3035"
+        class="rounded-3 p-3 pyobs-panel"
       >
         <div class="d-flex align-items-center gap-2 mb-3">
           <span class="status-dot online flex-shrink-0"></span>
-          <span class="text-light fw-semibold" style="font-size:0.9rem">{{ currentModule.name }}</span>
+          <span class="text-body fw-semibold" style="font-size:0.9rem">{{ currentModule.name }}</span>
           <span class="text-muted" style="font-size:0.75rem">{{ currentModule.jid }}</span>
         </div>
 
@@ -126,13 +125,13 @@ onUnmounted(() => stopSubscription?.())
             <div
               v-for="reading in stateValue.readings"
               :key="reading.sensor"
-              class="rounded-3 p-2"
-              style="background-color:#15181c; border:1px solid #2d3035; min-width:110px"
+              class="rounded-3 p-2 pyobs-panel-alt"
+              style="min-width:110px"
             >
               <div class="text-muted mb-1" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.03em">
                 {{ weatherSensorLabel(reading.sensor) }}
               </div>
-              <div class="text-light" style="font-size:1.1rem">
+              <div class="text-body" style="font-size:1.1rem">
                 {{ reading.value.toFixed(2) }}
                 <span class="text-muted" style="font-size:0.8rem">{{ reading.unit }}</span>
               </div>
@@ -143,8 +142,7 @@ onUnmounted(() => stopSubscription?.())
             <div
               v-for="reading in stateValue.readings"
               :key="reading.sensor"
-              class="rounded-3 p-2"
-              style="background-color:#15181c; border:1px solid #2d3035"
+              class="rounded-3 p-2 pyobs-panel-alt"
             >
               <TimeSeriesChart
                 v-if="(history[reading.sensor]?.length ?? 0) > 1"

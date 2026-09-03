@@ -2,26 +2,59 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import 'bootstrap-icons/font/bootstrap-icons.min.css';
 
+/* ── Theme tokens ────────────────────────────────────────────────────────────── */
+/* Mirrors the --pyobs-* tokens in the Django apps' base.html (web-admin, archive,
+   pipeline, portal) so chrome looks consistent across the fleet. The login page
+   and monospace log/shell/event consoles stay hardcoded dark on purpose, same
+   rationale as those apps' login pages. */
+:root {
+  --pyobs-surface-bg: #ffffff;
+  --pyobs-surface-border: #dee2e6;
+  --pyobs-surface-text: #212529;
+  --pyobs-surface-text-muted: #6c757d;
+  --pyobs-surface-hover-bg: #e9ecef;
+  --pyobs-accent-bg: #0d6efd20;
+  --pyobs-accent-text: #0a58ca;
+  --pyobs-panel-bg: #f8f9fa;
+  --pyobs-panel-bg-alt: #eceeef;
+  --pyobs-panel-border: #dee2e6;
+}
+[data-bs-theme='dark'] {
+  --pyobs-surface-bg: #1a1d21;
+  --pyobs-surface-border: #2d3035;
+  --pyobs-surface-text: #dee2e6;
+  --pyobs-surface-text-muted: #6c757d;
+  --pyobs-surface-hover-bg: #2d3035;
+  --pyobs-accent-bg: #0d6efd20;
+  --pyobs-accent-text: #6ea8fe;
+  --pyobs-panel-bg: #1a1d21;
+  --pyobs-panel-bg-alt: #16181b;
+  --pyobs-panel-border: #2d3035;
+}
+.app-chrome { background-color: var(--pyobs-surface-bg); }
+.pyobs-panel { background-color: var(--pyobs-panel-bg); border: 1px solid var(--pyobs-panel-border); }
+.pyobs-panel-alt { background-color: var(--pyobs-panel-bg-alt); border: 1px solid var(--pyobs-panel-border); }
+
 /* ── Sidebar ─────────────────────────────────────────────────────────────────── */
 .sidebar {
   width: 240px;
   min-width: 240px;
-  background-color: #1a1d21;
-  border-right: 1px solid #2d3035;
+  background-color: var(--pyobs-surface-bg);
+  border-right: 1px solid var(--pyobs-surface-border);
   display: flex;
   flex-direction: column;
   transition: transform 0.25s ease;
 }
 .sidebar-link {
-  color: #adb5bd;
+  color: var(--pyobs-surface-text-muted);
   text-decoration: none;
   font-size: 0.875rem;
   border-radius: 6px;
   transition: background-color 0.15s, color 0.15s;
   cursor: pointer;
 }
-.sidebar-link:hover  { background-color: #2d3035; color: #f8f9fa; }
-.sidebar-link.active { background-color: #0d6efd20; color: #6ea8fe; }
+.sidebar-link:hover  { background-color: var(--pyobs-surface-hover-bg); color: var(--pyobs-surface-text); }
+.sidebar-link.active { background-color: var(--pyobs-accent-bg); color: var(--pyobs-accent-text); }
 
 /* ── Desktop layout ──────────────────────────────────────────────────────────── */
 @media (min-width: 992px) {

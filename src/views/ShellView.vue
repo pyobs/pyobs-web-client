@@ -166,7 +166,7 @@ async function execute() {
 <template>
   <div class="d-flex flex-column" style="height: calc(100vh - 6rem)">
     <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-      <h5 class="text-light fw-semibold mb-0">Shell</h5>
+      <h5 class="text-body fw-semibold mb-0">Shell</h5>
       <button class="btn btn-outline-secondary btn-sm ms-auto" @click="log = []">
         <i class="bi bi-trash me-1"></i>Clear
       </button>
@@ -232,8 +232,8 @@ async function execute() {
         <template v-if="step === 'method'">
           <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Method</div>
           <div
-            class="overflow-auto rounded-3 p-2"
-            style="max-height: 25vh; background-color: #16181b; border: 1px solid #2d3035"
+            class="overflow-auto rounded-3 p-2 pyobs-panel-alt"
+            style="max-height: 25vh"
             data-testid="shell-methods"
           >
             <p v-if="methodsByIface.length === 0" class="text-muted mb-0" style="font-size:0.8rem">

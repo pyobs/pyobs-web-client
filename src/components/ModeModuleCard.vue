@@ -58,10 +58,10 @@ async function setMode(group: string, mode: string) {
 </script>
 
 <template>
-  <div class="rounded-3 p-3" style="background-color:#1a1d21; border:1px solid #2d3035">
+  <div class="rounded-3 p-3 pyobs-panel">
     <div class="d-flex align-items-center gap-2 mb-2">
       <span class="status-dot online flex-shrink-0"></span>
-      <span class="text-light fw-semibold" style="font-size:0.9rem">{{ mod.name }}</span>
+      <span class="text-body fw-semibold" style="font-size:0.9rem">{{ mod.name }}</span>
       <span class="text-muted" style="font-size:0.75rem">{{ mod.jid }}</span>
     </div>
 
@@ -70,7 +70,7 @@ async function setMode(group: string, mode: string) {
     <div class="d-flex flex-column gap-2 mt-2">
       <template v-for="(modes, group) in availableModes" :key="String(group)">
         <div v-if="modes && modes.length > 0" class="d-flex align-items-center gap-2">
-          <span class="text-light" style="font-size:0.85rem; min-width:120px">{{ group || 'default' }}</span>
+          <span class="text-body" style="font-size:0.85rem; min-width:120px">{{ group || 'default' }}</span>
           <select
             class="form-select form-select-sm"
             style="max-width:200px"

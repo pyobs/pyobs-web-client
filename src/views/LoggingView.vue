@@ -48,11 +48,11 @@ function formatTime(ts: number): string {
 <template>
   <div class="d-flex flex-column" style="height: calc(100vh - 6rem)">
     <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-      <h5 class="text-light fw-semibold mb-0">Logging</h5>
+      <h5 class="text-body fw-semibold mb-0">Logging</h5>
 
       <select
         v-model="moduleFilter"
-        class="form-select form-select-sm bg-dark border-secondary text-light ms-auto"
+        class="form-select form-select-sm ms-auto"
         style="max-width: 180px"
       >
         <option value="">All modules</option>

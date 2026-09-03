@@ -37,7 +37,7 @@ function collapseAll() {
 <template>
   <div style="max-width: 800px">
     <div class="d-flex align-items-center justify-content-between mb-4">
-      <h5 class="text-light fw-semibold mb-0">Dashboard</h5>
+      <h5 class="text-body fw-semibold mb-0">Dashboard</h5>
       <div v-if="modules.length" class="d-flex gap-2">
         <button type="button" class="btn btn-outline-secondary btn-sm" @click="expandAll">Expand all</button>
         <button type="button" class="btn btn-outline-secondary btn-sm" @click="collapseAll">Collapse all</button>
@@ -53,8 +53,7 @@ function collapseAll() {
       <div
         v-for="mod in sortedModules"
         :key="mod.jid"
-        class="rounded-3"
-        style="background-color:#1a1d21; border:1px solid #2d3035"
+        class="rounded-3 pyobs-panel"
       >
         <div
           class="d-flex align-items-center gap-2 p-3"
@@ -63,7 +62,7 @@ function collapseAll() {
         >
           <span class="status-dot online flex-shrink-0"></span>
           <div class="flex-grow-1" style="min-width:0">
-            <div class="text-light fw-semibold text-truncate" style="font-size:0.9rem">{{ mod.name }}</div>
+            <div class="text-body fw-semibold text-truncate" style="font-size:0.9rem">{{ mod.name }}</div>
             <div class="text-muted text-truncate" style="font-size:0.75rem">{{ mod.jid }}</div>
           </div>
           <i

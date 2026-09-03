@@ -45,10 +45,10 @@ function save() {
 
 <template>
   <div>
-    <h5 class="text-light fw-semibold mb-4">Settings</h5>
+    <h5 class="text-body fw-semibold mb-4">Settings</h5>
 
     <div class="d-flex align-items-center gap-3 mb-3">
-      <h6 class="text-light mb-0" style="font-size:0.9rem">VFS Endpoints</h6>
+      <h6 class="text-body mb-0" style="font-size:0.9rem">VFS Endpoints</h6>
       <button class="btn btn-outline-secondary btn-sm ms-auto" @click="startAdd">
         <i class="bi bi-plus-lg me-1"></i>Add endpoint
       </button>
@@ -68,12 +68,11 @@ function save() {
     <div
       v-for="(endpoint, index) in vfsEndpoints"
       :key="endpoint.root"
-      class="rounded-3 p-3 mb-2"
-      style="background-color:#1a1d21; border:1px solid #2d3035"
+      class="rounded-3 p-3 mb-2 pyobs-panel"
     >
       <div class="d-flex align-items-start gap-2">
         <div class="flex-grow-1">
-          <div class="text-light fw-semibold" style="font-size:0.85rem">{{ endpoint.root }}</div>
+          <div class="text-body fw-semibold" style="font-size:0.85rem">{{ endpoint.root }}</div>
           <div class="text-muted text-break" style="font-size:0.75rem">{{ endpoint.baseUrl }}</div>
           <div v-if="endpoint.username" class="text-secondary" style="font-size:0.75rem">
             user: {{ endpoint.username }}, password: ••••••
@@ -91,24 +90,23 @@ function save() {
     <!-- Add/edit form: stacked label-then-input, same mobile-friendly pattern as Shell's param inputs -->
     <div
       v-if="editingIndex !== null"
-      class="rounded-3 p-3 mt-3"
-      style="background-color:#1a1d21; border:1px solid #2d3035"
+      class="rounded-3 p-3 mt-3 pyobs-panel"
     >
       <div class="mb-2">
         <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Root name</label>
-        <input v-model="form.root" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="pyobs" />
+        <input v-model="form.root" type="text" class="form-control form-control-sm" placeholder="pyobs" />
       </div>
       <div class="mb-2">
         <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Base URL</label>
-        <input v-model="form.baseUrl" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="https://archive.example.com/pyobs/" />
+        <input v-model="form.baseUrl" type="text" class="form-control form-control-sm" placeholder="https://archive.example.com/pyobs/" />
       </div>
       <div class="mb-2">
         <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Username <span class="text-secondary">(optional)</span></label>
-        <input v-model="form.username" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" autocomplete="off" />
+        <input v-model="form.username" type="text" class="form-control form-control-sm" autocomplete="off" />
       </div>
       <div class="mb-3">
         <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Password <span class="text-secondary">(optional)</span></label>
-        <input v-model="form.password" type="password" class="form-control form-control-sm bg-dark border-secondary text-light" autocomplete="off" />
+        <input v-model="form.password" type="password" class="form-control form-control-sm" autocomplete="off" />
       </div>
       <div class="d-flex gap-2">
         <button class="btn btn-primary btn-sm" :disabled="!form.root || !form.baseUrl" @click="save">Save</button>

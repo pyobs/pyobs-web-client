@@ -176,7 +176,7 @@ async function abort() {
 
 <template>
   <div style="max-width: 800px">
-    <h5 class="text-light fw-semibold mb-4">Acquisition</h5>
+    <h5 class="text-body fw-semibold mb-4">Acquisition</h5>
 
     <div v-if="acquisitionModules.length === 0" class="text-muted" style="font-size:0.9rem">
       <i class="bi bi-info-circle me-1"></i>
@@ -191,12 +191,11 @@ async function abort() {
     <div v-else class="d-flex flex-column gap-2">
       <div
         :key="currentModule.jid"
-        class="rounded-3 p-3"
-        style="background-color:#1a1d21; border:1px solid #2d3035"
+        class="rounded-3 p-3 pyobs-panel"
       >
         <div class="d-flex align-items-center gap-2 mb-2">
           <span class="status-dot online flex-shrink-0"></span>
-          <span class="text-light fw-semibold" style="font-size:0.9rem">{{ currentModule.name }}</span>
+          <span class="text-body fw-semibold" style="font-size:0.9rem">{{ currentModule.name }}</span>
           <span class="text-muted" style="font-size:0.75rem">{{ currentModule.jid }}</span>
         </div>
 
@@ -246,13 +245,13 @@ async function abort() {
         </div>
 
         <div v-if="distancePoints.length > 0" class="d-flex flex-column gap-2 mt-2">
-          <div class="rounded-3 p-2" style="background-color:#15181c; border:1px solid #2d3035">
+          <div class="rounded-3 p-2 pyobs-panel-alt">
             <DistanceChart :points="distancePoints" />
           </div>
           <div
             v-if="scatterPoints.length > 0"
-            class="rounded-3 p-2"
-            style="background-color:#15181c; border:1px solid #2d3035; max-width:340px"
+            class="rounded-3 p-2 pyobs-panel-alt"
+            style="max-width:340px"
           >
             <OffsetScatterChart :points="scatterPoints" :x-label="scatterAxisLabels.x" :y-label="scatterAxisLabels.y" />
           </div>

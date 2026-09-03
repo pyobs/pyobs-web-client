@@ -31,7 +31,7 @@ watchEffect(() => {
 
 <template>
   <div style="max-width: 800px">
-    <h5 class="text-light fw-semibold mb-4">Mode</h5>
+    <h5 class="text-body fw-semibold mb-4">Mode</h5>
 
     <div v-if="modeModules.length === 0" class="text-muted" style="font-size:0.9rem">
       <i class="bi bi-info-circle me-1"></i>

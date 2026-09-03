@@ -196,7 +196,7 @@ async function setExposureTime() {
 
 <template>
   <div style="max-width: 800px">
-    <h5 class="text-light fw-semibold mb-4">Auto Guiding</h5>
+    <h5 class="text-body fw-semibold mb-4">Auto Guiding</h5>
 
     <div v-if="autoGuidingModules.length === 0" class="text-muted" style="font-size:0.9rem">
       <i class="bi bi-info-circle me-1"></i>
@@ -211,12 +211,11 @@ async function setExposureTime() {
     <div v-else class="d-flex flex-column gap-2">
       <div
         :key="currentModule.jid"
-        class="rounded-3 p-3"
-        style="background-color:#1a1d21; border:1px solid #2d3035"
+        class="rounded-3 p-3 pyobs-panel"
       >
         <div class="d-flex align-items-center gap-2 mb-2">
           <span class="status-dot online flex-shrink-0"></span>
-          <span class="text-light fw-semibold" style="font-size:0.9rem">{{ currentModule.name }}</span>
+          <span class="text-body fw-semibold" style="font-size:0.9rem">{{ currentModule.name }}</span>
           <span class="text-muted" style="font-size:0.75rem">{{ currentModule.jid }}</span>
         </div>
 
@@ -270,10 +269,10 @@ async function setExposureTime() {
         </div>
 
         <div v-if="offsetHistory.length > 0" class="d-flex flex-column gap-2 mt-2">
-          <div class="rounded-3 p-2" style="background-color:#15181c; border:1px solid #2d3035">
+          <div class="rounded-3 p-2 pyobs-panel-alt">
             <OffsetMagnitudeChart :values="magnitudeHistory" />
           </div>
-          <div class="rounded-3 p-2" style="background-color:#15181c; border:1px solid #2d3035; max-width:340px">
+          <div class="rounded-3 p-2 pyobs-panel-alt" style="max-width:340px">
             <OffsetScatterChart :points="scatterPoints" :x-label="scatterAxisLabels.x" :y-label="scatterAxisLabels.y" />
           </div>
         </div>
