@@ -35,6 +35,12 @@ link to them instead:
 
 - `pyobs-core/specs/design/pyobs_2_0_wire_protocol.md` — the wire protocol this
   client's `useXmpp.ts`/`pyobs-codec.ts` implement.
+- `pyobs-core/specs/design/mobile-app-and-shared-ts-client-core.md` — mobile client
+  (Android/iOS + tablets) and the shared, framework-agnostic TypeScript client core this
+  client will be refactored onto, with ADRs `0016`–`0018` in `pyobs-core/specs/adrs/`
+  (transport, shared core, React Native framework) — issue pyobs/pyobs-core#884. The shared
+  packages ship from their own repos as npm packages `pyobs-js-core` (protocol core) and
+  `pyobs-js-fits` (FITS decode/render, extracted from this repo's `packages/pyobs-fits`).
 - `pyobs-core/specs/plans/pyobs_2_0_work_plan.md` — the 2.0 migration plan this
   client's own `DEVELOPMENT.md` history responds to.
 - `pyobs-core/specs/steering/pyobs-project-tiers.md`,
