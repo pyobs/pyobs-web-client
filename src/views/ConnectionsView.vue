@@ -1,38 +1,26 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { Strophe } from 'strophe.js'
 import { useXmpp } from '@/composables/useXmpp'
-import { useServerConfig } from '@/composables/useServerConfig'
-import { useVfsConfig, type VfsEndpoint } from '@/composables/useVfsConfig'
 import { useCredentialStore } from '@/composables/useCredentialStore'
 
-// Offline-usable connection manager: saved JIDs (recentLogins, but addable
-// without ever connecting), each with its per-domain WS-secure override
-// (useServerConfig, already offline-capable) and its own VFS endpoints
-// (useVfsConfig, normally keyed by the *live* session's JID — here keyed by
-// whichever saved connection is expanded instead, via its overrideBareJid
-// param). Nothing on this screen requires a network connection.
-//
-// Not a router route: this app doesn't route anything before login (App.vue
-// hardcodes LoginView until connected; RouterView only exists inside the
-// post-login AppLayout) — LoginView toggles to this component locally,
-// matching that existing pattern instead of fighting it.
+// Offline-usable app start screen: saved JIDs (recentLogins, addable without
+// ever connecting), each showing whether a password is remembered. Editing
+// a connection's server/VFS settings moved to EditConnectionView.vue (see
+// mobile-first-redesign.md's Connections mockup) — this screen just lists
+// and adds/removes.
 
-const emit = defineEmits<{ connect: [jid: string]; back: [] }>()
+const emit = defineEmits<{ connect: [jid: string]; edit: [jid: string] }>()
 
 const { recentLogins, rememberLogin, forgetLogin } = useXmpp()
-const { getForceSecure, setForceSecure } = useServerConfig()
-const { getPassword, removePassword } = useCredentialStore()
+const { getPassword, setPassword, removePassword } = useCredentialStore()
 
-const newJid = ref('')
+const appVersion = __APP_VERSION__
 
 function bareJidOf(jid: string): string {
   return Strophe.getBareJidFromJid(jid) ?? jid
 }
 
-// Which saved connections have a remembered password — checked async since
-// the secure-storage plugin is promise-based; re-checked whenever the saved
-// list changes (e.g. after a successful "remember password" login elsewhere).
 const jidsWithSavedPassword = ref<Set<string>>(new Set())
 
 async function refreshPasswordFlags() {
@@ -44,101 +32,56 @@ async function refreshPasswordFlags() {
 
 watch(recentLogins, refreshPasswordFlags, { immediate: true })
 
-function addConnection() {
-  const j = newJid.value.trim()
-  if (!j) return
-  rememberLogin(j)
-  newJid.value = ''
-}
-
-function removeConnection(jid: string) {
-  if (expandedJid.value === jid) expandedJid.value = null
-  forgetLogin(jid)
-  removePassword(bareJidOf(jid))
-}
-
-function forgetPassword(jid: string) {
-  removePassword(bareJidOf(jid)).then(refreshPasswordFlags)
-}
-
 function connectTo(jid: string) {
   emit('connect', jid)
 }
 
-function domainOf(jid: string): string {
-  return Strophe.getDomainFromJid(jid) ?? ''
+function editConnection(jid: string) {
+  emit('edit', jid)
 }
 
-function forceSecureFor(jid: string): boolean {
-  return getForceSecure(domainOf(jid)) ?? true
+// Removing a connection from this list (not from EditConnectionView's
+// explicit "Remove connection") also drops its stored password — leaving
+// an orphaned secret around for a JID no longer listed isn't a good default.
+function removeConnection(jid: string) {
+  forgetLogin(jid)
+  removePassword(bareJidOf(jid))
 }
 
-function setForceSecureFor(jid: string, value: boolean) {
-  const d = domainOf(jid)
-  if (d) setForceSecure(d, value)
+const showAddSheet = ref(false)
+const newJid = ref('')
+const newPassword = ref('')
+
+function openAddSheet() {
+  newJid.value = ''
+  newPassword.value = ''
+  showAddSheet.value = true
 }
 
-// One connection's VFS endpoints expanded/edited at a time, accordion-style,
-// to keep the list itself scannable when there are several saved logins.
-const expandedJid = ref<string | null>(null)
-const vfs = computed(() => (expandedJid.value ? useVfsConfig(expandedJid.value) : null))
-
-function toggleExpand(jid: string) {
-  editingIndex.value = null
-  expandedJid.value = expandedJid.value === jid ? null : jid
-}
-
-const editingIndex = ref<number | null>(null) // -1 while adding, null while closed
-const isNewEndpoint = ref(false)
-const form = ref<VfsEndpoint>({ root: '', baseUrl: '', username: '', password: '' })
-
-function startAddEndpoint() {
-  isNewEndpoint.value = true
-  editingIndex.value = -1
-  form.value = { root: '', baseUrl: '', username: '', password: '' }
-}
-
-function startEditEndpoint(index: number) {
-  const existing = vfs.value?.vfsEndpoints.value[index]
-  if (!existing) return
-  isNewEndpoint.value = false
-  editingIndex.value = index
-  form.value = { ...existing }
-}
-
-function cancelEndpoint() {
-  editingIndex.value = null
-}
-
-function saveEndpoint() {
-  if (!vfs.value || !form.value.root || !form.value.baseUrl) return
-  const endpoint: VfsEndpoint = {
-    root: form.value.root,
-    baseUrl: form.value.baseUrl,
-    ...(form.value.username ? { username: form.value.username } : {}),
-    ...(form.value.password ? { password: form.value.password } : {}),
+async function confirmAdd() {
+  const j = newJid.value.trim()
+  if (!j) return
+  rememberLogin(j)
+  if (newPassword.value) {
+    await setPassword(bareJidOf(j), newPassword.value)
+    await refreshPasswordFlags()
   }
-  if (isNewEndpoint.value) {
-    vfs.value.addEndpoint(endpoint)
-  } else if (editingIndex.value !== null) {
-    vfs.value.updateEndpoint(editingIndex.value, endpoint)
-  }
-  editingIndex.value = null
+  showAddSheet.value = false
 }
 </script>
 
 <template>
-  <div style="max-width: 480px; margin: 0 auto">
-    <div class="d-flex align-items-center gap-3 mb-3">
-      <h5 class="text-light fw-semibold mb-0">Connections</h5>
-      <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" @click="emit('back')">
-        <i class="bi bi-arrow-left me-1"></i>Back to login
-      </button>
+  <div style="position:relative">
+    <div class="d-flex flex-column align-items-center gap-2 mb-4">
+      <img src="/pyobs-logo-dark.gif" alt="pyobs" style="height:30px" />
+      <div class="text-muted text-center" style="font-size:0.8rem">
+        Saved connections work offline — add, edit, or remove them without a live server.
+      </div>
     </div>
 
-    <p class="text-muted mb-3" style="font-size:0.8rem">
-      Saved connections work offline — add, edit, or remove them without a live server.
-    </p>
+    <div class="text-muted mb-2" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em">
+      Saved connections
+    </div>
 
     <p v-if="recentLogins.length === 0" class="text-muted" style="font-size:0.85rem">
       <i class="bi bi-info-circle me-1"></i>
@@ -148,120 +91,82 @@ function saveEndpoint() {
     <div
       v-for="loginJid in recentLogins"
       :key="loginJid"
-      class="rounded-3 p-3 mb-2"
+      class="rounded-3 mb-2"
       style="background-color:#1a1d21; border:1px solid #2d3035"
     >
-      <div class="d-flex align-items-center gap-2">
-        <div class="flex-grow-1 text-break" style="font-size:0.85rem">
-          <span class="text-light">{{ loginJid }}</span>
-          <i v-if="jidsWithSavedPassword.has(loginJid)" class="bi bi-lock-fill text-secondary ms-1" title="Password remembered on this device"></i>
+      <div class="d-flex align-items-center gap-2" style="min-height:64px; padding:14px 8px 14px 16px; cursor:pointer" @click="connectTo(loginJid)">
+        <div class="flex-grow-1 text-break" style="min-width:0">
+          <div class="text-light fw-semibold text-truncate" style="font-size:0.98rem">{{ loginJid }}</div>
+          <div class="d-flex align-items-center gap-1" style="font-size:0.78rem" :class="jidsWithSavedPassword.has(loginJid) ? 'text-info' : 'text-muted'">
+            <i v-if="jidsWithSavedPassword.has(loginJid)" class="bi bi-lock-fill"></i>
+            {{ jidsWithSavedPassword.has(loginJid) ? 'Password saved' : 'No saved password' }}
+          </div>
         </div>
-        <button class="btn btn-outline-secondary btn-sm" :title="expandedJid === loginJid ? 'Hide VFS endpoints' : 'Edit VFS endpoints'" @click="toggleExpand(loginJid)">
-          <i class="bi" :class="expandedJid === loginJid ? 'bi-chevron-up' : 'bi-gear'"></i>
-        </button>
-        <button class="btn btn-outline-danger btn-sm" title="Remove" @click="removeConnection(loginJid)">
-          <i class="bi bi-trash"></i>
-        </button>
-        <button class="btn btn-primary btn-sm" @click="connectTo(loginJid)">Connect</button>
-      </div>
-
-      <div v-if="jidsWithSavedPassword.has(loginJid)" class="mt-1">
-        <button class="btn btn-link btn-sm p-0 text-muted" style="font-size:0.75rem" @click="forgetPassword(loginJid)">
-          Forget saved password
-        </button>
-      </div>
-
-      <div class="form-check form-switch mt-2 mb-0">
-        <input
-          :id="`secure-${loginJid}`"
-          class="form-check-input"
-          type="checkbox"
-          role="switch"
-          :checked="forceSecureFor(loginJid)"
-          @change="setForceSecureFor(loginJid, ($event.target as HTMLInputElement).checked)"
-        />
-        <label class="form-check-label text-muted" :for="`secure-${loginJid}`" style="font-size:0.8rem">
-          Use secure WebSocket (wss) for {{ domainOf(loginJid) }}
-        </label>
-      </div>
-
-      <div v-if="expandedJid === loginJid" class="mt-3 pt-3" style="border-top: 1px solid #2d3035">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <div class="text-muted" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:.06em">VFS endpoints</div>
-          <button class="btn btn-outline-secondary btn-sm ms-auto" @click="startAddEndpoint">
-            <i class="bi bi-plus-lg me-1"></i>Add
-          </button>
-        </div>
-
-        <p v-if="vfs && vfs.vfsEndpoints.value.length === 0 && editingIndex === null" class="text-muted" style="font-size:0.8rem">
-          No VFS endpoints configured for this connection yet.
-        </p>
-
-        <div
-          v-for="(endpoint, index) in vfs?.vfsEndpoints.value ?? []"
-          :key="endpoint.root"
-          class="rounded-3 p-2 mb-2"
-          style="background-color:#111316; border:1px solid #2d3035"
+        <button
+          type="button"
+          class="btn p-0 d-flex align-items-center justify-content-center flex-shrink-0"
+          style="width:40px; height:40px; color:#8b929a"
+          title="Edit connection"
+          @click.stop="editConnection(loginJid)"
         >
-          <div class="d-flex align-items-start gap-2">
-            <div class="flex-grow-1">
-              <div class="text-light" style="font-size:0.8rem">{{ endpoint.root }}</div>
-              <div class="text-muted text-break" style="font-size:0.7rem">{{ endpoint.baseUrl }}</div>
-            </div>
-            <button class="btn btn-outline-secondary btn-sm" @click="startEditEndpoint(index)">
-              <i class="bi bi-pencil"></i>
-            </button>
-            <button class="btn btn-outline-danger btn-sm" @click="vfs?.removeEndpoint(index)">
-              <i class="bi bi-trash"></i>
-            </button>
-          </div>
-        </div>
-
-        <div
-          v-if="editingIndex !== null"
-          class="rounded-3 p-2 mt-2"
-          style="background-color:#111316; border:1px solid #2d3035"
-        >
-          <div class="mb-2">
-            <label class="form-label mb-1 text-muted" style="font-size:0.75rem">Root name</label>
-            <input v-model="form.root" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="pyobs" />
-          </div>
-          <div class="mb-2">
-            <label class="form-label mb-1 text-muted" style="font-size:0.75rem">Base URL</label>
-            <input v-model="form.baseUrl" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="https://archive.example.com/pyobs/" />
-          </div>
-          <div class="mb-2">
-            <label class="form-label mb-1 text-muted" style="font-size:0.75rem">Username <span class="text-secondary">(optional)</span></label>
-            <input v-model="form.username" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" autocomplete="off" />
-          </div>
-          <div class="mb-2">
-            <label class="form-label mb-1 text-muted" style="font-size:0.75rem">Password <span class="text-secondary">(optional)</span></label>
-            <input v-model="form.password" type="password" class="form-control form-control-sm bg-dark border-secondary text-light" autocomplete="off" />
-          </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-primary btn-sm" :disabled="!form.root || !form.baseUrl" @click="saveEndpoint">Save</button>
-            <button class="btn btn-outline-secondary btn-sm" @click="cancelEndpoint">Cancel</button>
-          </div>
-        </div>
+          <i class="bi bi-three-dots"></i>
+        </button>
       </div>
     </div>
 
-    <div class="rounded-3 p-3 mt-3" style="background-color:#1a1d21; border:1px solid #2d3035">
-      <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Add a connection</label>
-      <div class="d-flex gap-2">
+    <p class="text-muted mt-2" style="font-size:0.75rem">
+      Tap a connection to sign in. Use ⋯ to edit its server/VFS settings or remove it.
+    </p>
+
+    <!-- Kept as a fallback next to the list itself (not just the FAB) since
+         a plain link is easier to find without touch-target guessing. -->
+    <button type="button" class="btn btn-link btn-sm text-muted p-0" style="font-size:0.8rem" @click="openAddSheet">
+      <i class="bi bi-plus-lg me-1"></i>Add a connection
+    </button>
+
+    <button
+      type="button"
+      class="d-flex align-items-center justify-content-center"
+      style="position:fixed; right:20px; bottom:28px; width:56px; height:56px; border-radius:28px; background:#0d6efd; color:#fff; border:none; box-shadow:0 6px 16px rgba(0,0,0,0.35)"
+      aria-label="Add a connection"
+      @click="openAddSheet"
+    >
+      <i class="bi bi-plus-lg" style="font-size:1.4rem"></i>
+    </button>
+
+    <!-- Add-connection sheet -->
+    <div
+      v-if="showAddSheet"
+      style="position:fixed; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:flex-end; z-index:20"
+      @click.self="showAddSheet = false"
+    >
+      <div class="w-100 p-4" style="background:#1a1d21; border:1px solid #2d3035; border-top-left-radius:20px; border-top-right-radius:20px">
+        <div class="mx-auto mb-3" style="width:36px; height:4px; border-radius:2px; background:#495057"></div>
+        <div class="text-light fw-semibold text-center mb-3" style="font-size:1.05rem">New connection</div>
+        <label class="form-label text-muted" style="font-size:0.78rem">XMPP JID</label>
         <input
           v-model="newJid"
           type="text"
-          class="form-control form-control-sm bg-dark border-secondary text-light"
+          class="form-control bg-dark border-secondary text-light mb-2"
           placeholder="user@xmpp.example.com"
-          @keydown.enter.prevent="addConnection"
         />
-        <button class="btn btn-primary btn-sm" :disabled="!newJid.trim()" @click="addConnection">Add</button>
+        <label class="form-label text-muted" style="font-size:0.78rem">Password <span class="text-secondary">(optional)</span></label>
+        <input
+          v-model="newPassword"
+          type="password"
+          class="form-control bg-dark border-secondary text-light mb-2"
+          placeholder="Leave blank to enter it later"
+          autocomplete="off"
+          @keydown.enter.prevent="confirmAdd"
+        />
+        <p class="text-muted mb-3" style="font-size:0.72rem">
+          Server and VFS settings can be added after via ⋯. A saved password lets Connect skip straight in next time.
+        </p>
+        <button type="button" class="btn btn-primary w-100 mb-2" :disabled="!newJid.trim()" @click="confirmAdd">Add</button>
+        <button type="button" class="btn btn-link w-100 text-muted" @click="showAddSheet = false">Cancel</button>
       </div>
-      <p class="text-muted mb-0 mt-2" style="font-size:0.75rem">
-        Saves the JID so its server/VFS settings can be configured before you ever connect.
-        The password is still entered fresh on the login screen.
-      </p>
     </div>
+
+    <div class="text-center text-muted mt-4" style="font-size:0.68rem">v{{ appVersion }}</div>
   </div>
 </template>

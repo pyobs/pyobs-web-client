@@ -1,0 +1,198 @@
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { Strophe } from 'strophe.js'
+import { useXmpp } from '@/composables/useXmpp'
+import { useServerConfig } from '@/composables/useServerConfig'
+import { useVfsConfig, type VfsEndpoint } from '@/composables/useVfsConfig'
+import { useCredentialStore } from '@/composables/useCredentialStore'
+
+const props = defineProps<{ jid: string }>()
+const emit = defineEmits<{ back: [] }>()
+
+const { forgetLogin } = useXmpp()
+const { getForceSecure, setForceSecure } = useServerConfig()
+const { getPassword, setPassword, removePassword } = useCredentialStore()
+
+const domain = computed(() => Strophe.getDomainFromJid(props.jid) ?? '')
+const bareJid = computed(() => Strophe.getBareJidFromJid(props.jid) ?? props.jid)
+
+// Password field: never round-trips the actual stored secret back into the
+// input (blank means "leave unchanged" while editing an existing one, not
+// "no password"). hasStoredPassword drives the placeholder/copy and whether
+// "Forget saved password" is shown.
+const hasStoredPassword = ref(false)
+const passwordInput = ref('')
+
+async function refreshPasswordFlag() {
+  hasStoredPassword.value = (await getPassword(bareJid.value)) !== null
+}
+watch(() => props.jid, refreshPasswordFlag, { immediate: true })
+
+async function savePassword() {
+  if (!passwordInput.value) return
+  await setPassword(bareJid.value, passwordInput.value)
+  passwordInput.value = ''
+  await refreshPasswordFlag()
+}
+
+async function forgetSavedPassword() {
+  await removePassword(bareJid.value)
+  await refreshPasswordFlag()
+}
+
+const forceSecure = computed<boolean>({
+  get: () => getForceSecure(domain.value) ?? true,
+  set: (value) => {
+    if (domain.value) setForceSecure(domain.value, value)
+  },
+})
+
+const { vfsEndpoints, addEndpoint, updateEndpoint, removeEndpoint } = useVfsConfig(props.jid)
+
+const editingIndex = ref<number | null>(null) // -1 while adding, null while closed
+const isNew = ref(false)
+const form = ref<VfsEndpoint>({ root: '', baseUrl: '', username: '', password: '' })
+
+function startAdd() {
+  isNew.value = true
+  editingIndex.value = -1
+  form.value = { root: '', baseUrl: '', username: '', password: '' }
+}
+
+function startEdit(index: number) {
+  const existing = vfsEndpoints.value[index]
+  if (!existing) return
+  isNew.value = false
+  editingIndex.value = index
+  form.value = { ...existing }
+}
+
+function cancelEdit() {
+  editingIndex.value = null
+}
+
+function save() {
+  if (!form.value.root || !form.value.baseUrl) return
+  const endpoint: VfsEndpoint = {
+    root: form.value.root,
+    baseUrl: form.value.baseUrl,
+    ...(form.value.username ? { username: form.value.username } : {}),
+    ...(form.value.password ? { password: form.value.password } : {}),
+  }
+  if (isNew.value) {
+    addEndpoint(endpoint)
+  } else if (editingIndex.value !== null) {
+    updateEndpoint(editingIndex.value, endpoint)
+  }
+  editingIndex.value = null
+}
+
+function removeConnection() {
+  forgetLogin(props.jid)
+  removePassword(bareJid.value)
+  emit('back')
+}
+</script>
+
+<template>
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <button type="button" class="btn p-0 d-flex align-items-center justify-content-center" style="width:40px; height:40px; color:#adb5bd" @click="emit('back')">
+        <i class="bi bi-arrow-left" style="font-size:1.1rem"></i>
+      </button>
+      <span class="text-light fw-semibold text-truncate" style="font-size:1rem">{{ jid }}</span>
+    </div>
+
+    <div class="mb-4">
+      <div class="text-muted mb-2" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em">Server</div>
+      <div class="rounded-3 p-3" style="background-color:#1a1d21; border:1px solid #2d3035">
+        <div class="d-flex align-items-center justify-content-between form-check form-switch mb-0">
+          <div>
+            <label class="text-light" for="editForceSecureWs" style="font-size:0.9rem">Secure WebSocket (wss)</label>
+            <div class="text-muted" style="font-size:0.75rem">Applies to every account on {{ domain }}</div>
+          </div>
+          <input id="editForceSecureWs" v-model="forceSecure" type="checkbox" class="form-check-input flex-shrink-0" role="switch" />
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <div class="text-muted mb-2" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em">Password</div>
+      <div class="rounded-3 p-3" style="background-color:#1a1d21; border:1px solid #2d3035">
+        <input
+          v-model="passwordInput"
+          type="password"
+          class="form-control form-control-sm bg-dark border-secondary text-light mb-2"
+          :placeholder="hasStoredPassword ? '•••••••• (leave blank to keep it)' : 'Not saved — enter to remember it'"
+          autocomplete="off"
+        />
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-primary btn-sm" :disabled="!passwordInput" @click="savePassword">Save password</button>
+          <button v-if="hasStoredPassword" type="button" class="btn btn-outline-secondary btn-sm" @click="forgetSavedPassword">Forget saved password</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em">VFS endpoints</div>
+        <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" @click="startAdd">
+          <i class="bi bi-plus-lg me-1"></i>Add
+        </button>
+      </div>
+
+      <p v-if="vfsEndpoints.length === 0 && editingIndex === null" class="text-muted" style="font-size:0.85rem">
+        No VFS endpoints configured for this connection yet.
+      </p>
+
+      <div
+        v-for="(endpoint, index) in vfsEndpoints"
+        :key="endpoint.root"
+        class="rounded-3 p-3 mb-2"
+        style="background-color:#1a1d21; border:1px solid #2d3035"
+      >
+        <div class="d-flex align-items-start gap-2">
+          <div class="flex-grow-1">
+            <div class="text-light fw-semibold" style="font-size:0.9rem">{{ endpoint.root }}</div>
+            <div class="text-muted text-break" style="font-size:0.75rem">{{ endpoint.baseUrl }}</div>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm" @click="startEdit(index)"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-outline-danger btn-sm" @click="removeEndpoint(index)"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+
+      <div v-if="editingIndex !== null" class="rounded-3 p-3 mt-2" style="background-color:#1a1d21; border:1px solid #2d3035">
+        <div class="mb-2">
+          <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Root name</label>
+          <input v-model="form.root" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="pyobs" />
+        </div>
+        <div class="mb-2">
+          <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Base URL</label>
+          <input v-model="form.baseUrl" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="https://archive.example.com/pyobs/" />
+        </div>
+        <div class="mb-2">
+          <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Username <span class="text-secondary">(optional)</span></label>
+          <input v-model="form.username" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" autocomplete="off" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Password <span class="text-secondary">(optional)</span></label>
+          <input v-model="form.password" type="password" class="form-control form-control-sm bg-dark border-secondary text-light" autocomplete="off" />
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary btn-sm" :disabled="!form.root || !form.baseUrl" @click="save">Save</button>
+          <button class="btn btn-outline-secondary btn-sm" @click="cancelEdit">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="btn w-100 d-flex align-items-center justify-content-center gap-2"
+      style="height:48px; border-radius:12px; border:1px solid #dc354540; color:#ff8f8f"
+      @click="removeConnection"
+    >
+      <i class="bi bi-trash"></i>
+      Remove connection
+    </button>
+  </div>
+</template>

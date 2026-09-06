@@ -6,13 +6,21 @@ import { useXmpp } from '@/composables/useXmpp'
 import { useServerConfig } from '@/composables/useServerConfig'
 import { useCredentialStore } from '@/composables/useCredentialStore'
 import ConnectionsView from '@/views/ConnectionsView.vue'
+import EditConnectionView from '@/views/EditConnectionView.vue'
 
 const router = useRouter()
 const { status, errorMessage, connect, recentLogins } = useXmpp()
 // The app opens on the Connections screen, not the login form — that's the
 // actual offline-usable entry point; "Connect" on a saved profile is what
-// gets you to the password step below.
-const showConnections = ref(true)
+// gets you to the password step below; "⋯" on a saved profile opens the
+// edit screen instead.
+const screen = ref<'connections' | 'login' | 'edit'>('connections')
+const editingJid = ref('')
+
+function openEdit(jid: string) {
+  editingJid.value = jid
+  screen.value = 'edit'
+}
 const { getForceSecure, setForceSecure } = useServerConfig()
 const { getPassword, setPassword } = useCredentialStore()
 
@@ -73,7 +81,7 @@ function pickRecentLogin(recentJid: string) {
 // password step like any other manual login.
 async function onConnectFromConnections(selectedJid: string) {
   jid.value = selectedJid
-  showConnections.value = false
+  screen.value = 'login'
   const bareJid = Strophe.getBareJidFromJid(selectedJid) ?? selectedJid
   const savedPassword = await getPassword(bareJid)
   if (savedPassword) {
@@ -108,12 +116,18 @@ async function handleLogin() {
     class="d-flex align-items-center justify-content-center vh-100"
     style="background-color: #111316"
   >
-    <div :style="{ width: '100%', maxWidth: showConnections ? '480px' : '360px', padding: '0 1rem' }">
+    <div :style="{ width: '100%', maxWidth: screen === 'login' ? '360px' : '480px', padding: '0 1rem' }">
 
       <ConnectionsView
-        v-if="showConnections"
+        v-if="screen === 'connections'"
         @connect="onConnectFromConnections"
-        @back="showConnections = false"
+        @edit="openEdit"
+      />
+
+      <EditConnectionView
+        v-else-if="screen === 'edit'"
+        :jid="editingJid"
+        @back="screen = 'connections'"
       />
 
       <template v-else>
@@ -162,7 +176,7 @@ async function handleLogin() {
           </div>
 
           <div v-if="step === 'jid'" class="mb-3 text-end">
-            <button type="button" class="btn btn-link btn-sm p-0 text-muted" style="font-size:0.75rem" @click="showConnections = true">
+            <button type="button" class="btn btn-link btn-sm p-0 text-muted" style="font-size:0.75rem" @click="screen = 'connections'">
               <i class="bi bi-gear me-1"></i>Manage connections
             </button>
           </div>
