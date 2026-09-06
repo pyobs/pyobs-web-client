@@ -50,6 +50,16 @@ components.
 vs. tucked under a "More" entry (destination count likely exceeds a comfortable tab bar — Shell,
 Settings, and several device-specific pages don't all fit as top-level tabs).
 
+## Phase 0 mockups (snapshot 2026-09-06)
+
+Static PNGs of the design-canvas mockup, checked in since the canvas itself lives outside this
+repo: `mobile-first-redesign/connections.png` (app start screen), `add-connection.png`,
+`edit-connection.png`, `dashboard.png` (status/triage board), `logs.png` (module + level filters),
+`module-page.png` (module-grouped drill-down, tabs per interface — mirrors `pyobs-gui`'s
+`ModulePage`), `more.png` (Events/Shell/Settings & Connections only — every actual module is
+reached via Dashboard, not listed here). Point-in-time snapshot of the direction as agreed, not
+living documentation — the canvas may have moved on since.
+
 ## Phase 1 — Breakpoint infrastructure
 
 - `useBreakpoint.ts`: a reactive, width-based breakpoint composable (reuse the ~600dp convention
