@@ -1,5 +1,20 @@
 apply plugin: 'com.android.application'
 
+// Single source of truth for the app version is package.json, not a second
+// hand-maintained number here — a stale Android versionName/versionCode is
+// exactly what happened the first time this was hardcoded (shipped a
+// v0.4.0 release with an APK still reporting 0.3.0, because nothing tied
+// the two together). versionCode is derived so it's automatically
+// monotonic across releases without remembering to bump it by hand.
+def packageJson = new groovy.json.JsonSlurper().parseText(
+    new File(rootDir, '../package.json').text
+)
+def appVersionName = packageJson.version
+def versionParts = appVersionName.tokenize('.')
+def appVersionCode = (versionParts[0] as Integer) * 10000 +
+    (versionParts[1] as Integer) * 100 +
+    (versionParts[2] as Integer)
+
 android {
     namespace = "org.pyobs.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +22,8 @@ android {
         applicationId "org.pyobs.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
