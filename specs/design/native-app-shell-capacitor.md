@@ -1,6 +1,10 @@
 # Native app shell via Capacitor (Android-first, iOS to follow)
 
-Status: proposed
+Status: in progress. Goals 1 (icon/splash/no browser chrome), 2 (XMPP password only — VFS
+credentials not yet migrated, see Credential storage), and 4 (offline saved-connections screen,
+built further than described below) are done. Goal 3 (push) not started. Forward evolution of the
+UI built here — the compact shell, Dashboard, and the Connections/Add/Edit split — is tracked in
+`specs/plans/mobile-first-redesign.md`, not this doc.
 
 Discussion thread: pyobs/pyobs-core issue #884 — the mobile-app conversation started there and
 that history is worth reading, but the decision below is scoped entirely to this repo now; see
@@ -76,36 +80,36 @@ Current state (`specs/design/login-memory-and-vfs-config.md`): the XMPP password
 `sessionStorage` (cleared per session, deliberately never persisted — persisting a plaintext
 password in `localStorage` was called out there as "a real security regression, not just a style
 choice"), while VFS endpoint credentials *are* persisted in `localStorage`, flagged in that same
-doc as a named tradeoff. Note that doc is itself marked partially stale: VFS auth has since moved
-to a Bearer token (`specs/plans/vfs-token-auth.md`), so it's a token being persisted in plaintext
-today, not a password.
+doc as a named tradeoff. That doc is marked partially stale for a different reason (a Bearer-token
+migration plan, `specs/plans/vfs-token-auth.md`) — but that plan is still `status: proposed`,
+unexecuted; VFS endpoints are still plain Basic Auth username/password today. An earlier revision
+of this doc incorrectly stated the token migration had already happened — corrected here.
 
-Under Capacitor, both move to a secure-storage plugin (Keychain / Keystore-backed encrypted
-storage) — a materially stronger trust boundary than either `sessionStorage` or `localStorage`.
-This changes the calculus in `login-memory-and-vfs-config.md`: persisting the XMPP password
-long-term becomes safe to do, which is the prerequisite for the saved-connections screen below
-(no saved-connections list is useful if it can't also remember the password). The VFS token moves
-to the same secure store, closing the plaintext-`localStorage` gap named in that doc. This is
-implemented once, behind a platform check — falls back to the existing `sessionStorage`/
-`localStorage` behavior when running in a plain browser (unchanged for that case).
+**Implemented: only the XMPP password moved.** `useCredentialStore.ts` wraps
+`@aparajita/capacitor-secure-storage` (Keychain / Keystore-backed) — opt-in "Remember password" on
+login, or set directly from the Connections Add/Edit screens (see below). VFS endpoint credentials
+were **not** migrated — they're still exactly where `login-memory-and-vfs-config.md` left them,
+plain `localStorage`, unchanged. That's a real inconsistency worth naming: one credential type on
+this screen is now behind Keychain/Keystore, the other sits in plaintext next to it. Not urgent
+(VFS credentials are typically lower-privilege, e.g. an archive server), but not resolved either —
+worth a follow-up rather than assuming it's covered by "credential storage is done."
 
-## Saved connections screen (offline)
+## Saved connections screen (offline) — implemented, shape evolved past this description
 
-There's already three separate local-storage-backed pieces of this: `recentLogins` (bare JIDs
-only, no password, `useXmpp.ts`), `useServerConfig.ts`'s per-domain WS overrides (already editable
-pre-login — the one existing piece designed to work before a connection exists), and
-`useVfsConfig.ts`'s per-account VFS/token settings (currently only reachable post-login, behind
-`SettingsView.vue`'s `requiresAuth` gate). What's missing, and what this screen actually adds, is
-(a) a unifying "connection profile" concept that ties a JID to its server override and VFS config
-as one saved thing instead of three independently-keyed lists, (b) the password itself, remembered
-via the secure store above — none of the existing three stores it — and (c) making the whole
-profile (not just the server override) editable with zero network, which means VFS/config editing
-needs to move out from behind the post-login gate for saved profiles specifically.
+Built as three views rather than one screen: `ConnectionsView.vue` (the app's start screen — a
+card list, tap to connect, "⋯" to edit, a FAB to add), `EditConnectionView.vue` (per-domain
+secure-WebSocket toggle, VFS endpoint CRUD, password, "Remove connection"), and a bottom-sheet Add
+flow. The three previously-separate stores this section originally described
+(`recentLogins`/`useServerConfig`/`useVfsConfig`) stayed separate underneath — "unifying" them
+turned out to mean "one screen drives all three," not one merged data store — plus the password
+itself, settable directly from Add or Edit (stored unverified, no live connect attempt, since
+requiring network just to save a profile would defeat the offline-usability point). See
+`specs/plans/mobile-first-redesign.md` for how this continued to evolve (the Connections/Login
+flow section there).
 
-Before finalizing the unified shape, check what `pyobs-polaris` already does for saved
-connections — it's reported to have something similar. Not necessarily worth making the two
-literally interoperable (different platforms, different storage), but worth not inventing an
-incompatible mental model if Polaris's already fits.
+**Never done: checking `pyobs-polaris`'s equivalent first**, as this section originally called
+for. The shape above was built without that comparison — not necessarily wrong, but an open risk
+this doc flagged and the implementation skipped, not resolved.
 
 ## Push notifications
 
@@ -130,29 +134,39 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
 
 ## Phasing
 
-1. Capacitor wrap + Android build pipeline (internal distribution) — get a real device running
-   the existing app, unchanged, before adding anything.
-2. Secure-storage plugin swap (XMPP password, VFS token) — see Credential storage.
-3. Push notification spike (Android/FCM first, matching device priority) — Apple Developer account
-   + Firebase project, verify delivery to a backgrounded and a fully-killed app before assuming
-   it works.
-4. Saved-connections screen (offline CRUD) — check `pyobs-polaris`'s model first.
-5. iOS build + TestFlight distribution.
-6. Revisit native-widget feel only after real use of the above — not a default next phase.
+1. ✅ Capacitor wrap + Android build pipeline (internal distribution) — a real device runs the
+   app; also needed a project-relative debug keystore fix (see
+   `specs/plans/mobile-first-redesign.md`'s "Incidental fixes") once Android Studio and the CLI
+   turned out to sign debug builds differently on this dev machine.
+2. ⚠️ Secure-storage plugin swap — **XMPP password only**. VFS token/credentials not migrated;
+   see Credential storage above.
+3. Push notification spike — not started.
+4. ✅ Saved-connections screen (offline CRUD) — done, shape described above; `pyobs-polaris`'s
+   model was never checked (see that section).
+5. iOS build + TestFlight distribution — not started, blocked on Mac access.
+6. Revisit native-widget feel only after real use of the above — not decided either way yet;
+   real use since has included a first-hand dev-workflow comparison with RN (liked its live-reload
+   loop) without deciding to switch — see `specs/plans/mobile-first-redesign.md`'s history for
+   that discussion.
 
 ## Open questions
 
-- **Does WebView feel "good enough"?** Deferred until there's a real Capacitor build to use
-  day-to-day. If scrolling/forms/gestures feel wrong in practice, that's the trigger to reopen RN
-  as a full rewrite — not before.
-- **Saved-connections data model** — pending a look at `pyobs-polaris`'s equivalent.
-- Whether the VFS-token secure-storage migration ships in the same effort as the XMPP password one
-  or is tracked separately, given `vfs-token-auth.md` already changed that model once recently.
+- **Does WebView feel "good enough"?** Still open. The mobile-first redesign (see that plan) is
+  the real-use test this was waiting on, but it hasn't produced a verdict either way yet — it's
+  been about layout and information architecture, not a judgment on WebView feel itself.
+- **Saved-connections data model vs. `pyobs-polaris`** — still unchecked; the screen shipped
+  without this comparison ever happening.
+- **VFS credentials still unmigrated to secure storage** — see Credential storage above; a real
+  gap, not just a deferred nice-to-have, now that the XMPP password sits in a materially stronger
+  store right next to it.
 
 ## References
 
+- `specs/plans/mobile-first-redesign.md` — where the UI built here (compact shell, Dashboard,
+  Connections/Add/Edit) continues to evolve; the current source of truth for that, not this doc.
 - `specs/design/login-memory-and-vfs-config.md` — current credential storage this doc changes.
-- `specs/plans/vfs-token-auth.md` — VFS auth is Bearer-token-based, not username/password.
+- `specs/plans/vfs-token-auth.md` — proposed Basic Auth → Bearer token migration for VFS auth;
+  still `status: proposed`, not executed — VFS auth is still username/password today.
 - `pyobs-core/specs/design/mobile-app-and-shared-ts-client-core.md` and
   `pyobs-core/specs/adrs/0016`–`0018` (all superseded) — the earlier RN/shared-core plan and why
   it changed.

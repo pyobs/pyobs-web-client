@@ -21,7 +21,8 @@ Implementation plans, checklist-style.
 - [struct-typed-command-params.md](struct-typed-command-params.md) — `struct<Name>`-typed command
   params. **blocked on upstream**
 - [mobile-first-redesign.md](mobile-first-redesign.md) — mobile-first app shell + per-view
-  redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **proposed**
+  redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** (Phase 1 done;
+  Dashboard + Connections/Login migrated)
 - [telescope-page.md](telescope-page.md) — telescope page for `ITelescope` modules. **proposed**
 - [vfs-token-auth.md](vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token).
   **proposed**

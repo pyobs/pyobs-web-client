@@ -1,6 +1,7 @@
 # Plan: Mobile-first redesign of the app shell and views
 
-Status: proposed, not yet started
+Status: in progress — Phase 1 implemented; Dashboard and the Connections/Login flow migrated
+(Phase 2, partial). Remaining Phase 2 views, Phase 3, and Phase 4 not started.
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -60,17 +61,23 @@ repo: `mobile-first-redesign/connections.png` (app start screen), `add-connectio
 reached via Dashboard, not listed here). Point-in-time snapshot of the direction as agreed, not
 living documentation — the canvas may have moved on since.
 
-## Phase 1 — Breakpoint infrastructure
+## Phase 1 — Breakpoint infrastructure ✅ implemented
 
-- `useBreakpoint.ts`: a reactive, width-based breakpoint composable (reuse the ~600dp convention
-  named in the superseded mobile design doc, unless Phase 0 suggests a different threshold).
-- Restructure `AppLayout.vue` to swap chrome — existing sidebar vs. new compact shell (bottom nav
-  + top bar) — around the same `<RouterView>`, based on the breakpoint. View components
-  themselves don't fork; only the surrounding shell does, except where Phase 2 calls for an
-  actual per-view compact redesign.
-- New compact navigation component per Phase 0's destination set.
+- `useBreakpoint.ts`: reactive, width-based (`isCompact` at ≤991.98px) — reuses this app's
+  existing Bootstrap `lg` breakpoint (`main.css`'s old mobile-drawer media query) rather than the
+  ~600dp figure the superseded mobile design doc had floated, so the JS-driven compact shell and
+  the desktop sidebar's own CSS agree on one threshold instead of two.
+- `AppLayout.vue` now branches on `isCompact`: compact renders a bottom-tab shell (top bar with
+  the real pyobs logo + a settings icon, `<RouterView>`, bottom nav), desktop renders the
+  unchanged sidebar. `useModuleNavSections.ts` was extracted from `AppLayout.vue` so the compact
+  shell's `MoreView.vue` can reuse the same per-interface grouping instead of duplicating it.
+- Actual destination set (settled by discussion, not Phase 0's original 4-tab guess of
+  Dashboard/Camera/Activity/More): **Dashboard, Logs, More** — three tabs, not four. Camera lost
+  its tab entirely once the discussion corrected the whole approach to be module-grouped, not
+  interface-grouped (see Phase 2 below); Logs earned a primary tab because filtered monitoring,
+  not module control, is this shell's actual primary job.
 
-## Phase 2 — Per-view audit and migration
+## Phase 2 — Per-view audit and migration (partial)
 
 For each existing view — `DashboardView`, `ShellView`, `RoofView`, `ModeView`, `WeatherView`,
 `AutoFocusView`, `AutoGuidingView`, `AcquisitionView`, `CameraView`, `LoggingView`, `EventsView`,
@@ -78,16 +85,36 @@ For each existing view — `DashboardView`, `ShellView`, `RoofView`, `ModeView`,
 breakpoint switch, redesign for the compact shell, or descope from primary mobile navigation
 (still reachable, just not a top-level destination).
 
-- `LoggingView`/`EventsView` already got a narrow-width layout fix this session (table → flowing
-  list) — re-check against Phase 0's visual language once it exists, not just "doesn't overflow."
-- The Connections/Login flow already is the compact landing experience built this session —
-  re-check visually against Phase 0's language; functionally it stays.
-- `ShellView` (raw RPC/method console) is the most likely candidate for "descope from primary
-  nav, keep reachable" — flag for an explicit decision, don't assume either way.
+- **`DashboardView` — done.** Compact rendering groups modules by live status (needs attention /
+  running / idle) rather than a flat list, subscribing every stateful interface up front instead
+  of lazily per expanded row. Desktop rendering is untouched. Tapping a card only expands it
+  inline (same as before) — it does **not** navigate to a module page, since that requires the
+  ModulePage-style rework below, which hasn't happened yet. Expanding a card also still shows the
+  same raw per-field state dump (`ModuleStateCard`/`KeyValueCard`) as desktop, not a curated
+  one/two-line summary like the mockup's illustrative example — a known, deliberate simplification
+  to keep this pass scoped, not an oversight.
+- **Login/Connections flow — done, and restructured further than the original mockup.**
+  `ConnectionsView.vue` is now a card list (tap to connect, "⋯" to edit) with a FAB for adding a
+  connection; editing (secure-WebSocket toggle, VFS endpoints, password) moved to a new
+  `EditConnectionView.vue`, since the old inline per-card accordion didn't survive contact with
+  actually building it. Both Add and Edit take a password directly now — stored unverified (no
+  live connect attempt, matching the VFS endpoint fields' own long-standing behavior), which
+  wasn't in the original mockup but removes the login-form step entirely once a password is set.
+- **`LoggingView`/`EventsView`** — the narrow-width table→flowing-list fix from earlier this
+  session stands; not revisited against the Phase 0 visual language yet.
+- **Module-grouped drill-down (`ModulePage`, mirroring `pyobs-gui`'s own redesign) — not started.**
+  This is the piece that makes Dashboard cards navigate anywhere instead of just expanding
+  inline, and what would let `CameraView`/`RoofView`/etc. stop being separate top-level routes.
+  Real, separate work, not yet scoped into a phase here.
+- **`ShellView`** — resolved: stays reachable on mobile (via More), not descoped. It's the only
+  way to operate a module with no dedicated widget of its own, so cutting it isn't an option.
+- Remaining unmigrated: `RoofView`, `ModeView`, `WeatherView`, `AutoFocusView`, `AutoGuidingView`,
+  `AcquisitionView`, `CameraView`, `SettingsView` — all still reached via `MoreView.vue`'s plain
+  list, same routes the old sidebar used, not yet redesigned or folded into ModulePage.
 
 Migrate incrementally, each view landing as its own reviewable change. Suggested order (highest
-real-world phone use first): Dashboard → Camera → Roof/Mode/Weather → Logging/Events →
-Connections/Settings → Shell/AutoFocus/AutoGuiding/Acquisition.
+real-world phone use first): ~~Dashboard~~ → ~~Connections/Login~~ → the ModulePage rework →
+Roof/Mode/Weather → Logging/Events visual pass → Settings → AutoFocus/AutoGuiding/Acquisition.
 
 ## Phase 3 — Cross-cutting polish
 
@@ -109,11 +136,33 @@ fix safe-area/keyboard/scroll-physics quirks specific to iOS's WebView. Not a re
 
 ## Open questions
 
-- Compact-nav destination set — resolved in Phase 0.
-- Exact visual language (a real design system vs. restyled Bootstrap) — resolved in Phase 0, not
-  pre-decided here.
-- Biometric re-auth — resolved in Phase 3.
-- Whether `ShellView` stays in primary mobile navigation — resolved in Phase 2.
+- **Compact-nav destination set — resolved.** Dashboard, Logs, More (see Phase 1).
+- **Exact visual language — resolved for the mockup, not yet reconciled with the real Bootstrap
+  app.** The Phase 0 mockup reused this app's actual tokens (`#111316`/`#1a1d21`/`#2d3035`, status
+  colors) rather than inventing a new palette, but the *implemented* views still use inline styles
+  copied from the mockup rather than a shared set of Vue components/classes — a real design system
+  vs. "restyled Bootstrap, consistently" is still an open call, not just a rubber-stamp of Phase 0.
+- **Biometric re-auth — still open**, not resolved. Deferred to Phase 3 as planned; the app can
+  now remember passwords, which makes this more relevant than when it was first raised, not less.
+- **Whether `ShellView` stays in primary mobile navigation — resolved.** Stays, reachable via
+  More: it's the only way to operate a module with no dedicated widget of its own.
+- **New: the ModulePage-style module-grouped drill-down** (Phase 2) needs its own scoping pass —
+  it's bigger than a per-view migration item, closer to a phase of its own.
+
+## Incidental fixes found along the way
+
+Not part of the redesign itself, but surfaced while building it:
+
+- **Real app icon.** Capacitor's default icon was still in place; replaced with the actual pyobs
+  wordmark (`resources/icon.png`, generated via `@capacitor/assets`) on the app's own dark
+  background — including fixing the adaptive icon's background layer, which the generator left
+  white and would have shown through the safe-zone inset as a border.
+- **Debug-signing inconsistency.** Android Studio's Flatpak sandbox and a plain CLI shell see
+  different `$HOME` on the dev machine, so each was signing debug builds with a different
+  `$HOME/.android/debug.keystore` — every switch between the two looked like a different app to
+  Android, forcing a full uninstall (and wiping app data, including saved passwords) on every
+  switch. Fixed with a checked-in, project-relative debug keystore
+  (`android/app/debug-shared.keystore`) both tools now sign with.
 
 ## References
 
