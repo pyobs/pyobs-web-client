@@ -12,6 +12,7 @@ import CameraView from '@/views/CameraView.vue'
 import LoggingView from '@/views/LoggingView.vue'
 import EventsView from '@/views/EventsView.vue'
 import SettingsView from '@/views/SettingsView.vue'
+import MoreView from '@/views/MoreView.vue'
 import LoginView from '@/views/LoginView.vue'
 
 const router = createRouter({
@@ -92,6 +93,12 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: SettingsView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/more',
+      name: 'more',
+      component: MoreView,
       meta: { requiresAuth: true },
     },
   ],

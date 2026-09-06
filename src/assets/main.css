@@ -2,15 +2,18 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import 'bootstrap-icons/font/bootstrap-icons.min.css';
 
-/* ── Sidebar ─────────────────────────────────────────────────────────────────── */
+/* ── Sidebar (desktop only — AppLayout.vue only renders this branch at/above
+   the lg breakpoint; the compact shell below it is a different layout
+   entirely, not a collapsed/drawer version of this one) ────────────────── */
 .sidebar {
   width: 240px;
   min-width: 240px;
+  height: 100vh;
+  overflow-y: auto;
   background-color: #1a1d21;
   border-right: 1px solid #2d3035;
   display: flex;
   flex-direction: column;
-  transition: transform 0.25s ease;
 }
 .sidebar-link {
   color: #adb5bd;
@@ -23,36 +26,8 @@
 .sidebar-link:hover  { background-color: #2d3035; color: #f8f9fa; }
 .sidebar-link.active { background-color: #0d6efd20; color: #6ea8fe; }
 
-/* ── Desktop layout ──────────────────────────────────────────────────────────── */
-@media (min-width: 992px) {
-  body { overflow: hidden; }
-  .sidebar      { height: 100vh; overflow-y: auto; }
-  .main-content { height: 100vh; overflow-y: auto; }
-}
-
-/* ── Mobile layout ───────────────────────────────────────────────────────────── */
-@media (max-width: 991.98px) {
-  body { overflow-x: hidden; }
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    z-index: 1045;
-    width: 280px;
-    min-width: 280px;
-    transform: translateX(-100%);
-  }
-  .sidebar.open { transform: translateX(0); }
-}
-.sidebar-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 1044;
-}
-.sidebar-overlay.active { display: block; }
+body { overflow: hidden; }
+.main-content { height: 100vh; overflow-y: auto; }
 
 /* ── Status dots ─────────────────────────────────────────────────────────────── */
 .status-dot {
