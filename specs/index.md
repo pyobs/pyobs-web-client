@@ -35,12 +35,15 @@ link to them instead:
 
 - `pyobs-core/specs/design/pyobs_2_0_wire_protocol.md` — the wire protocol this
   client's `useXmpp.ts`/`pyobs-codec.ts` implement.
-- `pyobs-core/specs/design/mobile-app-and-shared-ts-client-core.md` — mobile client
-  (Android/iOS + tablets) and the shared, framework-agnostic TypeScript client core this
-  client will be refactored onto, with ADRs `0016`–`0018` in `pyobs-core/specs/adrs/`
-  (transport, shared core, React Native framework) — issue pyobs/pyobs-core#884. The shared
-  packages ship from their own repos as npm packages `pyobs-js-core` (protocol core) and
-  `pyobs-js-fits` (FITS decode/render, extracted from this repo's `packages/pyobs-fits`).
+- `pyobs-core/specs/design/mobile-app-and-shared-ts-client-core.md` and ADRs `0016`–`0018` in
+  `pyobs-core/specs/adrs/` — the original mobile-app plan (separate React Native app + shared
+  TypeScript core), issue pyobs/pyobs-core#884. **Superseded**: replaced by
+  `specs/design/native-app-shell-capacitor.md` in this repo, which packages this app itself via
+  Capacitor instead of building a second one. Kept in `pyobs-core` as the historical record of the
+  transport/framework comparison.
+- `pyobs-core/specs/steering/rpc-timeout-command-idempotency.md` — cross-client contract for
+  handling an ambiguous RPC outcome (timeout/dropped connection) against physical hardware; this
+  client follows it like `pyobs-gui`/`pyobs-polaris` do, not a rule of its own.
 - `pyobs-core/specs/plans/pyobs_2_0_work_plan.md` — the 2.0 migration plan this
   client's own `DEVELOPMENT.md` history responds to.
 - `pyobs-core/specs/steering/pyobs-project-tiers.md`,

@@ -22,3 +22,7 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [acl-reactive-error-handling.md](acl-reactive-error-handling.md) — ACL denial reaches the client
   as a plain XMPP-level IQ error, not through `findRpcFault`; no client change needed today.
   *implemented, closed*
+- [native-app-shell-capacitor.md](native-app-shell-capacitor.md) — package this app as an
+  installable Android/iOS shell via Capacitor (icon, secure credential storage, push, offline
+  saved-connections screen), replacing the earlier React Native + shared-core plan. *proposed*
+  (issue #884; Repos: pyobs-core (superseded ADRs 0016–0018 + design doc), pyobs-web-client)
