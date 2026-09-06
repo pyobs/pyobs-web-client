@@ -52,16 +52,20 @@ assumed up front.
 
 Capacitor is added to this repo, not a new one — this app is already the substantial, independent
 codebase its own `specs/index.md` describes itself as, and this is packaging of it, not a new
-client family:
+client family. The app itself lives at repo root today (`src/`, builds to `dist/` via `npm run
+build`), with `packages/pyobs-fits` as the one existing workspace package — no `apps/web` split,
+unlike the old design doc's assumed layout:
 
 ```
 pyobs-web-client (this repo)
-├── apps/web        ← existing Vue app, unchanged (still runs standalone in a browser)
+├── src/            ← existing Vue app, unchanged (still runs standalone in a browser via `vite`)
+├── dist/           ← existing build output — becomes Capacitor's webDir directly
+├── packages/pyobs-fits/  ← existing workspace package, unaffected
 ├── ios/            ← new: Capacitor-generated native project
 └── android/        ← new: Capacitor-generated native project
 ```
 
-Capacitor loads the same built Vue app into a native WebView per platform; native plugins
+Capacitor loads the same built `dist/` output into a native WebView per platform; native plugins
 (`@capacitor/preferences`/secure-storage, `@capacitor/push-notifications`) bridge the pieces a
 browser can't do on its own. No Metro-style monorepo config, no subpath-exports split — it's the
 existing build output, wrapped.

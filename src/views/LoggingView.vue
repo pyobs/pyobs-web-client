@@ -84,16 +84,19 @@ function formatTime(ts: number): string {
         No log events yet.
       </p>
 
-      <table v-else class="w-100">
-        <tbody>
-          <tr v-for="ev in logEvents" :key="ev.uuid" :class="levelClass(String(ev.data['level'] ?? ''))">
-            <td class="text-secondary pe-3 text-nowrap align-top">{{ formatTime(ev.timestamp) }}</td>
-            <td class="pe-3 text-nowrap align-top" style="min-width: 4rem">{{ String(ev.data['level'] ?? '').toUpperCase() }}</td>
-            <td class="pe-3 text-nowrap text-muted align-top">{{ ev.module }}</td>
-            <td class="text-break align-top">{{ String(ev.data['message'] ?? '') }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else>
+        <div
+          v-for="ev in logEvents"
+          :key="ev.uuid"
+          class="d-flex flex-wrap align-items-baseline column-gap-2 mb-1"
+          :class="levelClass(String(ev.data['level'] ?? ''))"
+        >
+          <span class="text-secondary text-nowrap">{{ formatTime(ev.timestamp) }}</span>
+          <span class="text-nowrap fw-semibold">{{ String(ev.data['level'] ?? '').toUpperCase() }}</span>
+          <span class="text-muted text-nowrap">{{ ev.module }}</span>
+          <span class="text-break" style="min-width: 0; flex: 1 1 auto">{{ String(ev.data['message'] ?? '') }}</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>

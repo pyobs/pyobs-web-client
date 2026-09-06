@@ -28,6 +28,10 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@aparajita/capacitor-secure-storage": "^8.0.0",
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
     "pyobs-fits": "^0.1.0",

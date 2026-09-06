@@ -4,13 +4,21 @@ import { useRouter } from 'vue-router'
 import { Strophe } from 'strophe.js'
 import { useXmpp } from '@/composables/useXmpp'
 import { useServerConfig } from '@/composables/useServerConfig'
+import { useCredentialStore } from '@/composables/useCredentialStore'
+import ConnectionsView from '@/views/ConnectionsView.vue'
 
 const router = useRouter()
 const { status, errorMessage, connect, recentLogins } = useXmpp()
+// The app opens on the Connections screen, not the login form — that's the
+// actual offline-usable entry point; "Connect" on a saved profile is what
+// gets you to the password step below.
+const showConnections = ref(true)
 const { getForceSecure, setForceSecure } = useServerConfig()
+const { getPassword, setPassword } = useCredentialStore()
 
 const jid = ref('')
 const password = ref('')
+const rememberPassword = ref(false)
 const loading = ref(false)
 
 // Two-step flow (JID + WS override, then password) so a password manager can
@@ -59,11 +67,33 @@ function pickRecentLogin(recentJid: string) {
   goToPassword()
 }
 
+// "Connect" on a saved profile in the Connections screen: if a password was
+// remembered for it, skip straight to a connect attempt — that's the whole
+// point of remembering it. Otherwise prefill the JID and stop at the
+// password step like any other manual login.
+async function onConnectFromConnections(selectedJid: string) {
+  jid.value = selectedJid
+  showConnections.value = false
+  const bareJid = Strophe.getBareJidFromJid(selectedJid) ?? selectedJid
+  const savedPassword = await getPassword(bareJid)
+  if (savedPassword) {
+    password.value = savedPassword
+    step.value = 'password'
+    await handleLogin()
+  } else {
+    goToPassword()
+  }
+}
+
 async function handleLogin() {
   if (!jid.value || !password.value) return
   loading.value = true
   try {
     await connect(jid.value, password.value)
+    if (rememberPassword.value) {
+      const bareJid = Strophe.getBareJidFromJid(jid.value) ?? jid.value
+      await setPassword(bareJid, password.value)
+    }
     router.push({ name: 'dashboard' })
   } catch {
     // errorMessage is set inside the composable
@@ -78,8 +108,15 @@ async function handleLogin() {
     class="d-flex align-items-center justify-content-center vh-100"
     style="background-color: #111316"
   >
-    <div style="width: 100%; max-width: 360px; padding: 0 1rem">
+    <div :style="{ width: '100%', maxWidth: showConnections ? '480px' : '360px', padding: '0 1rem' }">
 
+      <ConnectionsView
+        v-if="showConnections"
+        @connect="onConnectFromConnections"
+        @back="showConnections = false"
+      />
+
+      <template v-else>
       <!-- Logo / header -->
       <div class="text-center mb-4">
         <i class="bi bi-telescope text-primary" style="font-size: 2.5rem"></i>
@@ -122,6 +159,12 @@ async function handleLogin() {
                 {{ recentJid }}
               </button>
             </div>
+          </div>
+
+          <div v-if="step === 'jid'" class="mb-3 text-end">
+            <button type="button" class="btn btn-link btn-sm p-0 text-muted" style="font-size:0.75rem" @click="showConnections = true">
+              <i class="bi bi-gear me-1"></i>Manage connections
+            </button>
           </div>
 
           <!-- Step 2 recap: the real JID input below stays mounted (v-show, not
@@ -187,6 +230,21 @@ async function handleLogin() {
             />
           </div>
 
+          <!-- Opt-in password storage (step 2 only) — off by default, see
+               useCredentialStore.ts for where this ends up. -->
+          <div v-if="step === 'password'" class="mb-4 form-check">
+            <input
+              id="rememberPassword"
+              v-model="rememberPassword"
+              type="checkbox"
+              class="form-check-input"
+              :disabled="loading"
+            />
+            <label class="form-check-label text-muted" for="rememberPassword" style="font-size:0.8rem">
+              Remember password on this device
+            </label>
+          </div>
+
           <!-- Submit (step 2 only) -->
           <button
             v-if="step === 'password'"
@@ -205,6 +263,7 @@ async function handleLogin() {
           </button>
         </form>
       </div>
+      </template>
 
     </div>
   </div>

@@ -86,6 +86,15 @@ function rememberLogin(userJid: string): void {
   localStorage.setItem(RECENT_LOGINS_KEY, JSON.stringify(next))
 }
 
+// Also used to save a connection profile before ever logging in (the offline
+// "Connections" screen) — same list, same shape, just not gated on a
+// successful connect.
+function forgetLogin(userJid: string): void {
+  const next = recentLogins.value.filter((j) => j !== userJid)
+  recentLogins.value = next
+  localStorage.setItem(RECENT_LOGINS_KEY, JSON.stringify(next))
+}
+
 // PubSub state: keyed by the real "pyobs:state:{module}:{Interface}:{version}"
 // node string. Ref-counted since ejabberd tracks one real subscription per
 // (JID, node) — multiple components watching the same module/interface must
@@ -687,6 +696,8 @@ export function useXmpp() {
     modules: readonly(modules),
     events: readonly(events),
     recentLogins: readonly(recentLogins),
+    rememberLogin,
+    forgetLogin,
     connect,
     disconnect,
     executeMethod,

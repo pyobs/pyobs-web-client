@@ -34,9 +34,13 @@ function persist(bareJid: string, endpoints: VfsEndpoint[]): void {
   localStorage.setItem(VFS_CONFIG_KEY, JSON.stringify(store.value))
 }
 
-export function useVfsConfig() {
+// overrideBareJid lets a pre-login screen (the "Connections" list) manage a
+// saved connection's VFS endpoints before ever connecting as it — without it,
+// this always follows the live session's own JID (SettingsView.vue's usage,
+// unchanged).
+export function useVfsConfig(overrideBareJid?: string) {
   const { jid } = useXmpp()
-  const bareJid = computed(() => (jid.value ? (Strophe.getBareJidFromJid(jid.value) ?? '') : ''))
+  const bareJid = computed(() => overrideBareJid ?? (jid.value ? (Strophe.getBareJidFromJid(jid.value) ?? '') : ''))
 
   const vfsEndpoints = computed<VfsEndpoint[]>(() => store.value[bareJid.value] ?? [])
 

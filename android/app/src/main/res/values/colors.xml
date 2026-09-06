@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the app's own dark background (LoginView.vue) so the native
+         launch splash doesn't flash white before the WebView takes over. -->
+    <color name="splashBackground">#111316</color>
+</resources>

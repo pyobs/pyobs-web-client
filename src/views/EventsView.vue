@@ -194,16 +194,21 @@ async function send() {
         No events yet.
       </p>
 
-      <table v-else class="w-100" style="table-layout: fixed">
-        <tbody>
-          <tr v-for="ev in nonLogEvents" :key="ev.uuid">
-            <td class="text-secondary pe-3 text-nowrap align-top" style="width: 5.5rem">{{ formatTime(ev.timestamp) }}</td>
-            <td class="pe-3 text-muted align-top text-truncate" style="width: 8rem">{{ ev.module }}</td>
-            <td class="pe-3 text-light align-top text-truncate" style="width: 10rem; min-width: 0">{{ ev.type }}</td>
-            <td class="text-break align-top text-muted" style="white-space: pre-wrap">{{ JSON.stringify(ev.data, null, 2) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else>
+        <div
+          v-for="ev in nonLogEvents"
+          :key="ev.uuid"
+          class="mb-2 pb-2"
+          style="border-bottom: 1px solid #2d3035"
+        >
+          <div class="d-flex flex-wrap align-items-baseline column-gap-2">
+            <span class="text-secondary text-nowrap">{{ formatTime(ev.timestamp) }}</span>
+            <span class="text-muted text-nowrap">{{ ev.module }}</span>
+            <span class="text-light text-nowrap">{{ ev.type }}</span>
+          </div>
+          <div class="text-break text-muted mt-1" style="white-space: pre-wrap">{{ JSON.stringify(ev.data, null, 2) }}</div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
