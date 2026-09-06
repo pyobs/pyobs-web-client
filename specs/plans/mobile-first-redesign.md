@@ -102,10 +102,12 @@ breakpoint switch, redesign for the compact shell, or descope from primary mobil
   wasn't in the original mockup but removes the login-form step entirely once a password is set.
 - **`LoggingView`/`EventsView`** — the narrow-width table→flowing-list fix from earlier this
   session stands; not revisited against the Phase 0 visual language yet.
-- **Module-grouped drill-down (`ModulePage`, mirroring `pyobs-gui`'s own redesign) — not started.**
-  This is the piece that makes Dashboard cards navigate anywhere instead of just expanding
-  inline, and what would let `CameraView`/`RoofView`/etc. stop being separate top-level routes.
-  Real, separate work, not yet scoped into a phase here.
+- **Module-grouped drill-down (`ModulePage`, mirroring `pyobs-gui`'s own redesign) — scoped, not
+  started.** This is the piece that makes Dashboard cards navigate anywhere instead of just
+  expanding inline, and what would let `CameraView`/`RoofView`/etc. stop being separate top-level
+  routes. Scoping moved to its own doc, `specs/plans/module-page-rework.md` — it turned out to
+  have a bigger blast radius than a per-view migration item (it changes desktop nav grouping too,
+  not just compact).
 - **`ShellView`** — resolved: stays reachable on mobile (via More), not descoped. It's the only
   way to operate a module with no dedicated widget of its own, so cutting it isn't an option.
 - Remaining unmigrated: `RoofView`, `ModeView`, `WeatherView`, `AutoFocusView`, `AutoGuidingView`,
@@ -146,8 +148,9 @@ fix safe-area/keyboard/scroll-physics quirks specific to iOS's WebView. Not a re
   now remember passwords, which makes this more relevant than when it was first raised, not less.
 - **Whether `ShellView` stays in primary mobile navigation — resolved.** Stays, reachable via
   More: it's the only way to operate a module with no dedicated widget of its own.
-- **New: the ModulePage-style module-grouped drill-down** (Phase 2) needs its own scoping pass —
-  it's bigger than a per-view migration item, closer to a phase of its own.
+- **The ModulePage-style module-grouped drill-down** (Phase 2) — scoped in
+  `specs/plans/module-page-rework.md`; several real decisions there (routing scheme, desktop nav
+  grouping) still open.
 
 ## Incidental fixes found along the way
 

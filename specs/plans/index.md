@@ -23,6 +23,9 @@ Implementation plans, checklist-style.
 - [mobile-first-redesign.md](mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** (Phase 1 done;
   Dashboard + Connections/Login migrated)
+- [module-page-rework.md](module-page-rework.md) — one nav destination per module (tabs per
+  interface, shared section across tabs), mirroring pyobs-gui's own `ModulePage` redesign; replaces
+  today's 7 separate per-interface routes. **proposed, scoping only**
 - [telescope-page.md](telescope-page.md) — telescope page for `ITelescope` modules. **proposed**
 - [vfs-token-auth.md](vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token).
   **proposed**
