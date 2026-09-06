@@ -20,6 +20,8 @@ Implementation plans, checklist-style.
 - [rpc-fault-call-id.md](rpc-fault-call-id.md) — surface `call_id` on RPC faults. **proposed**
 - [struct-typed-command-params.md](struct-typed-command-params.md) — `struct<Name>`-typed command
   params. **blocked on upstream**
+- [mobile-first-redesign.md](mobile-first-redesign.md) — mobile-first app shell + per-view
+  redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **proposed**
 - [telescope-page.md](telescope-page.md) — telescope page for `ITelescope` modules. **proposed**
 - [vfs-token-auth.md](vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token).
   **proposed**
