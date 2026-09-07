@@ -124,7 +124,13 @@ async function handleLogin() {
       const bareJid = Strophe.getBareJidFromJid(jid.value) ?? jid.value
       await setPassword(bareJid, password.value)
     }
-    router.push({ name: 'dashboard' })
+    // replace, not push: Login must never be a real back-target once
+    // authenticated (the router guard bounces straight back out of it
+    // anyway) — on Android this left Login sitting in the native WebView
+    // back-stack behind Dashboard, so swiping back from Dashboard tried to
+    // land on Login, got redirected, and exited the app instead of behaving
+    // like a normal "back on the home screen" exit.
+    router.replace({ name: 'dashboard' })
   } catch {
     // errorMessage is set inside the composable
   } finally {

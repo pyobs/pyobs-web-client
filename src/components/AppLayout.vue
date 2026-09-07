@@ -23,7 +23,11 @@ const moduleNavEntries = computed(() =>
 
 function handleLogout() {
   disconnect()
-  router.push({ name: 'login' })
+  // replace, not push — same reasoning as LoginView.vue's post-login
+  // navigation: nothing authenticated should be a real back-target from
+  // Login once signed out (the router guard would just bounce back to it
+  // anyway), so it must become the new root, not sit behind Dashboard/etc.
+  router.replace({ name: 'login' })
 }
 
 function navigate(to: string) {
