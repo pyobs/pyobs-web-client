@@ -153,7 +153,7 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
     }
 
     const path = String(result.value)
-    const resolved = resolveVfsEndpoint(path)
+    const resolved = await resolveVfsEndpoint(path)
     if (!resolved) {
       errors.value = {
         ...errors.value,
@@ -163,8 +163,8 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
     }
 
     const headers: HeadersInit = {}
-    if (resolved.endpoint.username) {
-      headers['Authorization'] = `Basic ${btoa(`${resolved.endpoint.username}:${resolved.endpoint.password ?? ''}`)}`
+    if (resolved.endpoint.token) {
+      headers['Authorization'] = `Bearer ${resolved.endpoint.token}`
     }
     const response = await fetch(resolved.url, { headers })
     if (!response.ok) {

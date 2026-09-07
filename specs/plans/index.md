@@ -15,6 +15,8 @@ Implementation plans, checklist-style.
   today's 7 separate per-interface routes. **done**
 - [2026-08-03-telescope-page.md](2026-08-03-telescope-page.md) — telescope page for `ITelescope` modules, incl.
   non-sidereal tracking. **done**
+- [2026-08-04-vfs-token-auth.md](2026-08-04-vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token),
+  plus secure-storage-backing the token. **done**
 
 ## Not finished
 
@@ -29,5 +31,3 @@ Implementation plans, checklist-style.
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** (Phase 1 done;
   Dashboard + Connections/Login + the ModulePage drill-down migrated; per-widget compact visual
   passes still outstanding)
-- [2026-08-04-vfs-token-auth.md](2026-08-04-vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token).
-  **proposed**

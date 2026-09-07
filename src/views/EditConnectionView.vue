@@ -68,12 +68,12 @@ const { vfsEndpoints, addEndpoint, updateEndpoint, removeEndpoint } = useVfsConf
 
 const editingIndex = ref<number | null>(null) // -1 while adding, null while closed
 const isNew = ref(false)
-const form = ref<VfsEndpoint>({ root: '', baseUrl: '', username: '', password: '' })
+const form = ref<VfsEndpoint>({ root: '', baseUrl: '', token: '' })
 
 function startAdd() {
   isNew.value = true
   editingIndex.value = -1
-  form.value = { root: '', baseUrl: '', username: '', password: '' }
+  form.value = { root: '', baseUrl: '', token: '' }
 }
 
 function startEdit(index: number) {
@@ -81,25 +81,27 @@ function startEdit(index: number) {
   if (!existing) return
   isNew.value = false
   editingIndex.value = index
-  form.value = { ...existing }
+  // Token is never round-tripped back into the form — same "blank means
+  // leave unchanged" pattern as the XMPP password above, now that it lives in
+  // secure storage rather than plain localStorage.
+  form.value = { ...existing, token: '' }
 }
 
 function cancelEdit() {
   editingIndex.value = null
 }
 
-function save() {
+async function save() {
   if (!form.value.root || !form.value.baseUrl) return
   const endpoint: VfsEndpoint = {
     root: form.value.root,
     baseUrl: form.value.baseUrl,
-    ...(form.value.username ? { username: form.value.username } : {}),
-    ...(form.value.password ? { password: form.value.password } : {}),
+    ...(form.value.token ? { token: form.value.token } : {}),
   }
   if (isNew.value) {
-    addEndpoint(endpoint)
+    await addEndpoint(endpoint)
   } else if (editingIndex.value !== null) {
-    updateEndpoint(editingIndex.value, endpoint)
+    await updateEndpoint(editingIndex.value, endpoint)
   }
   editingIndex.value = null
 }
@@ -200,13 +202,15 @@ function removeConnection() {
           <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Base URL</label>
           <input v-model="form.baseUrl" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="https://archive.example.com/pyobs/" />
         </div>
-        <div class="mb-2">
-          <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Username <span class="text-secondary">(optional)</span></label>
-          <input v-model="form.username" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" autocomplete="off" />
-        </div>
         <div class="mb-3">
-          <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Password <span class="text-secondary">(optional)</span></label>
-          <input v-model="form.password" type="password" class="form-control form-control-sm bg-dark border-secondary text-light" autocomplete="off" />
+          <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Token <span class="text-secondary">(optional)</span></label>
+          <input
+            v-model="form.token"
+            type="password"
+            class="form-control form-control-sm bg-dark border-secondary text-light"
+            :placeholder="isNew ? '' : 'leave blank to keep unchanged'"
+            autocomplete="off"
+          />
         </div>
         <div class="d-flex gap-2">
           <button class="btn btn-primary btn-sm" :disabled="!form.root || !form.baseUrl" @click="save">Save</button>

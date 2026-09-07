@@ -28,11 +28,6 @@ instead of this list for the completed-feature catalog.
   `ERROR` transitions, bad weather with the roof open, guiding lost,
   `CRITICAL` log events). That logic has to live server-side or in a relay,
   not in this client — see that doc's "Push notifications" section.
-- **VFS credentials still unmigrated to secure storage** — the XMPP password
-  moved to Keychain/Keystore-backed storage, VFS endpoint credentials did
-  not; still plain `localStorage`. See
-  `specs/design/native-app-shell-capacitor.md`'s "Credential storage"
-  section.
 - **iOS build + TestFlight distribution** — not started, blocked on Mac
   access. See `specs/design/native-app-shell-capacitor.md`'s Phasing.
 

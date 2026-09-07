@@ -1,9 +1,10 @@
 # Native app shell via Capacitor (Android-first, iOS to follow)
 
-Status: in progress. Goals 1 (icon/splash/no browser chrome), 2 (XMPP password only — VFS
-credentials not yet migrated, see Credential storage), and 4 (offline saved-connections screen,
-built further than described below) are done. Goal 3 (push) is **done**: end-to-end delivery
-confirmed on a real device against a real Firebase project (see "Push notifications" below).
+Status: in progress. Goals 1 (icon/splash/no browser chrome), 2 (XMPP password and VFS endpoint
+tokens both secure-storage-backed now, see Credential storage), and 4 (offline saved-connections
+screen, built further than described below) are done. Goal 3 (push) is **done**: end-to-end
+delivery confirmed on a real device against a real Firebase project (see "Push notifications"
+below).
 Forward evolution of the
 UI built here — the compact shell, Dashboard, and the Connections/Add/Edit split — is tracked in
 `specs/plans/2026-09-06-mobile-first-redesign.md`, not this doc.
@@ -81,20 +82,19 @@ existing build output, wrapped.
 Current state (`specs/design/login-memory-and-vfs-config.md`): the XMPP password lives in
 `sessionStorage` (cleared per session, deliberately never persisted — persisting a plaintext
 password in `localStorage` was called out there as "a real security regression, not just a style
-choice"), while VFS endpoint credentials *are* persisted in `localStorage`, flagged in that same
-doc as a named tradeoff. That doc is marked partially stale for a different reason (a Bearer-token
-migration plan, `specs/plans/2026-08-04-vfs-token-auth.md`) — but that plan is still `status: proposed`,
-unexecuted; VFS endpoints are still plain Basic Auth username/password today. An earlier revision
-of this doc incorrectly stated the token migration had already happened — corrected here.
+choice"). That doc is marked partially stale for a different reason it names — a Bearer-token
+migration for VFS auth — which has since shipped: `specs/plans/2026-08-04-vfs-token-auth.md` is
+now `status: done`, VFS endpoints use `Authorization: Bearer <token>`, not Basic Auth
+username/password.
 
-**Implemented: only the XMPP password moved.** `useCredentialStore.ts` wraps
-`@aparajita/capacitor-secure-storage` (Keychain / Keystore-backed) — opt-in "Remember password" on
-login, or set directly from the Connections Add/Edit screens (see below). VFS endpoint credentials
-were **not** migrated — they're still exactly where `login-memory-and-vfs-config.md` left them,
-plain `localStorage`, unchanged. That's a real inconsistency worth naming: one credential type on
-this screen is now behind Keychain/Keystore, the other sits in plaintext next to it. Not urgent
-(VFS credentials are typically lower-privilege, e.g. an archive server), but not resolved either —
-worth a follow-up rather than assuming it's covered by "credential storage is done."
+**Implemented: both the XMPP password and the VFS token are secure-storage-backed.**
+`useCredentialStore.ts` wraps `@aparajita/capacitor-secure-storage` (Keychain / Keystore-backed)
+for both — opt-in "Remember password" on login for the XMPP password, or set directly from the
+Connections Add/Edit screens; the VFS token is entered per-endpoint in that same screen
+(`SettingsView.vue`/`EditConnectionView.vue`), never round-tripped back into the form once saved
+(blank means "leave unchanged", same as the XMPP password field). The one-credential-type-secure/
+one-plaintext inconsistency this section used to flag no longer exists — root/baseUrl (not secrets)
+are the only VFS fields still in plain `localStorage`.
 
 ## Saved connections screen (offline) — implemented, shape evolved past this description
 
@@ -140,8 +140,8 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
    app; also needed a project-relative debug keystore fix (see
    `specs/plans/2026-09-06-mobile-first-redesign.md`'s "Incidental fixes") once Android Studio and the CLI
    turned out to sign debug builds differently on this dev machine.
-2. ⚠️ Secure-storage plugin swap — **XMPP password only**. VFS token/credentials not migrated;
-   see Credential storage above.
+2. ✅ Secure-storage plugin swap — **XMPP password and VFS token both migrated**; see Credential
+   storage above.
 3. ✅ Push notification spike — **done, end-to-end delivery confirmed** on a real device (Motorola
    Edge 50 Neo, Android 16) against a real Firebase project (`pyobs-51a29`). `@capacitor/push-notifications` installed,
    `src/composables/usePushNotifications.ts` (permission request + `register()` + listeners,
@@ -197,9 +197,6 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
   been about layout and information architecture, not a judgment on WebView feel itself.
 - **Saved-connections data model vs. `pyobs-polaris`** — still unchecked; the screen shipped
   without this comparison ever happening.
-- **VFS credentials still unmigrated to secure storage** — see Credential storage above; a real
-  gap, not just a deferred nice-to-have, now that the XMPP password sits in a materially stronger
-  store right next to it.
 
 ## References
 

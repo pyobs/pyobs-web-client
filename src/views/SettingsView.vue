@@ -1,10 +1,23 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { Capacitor } from '@capacitor/core'
 import { useVfsConfig, type VfsEndpoint } from '@/composables/useVfsConfig'
 import { usePushNotifications } from '@/composables/usePushNotifications'
 
-const { vfsEndpoints, addEndpoint, updateEndpoint, removeEndpoint } = useVfsConfig()
+const { vfsEndpoints, addEndpoint, updateEndpoint, removeEndpoint, hasToken } = useVfsConfig()
+
+// Per-root "is a token stored" flag for the list display below — fetched
+// async, never exposes the token itself. Recomputed whenever the endpoint
+// list changes (add/remove/rename all change which roots exist).
+const tokenConfigured = ref<Record<string, boolean>>({})
+watch(
+  vfsEndpoints,
+  async (endpoints) => {
+    const entries = await Promise.all(endpoints.map(async (e) => [e.root, await hasToken(e.root)] as const))
+    tokenConfigured.value = Object.fromEntries(entries)
+  },
+  { immediate: true, deep: true },
+)
 
 // Diagnostic only, for the push-notification feasibility spike (see
 // specs/design/native-app-shell-capacitor.md) — lets a real device's
@@ -16,12 +29,12 @@ const isNativePlatform = Capacitor.isNativePlatform()
 
 const editingIndex = ref<number | null>(null) // null while the form is closed
 const isNew = ref(false)
-const form = ref<VfsEndpoint>({ root: '', baseUrl: '', username: '', password: '' })
+const form = ref<VfsEndpoint>({ root: '', baseUrl: '', token: '' })
 
 function startAdd() {
   isNew.value = true
   editingIndex.value = -1
-  form.value = { root: '', baseUrl: '', username: '', password: '' }
+  form.value = { root: '', baseUrl: '', token: '' }
 }
 
 function startEdit(index: number) {
@@ -29,25 +42,27 @@ function startEdit(index: number) {
   if (!existing) return
   isNew.value = false
   editingIndex.value = index
-  form.value = { ...existing }
+  // Token is never round-tripped back into the form — same "blank means
+  // leave unchanged" pattern as the XMPP password in EditConnectionView.vue,
+  // now that it lives in secure storage rather than plain localStorage.
+  form.value = { ...existing, token: '' }
 }
 
 function cancel() {
   editingIndex.value = null
 }
 
-function save() {
+async function save() {
   if (!form.value.root || !form.value.baseUrl) return
   const endpoint: VfsEndpoint = {
     root: form.value.root,
     baseUrl: form.value.baseUrl,
-    ...(form.value.username ? { username: form.value.username } : {}),
-    ...(form.value.password ? { password: form.value.password } : {}),
+    ...(form.value.token ? { token: form.value.token } : {}),
   }
   if (isNew.value) {
-    addEndpoint(endpoint)
+    await addEndpoint(endpoint)
   } else if (editingIndex.value !== null) {
-    updateEndpoint(editingIndex.value, endpoint)
+    await updateEndpoint(editingIndex.value, endpoint)
   }
   editingIndex.value = null
 }
@@ -85,8 +100,8 @@ function save() {
         <div class="flex-grow-1">
           <div class="text-light fw-semibold" style="font-size:0.85rem">{{ endpoint.root }}</div>
           <div class="text-muted text-break" style="font-size:0.75rem">{{ endpoint.baseUrl }}</div>
-          <div v-if="endpoint.username" class="text-secondary" style="font-size:0.75rem">
-            user: {{ endpoint.username }}, password: ••••••
+          <div v-if="tokenConfigured[endpoint.root]" class="text-secondary" style="font-size:0.75rem">
+            token configured
           </div>
         </div>
         <button class="btn btn-outline-secondary btn-sm" @click="startEdit(index)">
@@ -112,13 +127,15 @@ function save() {
         <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Base URL</label>
         <input v-model="form.baseUrl" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="https://archive.example.com/pyobs/" />
       </div>
-      <div class="mb-2">
-        <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Username <span class="text-secondary">(optional)</span></label>
-        <input v-model="form.username" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" autocomplete="off" />
-      </div>
       <div class="mb-3">
-        <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Password <span class="text-secondary">(optional)</span></label>
-        <input v-model="form.password" type="password" class="form-control form-control-sm bg-dark border-secondary text-light" autocomplete="off" />
+        <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Token <span class="text-secondary">(optional)</span></label>
+        <input
+          v-model="form.token"
+          type="password"
+          class="form-control form-control-sm bg-dark border-secondary text-light"
+          :placeholder="isNew ? '' : 'leave blank to keep unchanged'"
+          autocomplete="off"
+        />
       </div>
       <div class="d-flex gap-2">
         <button class="btn btn-primary btn-sm" :disabled="!form.root || !form.baseUrl" @click="save">Save</button>
