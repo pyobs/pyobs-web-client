@@ -26,6 +26,10 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [acl-reactive-error-handling.md](acl-reactive-error-handling.md) — ACL denial reaches the client
   as a plain XMPP-level IQ error, not through `findRpcFault`; no client change needed today.
   *implemented, closed*
+- [pyobs-gui-widget-parity.md](pyobs-gui-widget-parity.md) — `pyobs-gui`'s full `MAIN_WIDGETS`
+  registry and its main/sidebar (`sidebar_preferred`+promotion) mechanism, cross-referenced against
+  what this client has and hasn't built; check before curating any interface's fields. *living
+  reference, re-verify against `pyobs-gui/pyobs_gui/mainwindow.py` periodically*
 - [native-app-shell-capacitor.md](native-app-shell-capacitor.md) — package this app as an
   installable Android/iOS shell via Capacitor (icon, secure credential storage, push, offline
   saved-connections screen), replacing the earlier React Native + shared-core plan. *in progress*

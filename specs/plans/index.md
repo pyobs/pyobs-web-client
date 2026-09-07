@@ -22,8 +22,22 @@ Implementation plans, checklist-style.
 
 ## Not finished
 
+- [2026-09-07-widget-visual-redesign.md](2026-09-07-widget-visual-redesign.md) — curated per-interface
+  status rows + shared card/button design system for the 7 module widgets, closing out
+  mobile-first-redesign's unresolved visual-language gap. **proposed, highest priority** — ahead of
+  new-feature work below until the shipped widgets match the mockup.
 - [2026-08-04-auxiliary-interface-widgets.md](2026-08-04-auxiliary-interface-widgets.md) — auxiliary interface widgets
-  (attach-or-standalone). **proposed**
+  (Cooling/Filters/Temperatures/Focuser, `sidebar_preferred`-promoted or demoted to the shared
+  section). **proposed**, revised 2026-09-07 to match `pyobs-gui`'s actual mechanism
+- [2026-09-07-video-widget.md](2026-09-07-video-widget.md) — `IVideo` widget (Live View via native
+  `<img>` MJPEG, FITS Image grab). **proposed**
+- [2026-09-07-spectrograph-widget.md](2026-09-07-spectrograph-widget.md) — `ISpectrograph` widget
+  (camera-lite: expose/abort/status, no settings panel). **proposed**
+- [2026-09-07-structured-config-widget.md](2026-09-07-structured-config-widget.md) — `IStructuredConfig`
+  widget (schema-driven module config form). **proposed**, phased (flat fields first, nested/basic-expert deferred)
+- [2026-09-07-robotic-widgets.md](2026-09-07-robotic-widgets.md) — `IRobotic` + `IRoboticScheduler`
+  widgets (current/next task, countdown, upcoming schedule). **proposed** — high mobile value
+  (status-at-a-glance), not just a registry-completeness item
 - [2026-08-03-idatasequence.md](2026-08-03-idatasequence.md) — `IDataSequence` support ("grab N images"). **proposed**
 - [2026-08-03-rpc-fault-call-id.md](2026-08-03-rpc-fault-call-id.md) — surface `call_id` on RPC faults. **proposed**
 - [2026-08-03-struct-typed-command-params.md](2026-08-03-struct-typed-command-params.md) — `struct<Name>`-typed command

@@ -15,6 +15,20 @@ config, the expandable Dashboard, the Roof page, the `IMode`/`IWeather`/
 Camera page, the Telescope page) aren't re-listed here — see that index
 instead of this list for the completed-feature catalog.
 
+- **Module widget visual redesign — highest priority, ahead of everything else on this list.**
+  Plan at `specs/plans/2026-09-07-widget-visual-redesign.md`: the 7 already-shipped module widgets
+  don't apply the mobile-first-redesign mockup's visual language at all (generic raw-dump status
+  cards, inconsistent buttons, no shared design-system classes), plus corrections found immediately
+  after a first implementation pass (missing fields, wrong status semantics, illegible mobile chart
+  text — see that plan's own "Corrections" section). Get these right before any new-feature work
+  below, per this session's explicit prioritization.
+- **Four `pyobs-gui` `MAIN_WIDGETS` registry entries have no web-client equivalent at all** —
+  `IVideo` (`specs/plans/2026-09-07-video-widget.md`), `ISpectrograph`
+  (`specs/plans/2026-09-07-spectrograph-widget.md`), `IStructuredConfig`
+  (`specs/plans/2026-09-07-structured-config-widget.md`), `IRobotic`/`IRoboticScheduler`
+  (`specs/plans/2026-09-07-robotic-widgets.md` — flagged there as unusually high mobile value, not
+  just a completeness gap). Full registry + what's built vs. not:
+  `specs/design/pyobs-gui-widget-parity.md`.
 - **`IDataSequence`** — plan at `specs/plans/2026-08-03-idatasequence.md`. Depends on
   the Camera page plan (shipped), open question there on how the client
   learns a new image is ready per-grab.
