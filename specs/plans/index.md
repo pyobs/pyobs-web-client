@@ -20,7 +20,9 @@ Implementation plans, checklist-style.
 
 ## Not finished
 
-- [2026-08-03-acl-aware-shell-forms.md](2026-08-03-acl-aware-shell-forms.md) — ACL-aware Shell forms. **proposed**
+- [2026-08-03-acl-aware-shell-forms.md](2026-08-03-acl-aware-shell-forms.md) — proactive per-method ACL
+  gating, project-wide (not Shell itself, which stays ungated). **in progress** — infrastructure done,
+  applied to Roof/Telescope; Camera/Mode/AutoFocus/AutoGuiding/Acquisition still pending
 - [2026-08-04-auxiliary-interface-widgets.md](2026-08-04-auxiliary-interface-widgets.md) — auxiliary interface widgets
   (attach-or-standalone). **proposed**
 - [2026-08-03-idatasequence.md](2026-08-03-idatasequence.md) — `IDataSequence` support ("grab N images"). **proposed**

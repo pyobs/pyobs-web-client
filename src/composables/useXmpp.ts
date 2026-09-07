@@ -23,6 +23,12 @@ export type PyobsModule = {
   interfaces: Record<string, InterfaceSchema>
   events: Record<string, EventSchema>
   capabilities: Record<string, Record<string, unknown>> // interface name -> decoded capabilities
+  // undefined = not yet fetched, or the fetch failed/module too old — callers
+  // should fail open (treat every method as permitted) in that case, not
+  // deny-by-default. A defined array (empty or populated) is an authoritative
+  // answer from the module's own IModule.get_permitted_methods(). See
+  // src/utils/acl.ts and specs/plans/2026-08-03-acl-aware-shell-forms.md.
+  permittedMethods?: string[]
 }
 
 export type RpcResult = {
@@ -268,9 +274,32 @@ async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> 
     // use defaults derived from JID
   }
 
+  // Fetch once per module here (not polled — see the plan doc's "no
+  // caching/TTL semantics" note) so every consumer (Shell forms and every
+  // fixed-method button across the app) reads permittedMethods off the module
+  // it already has, rather than each re-fetching independently. Left
+  // `undefined` — meaning "fail open" to every caller, see PyobsModule's own
+  // comment — if the module doesn't advertise IModule.get_permitted_methods
+  // (shouldn't happen, every pyobs-core Module implements IModule) or the
+  // call itself fails; a real, possibly-empty array only when the call
+  // actually succeeds. Exempt from ACL enforcement server-side, so a denied
+  // caller still gets a real answer, not a ForbiddenError, from this call.
+  let permittedMethods: string[] | undefined
+  const permittedMethodsSchema = interfaces['IModule']?.commands['get_permitted_methods']
+  if (permittedMethodsSchema) {
+    try {
+      const result = await executeMethod(fullJid, 'get_permitted_methods', [], permittedMethodsSchema)
+      if (result.success && Array.isArray(result.value)) {
+        permittedMethods = result.value as string[]
+      }
+    } catch {
+      // leave undefined — fail open
+    }
+  }
+
   modules.value = [
     ...modules.value.filter((m) => m.jid !== bareJid),
-    { jid: bareJid, fullJid, name, interfaces, events: eventSchemas, capabilities },
+    { jid: bareJid, fullJid, name, interfaces, events: eventSchemas, capabilities, permittedMethods },
   ]
 
   // Subscribe to every event this module actually publishes (PEP — hosted on

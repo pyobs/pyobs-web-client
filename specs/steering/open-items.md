@@ -15,10 +15,12 @@ config, the expandable Dashboard, the Roof page, the `IMode`/`IWeather`/
 Camera page, the Telescope page) aren't re-listed here — see that index
 instead of this list for the completed-feature catalog.
 
-- **ACL-aware Shell forms** — plan at `specs/plans/2026-08-03-acl-aware-shell-forms.md`.
-  Unblocked (`IModule.get_permitted_methods()` landed upstream, see the ACL
-  entry below), open questions on method-name collision across interfaces and
-  log-mode ambiguity still unresolved there.
+- **ACL-aware Shell forms, remaining views** — plan at
+  `specs/plans/2026-08-03-acl-aware-shell-forms.md` (status: in progress, both open
+  questions resolved). Infrastructure done and live-verified; applied to `RoofView.vue` and
+  `TelescopeView.vue`. `CameraView.vue` (batched), `ModeView.vue`, `AutoFocusView.vue`,
+  `AutoGuidingView.vue`, `AcquisitionView.vue` still need the same `permitted()`-per-button
+  wiring. `ShellView.vue` itself deliberately stays ungated, per the plan's own resolution.
 - **`IDataSequence`** — plan at `specs/plans/2026-08-03-idatasequence.md`. Depends on
   the Camera page plan (shipped), open question there on how the client
   learns a new image is ready per-grab.
@@ -49,6 +51,15 @@ Smaller/technical items:
   (XEP-0009's own per-call IQ id) for correlating a caller-side error with the
   module's origin-side log line; not surfaced on `RpcResult` today because
   nothing consumes it yet.
+- **`testing/pyobs-gui-configs/xmpp/*.yaml` fixtures are stale against current `pyobs-core`** —
+  `Module.__init__`'s `name` kwarg was renamed to `label` upstream at some point after
+  `testing/.venv`'s pinned `2.0.0.dev53`; every fixture still uses `name:`, so all of them fail to
+  start against a current `pyobs-core` (confirmed running one against an editable install of
+  `../pyobs-core` at `2.8.1`). Fixed so far: `telescope_acl.yaml`, `telescope_acl_denied.yaml`,
+  `roof.yaml` (needed live-verifying `specs/plans/2026-08-03-acl-aware-shell-forms.md`); the
+  other ~8 configs still have the stale key. Same root cause as, and probably worth doing
+  together with, `specs/plans/2026-08-04-vfs-token-auth.md`'s already-tracked "bump the
+  `testing/.venv` pin" remaining action.
 
 Unchecked risks (no dedicated plan, tracked here so they aren't lost):
 

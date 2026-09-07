@@ -1,6 +1,18 @@
 # Plan: ACL-aware Shell forms
 
-Status: proposed, not yet designed in detail.
+Status: in progress. Both open questions below resolved. Infrastructure (`PyobsModule.permittedMethods`,
+`fetchModuleInfo`'s `get_permitted_methods()` fetch, `src/utils/acl.ts`) is in and applied to
+`RoofView.vue` and `TelescopeView.vue`, per the "gate every RPC-triggering control project-wide"
+resolution below — **not** Shell itself, which stays the one deliberate exception. Live-verified
+against `testing/pyobs-gui-configs/xmpp/telescope_acl.yaml` (partial allow-list: `init`/`move_radec`
+stayed enabled, `park`/`stop_motion`/Alt-Az controls/tracking controls correctly disabled with a
+"Not permitted for this connection" tooltip) and `telescope_acl_denied.yaml` (empty allow-list:
+every control disabled, module still renders normally on Dashboard and its own page — confirms
+"grey out, not hide" holds at the module-list level too, not just per-button) and `roof.yaml` (no
+ACL configured: everything enabled, a real `init()` call still round-trips correctly end-to-end).
+Remaining: `CameraView.vue` (as one batched unit per the "Resolved by pyobs-polaris" section),
+`ModeView.vue`, `AutoFocusView.vue`, `AutoGuidingView.vue`, `AcquisitionView.vue` — same
+`permitted()`-per-button pattern, not yet applied.
 
 Repos: pyobs-web-client (all implementation here); depends on
 `IModule.get_permitted_methods()` in `../pyobs-core` (already implemented,
@@ -117,12 +129,20 @@ failed fetch (`undefined`/no value at all) is the only case that means
 "fail open, show everything as if unchecked." Don't conflate "we asked and
 got told no" with "we never got an answer" — they need opposite defaults.
 
-## Open questions
+## Open questions — resolved 2026-09-07
 
-- Method-name collision across interfaces on one module (see above) — needs an
-  answer before implementation, not assumed either way here.
-- Whether to surface "restricted but currently in log mode, would be denied
-  under enforce" as a visual distinction (e.g. a warning icon instead of full
-  grey-out) — `get_permitted_methods()` alone can't tell this apart from
-  "genuinely unrestricted," so this would need either accepting that
-  limitation or finding another signal (none identified so far).
+- **Method-name collision across interfaces on one module: not actually possible, confirmed
+  against `../pyobs-core/pyobs/modules/module.py`'s `_get_interfaces_and_methods()`.** It builds
+  `self._methods` as a single flat `dict[str, ...]`, assigning `self._methods[method_name] = ...`
+  once per method name while looping over every interface the module implements — a same-named
+  method declared on two interfaces collapses to one dispatch entry (last interface processed
+  wins), not two. `execute()` itself dispatches purely off `self._methods[method]`, so there is
+  never more than one live handler per method name per module regardless of how many interfaces
+  mention it — a flat name-based permitted-methods list is unambiguous by construction, no
+  "at least one interface" special-casing needed. `src/utils/acl.ts` documents this inline.
+- **Log-mode visual distinction: not pursued, accepting the limitation as originally framed.**
+  Confirmed no wire-level signal exists for it — `Module.open()`'s published `ModuleCapabilities`
+  (`../pyobs-core/pyobs/modules/module.py:356-361`) carries only `version`/`label`/`location`,
+  `_acl_mode` is never published anywhere. `get_permitted_methods()` remains the only signal,
+  ambiguous between "genuinely unrestricted" and "log mode" exactly as this doc already described
+  — both render as fully enabled, matching what would actually happen if clicked.

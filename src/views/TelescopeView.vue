@@ -4,6 +4,7 @@ import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
 import { defaultParamValue, paramValueFromString } from '@/pyobs-codec'
 import { raDecToAltAz, altAzToRaDec, type GeoLocation } from '@/utils/astroCoords'
+import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import ModuleStateCard from '@/components/ModuleStateCard.vue'
 import ParamForm from '@/components/ParamForm.vue'
 
@@ -15,6 +16,17 @@ const props = defineProps<{ jid: string }>()
 const { modules, executeMethod } = useXmpp()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
+
+// ── ACL gating: every fixed-method button below is disabled (not hidden —
+// see acl-aware-shell-forms.md's "grey out, not hide") when the connected
+// identity isn't permitted to call it. One flat name space covers both
+// Init/Park/Stop and every tab-section command, same as `runCommand` below
+// already assumes (pyobs-core dispatches by bare method name regardless of
+// which interface declares it).
+
+function permitted(method: string): boolean {
+  return isMethodPermitted(currentModule.value?.permittedMethods, method)
+}
 
 // ── Init/Park/Stop (IMotion, every ITelescope module has it) ───────────────
 
@@ -239,7 +251,8 @@ const trackBodySchema = computed(
       <button
         type="button"
         class="btn btn-outline-secondary btn-sm"
-        :disabled="!!motionRunning[currentModule.jid]"
+        :disabled="!!motionRunning[currentModule.jid] || !permitted('init')"
+        :title="permitted('init') ? undefined : NOT_PERMITTED_TITLE"
         @click="runMotion(currentModule, 'init')"
       >
         <span v-if="motionRunning[currentModule.jid] === 'init'" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -248,7 +261,8 @@ const trackBodySchema = computed(
       <button
         type="button"
         class="btn btn-outline-secondary btn-sm"
-        :disabled="!!motionRunning[currentModule.jid]"
+        :disabled="!!motionRunning[currentModule.jid] || !permitted('park')"
+        :title="permitted('park') ? undefined : NOT_PERMITTED_TITLE"
         @click="runMotion(currentModule, 'park')"
       >
         <span v-if="motionRunning[currentModule.jid] === 'park'" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -257,7 +271,8 @@ const trackBodySchema = computed(
       <button
         type="button"
         class="btn btn-outline-danger btn-sm"
-        :disabled="!!motionRunning[currentModule.jid]"
+        :disabled="!!motionRunning[currentModule.jid] || !permitted('stop_motion')"
+        :title="permitted('stop_motion') ? undefined : NOT_PERMITTED_TITLE"
         @click="runMotion(currentModule, 'stop_motion')"
       >
         <span v-if="motionRunning[currentModule.jid] === 'stop_motion'" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -301,7 +316,8 @@ const trackBodySchema = computed(
         <button
           type="button"
           class="btn btn-primary btn-sm"
-          :disabled="!!commandRunning[`${currentModule.jid}:move_radec`]"
+          :disabled="!!commandRunning[`${currentModule.jid}:move_radec`] || !permitted('move_radec')"
+          :title="permitted('move_radec') ? undefined : NOT_PERMITTED_TITLE"
           @click="runCommand(currentModule, 'IPointingRaDec', 'move_radec')"
         >
           <span v-if="commandRunning[`${currentModule.jid}:move_radec`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -325,7 +341,8 @@ const trackBodySchema = computed(
           <button
             type="button"
             class="btn btn-outline-secondary btn-sm"
-            :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_radec`]"
+            :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_radec`] || !permitted('set_offsets_radec')"
+            :title="permitted('set_offsets_radec') ? undefined : NOT_PERMITTED_TITLE"
             @click="runCommand(currentModule, 'IOffsetsRaDec', 'set_offsets_radec')"
           >
             <span v-if="commandRunning[`${currentModule.jid}:set_offsets_radec`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -355,7 +372,8 @@ const trackBodySchema = computed(
         <button
           type="button"
           class="btn btn-primary btn-sm"
-          :disabled="!!commandRunning[`${currentModule.jid}:move_altaz`]"
+          :disabled="!!commandRunning[`${currentModule.jid}:move_altaz`] || !permitted('move_altaz')"
+          :title="permitted('move_altaz') ? undefined : NOT_PERMITTED_TITLE"
           @click="runCommand(currentModule, 'IPointingAltAz', 'move_altaz')"
         >
           <span v-if="commandRunning[`${currentModule.jid}:move_altaz`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -379,7 +397,8 @@ const trackBodySchema = computed(
           <button
             type="button"
             class="btn btn-outline-secondary btn-sm"
-            :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_altaz`]"
+            :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_altaz`] || !permitted('set_offsets_altaz')"
+            :title="permitted('set_offsets_altaz') ? undefined : NOT_PERMITTED_TITLE"
             @click="runCommand(currentModule, 'IOffsetsAltAz', 'set_offsets_altaz')"
           >
             <span v-if="commandRunning[`${currentModule.jid}:set_offsets_altaz`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -406,7 +425,8 @@ const trackBodySchema = computed(
           <button
             type="button"
             class="btn btn-outline-secondary btn-sm"
-            :disabled="!!commandRunning[`${currentModule.jid}:set_tracking_mode`]"
+            :disabled="!!commandRunning[`${currentModule.jid}:set_tracking_mode`] || !permitted('set_tracking_mode')"
+            :title="permitted('set_tracking_mode') ? undefined : NOT_PERMITTED_TITLE"
             @click="runCommand(currentModule, 'ITrackingMode', 'set_tracking_mode')"
           >
             <span v-if="commandRunning[`${currentModule.jid}:set_tracking_mode`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -431,7 +451,8 @@ const trackBodySchema = computed(
           <button
             type="button"
             class="btn btn-outline-secondary btn-sm"
-            :disabled="!!commandRunning[`${currentModule.jid}:set_tracking_rate`]"
+            :disabled="!!commandRunning[`${currentModule.jid}:set_tracking_rate`] || !permitted('set_tracking_rate')"
+            :title="permitted('set_tracking_rate') ? undefined : NOT_PERMITTED_TITLE"
             @click="runCommand(currentModule, 'ITrackingRate', 'set_tracking_rate')"
           >
             <span v-if="commandRunning[`${currentModule.jid}:set_tracking_rate`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -449,7 +470,8 @@ const trackBodySchema = computed(
           <button
             type="button"
             class="btn btn-outline-secondary btn-sm"
-            :disabled="!!commandRunning[`${currentModule.jid}:track_body`]"
+            :disabled="!!commandRunning[`${currentModule.jid}:track_body`] || !permitted('track_body')"
+            :title="permitted('track_body') ? undefined : NOT_PERMITTED_TITLE"
             @click="runCommand(currentModule, 'IPointingBody', 'track_body')"
           >
             <span v-if="commandRunning[`${currentModule.jid}:track_body`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
