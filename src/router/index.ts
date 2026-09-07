@@ -1,14 +1,8 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteLocationRaw } from 'vue-router'
 import { useXmpp } from '@/composables/useXmpp'
 import DashboardView from '@/views/DashboardView.vue'
 import ShellView from '@/views/ShellView.vue'
-import RoofView from '@/views/RoofView.vue'
-import ModeView from '@/views/ModeView.vue'
-import WeatherView from '@/views/WeatherView.vue'
-import AutoFocusView from '@/views/AutoFocusView.vue'
-import AutoGuidingView from '@/views/AutoGuidingView.vue'
-import AcquisitionView from '@/views/AcquisitionView.vue'
-import CameraView from '@/views/CameraView.vue'
+import ModulePageView from '@/views/ModulePageView.vue'
 import LoggingView from '@/views/LoggingView.vue'
 import EventsView from '@/views/EventsView.vue'
 import SettingsView from '@/views/SettingsView.vue'
@@ -36,47 +30,32 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/roof/:jid?',
-      name: 'roof',
-      component: RoofView,
+      path: '/module/:jid/:tab?',
+      name: 'module',
+      component: ModulePageView,
       meta: { requiresAuth: true },
     },
-    {
-      path: '/mode/:jid?',
-      name: 'mode',
-      component: ModeView,
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/weather/:jid?',
-      name: 'weather',
-      component: WeatherView,
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autofocus/:jid?',
-      name: 'autofocus',
-      component: AutoFocusView,
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autoguiding/:jid?',
-      name: 'autoguiding',
-      component: AutoGuidingView,
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/acquisition/:jid?',
-      name: 'acquisition',
-      component: AcquisitionView,
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/camera/:jid?',
-      name: 'camera',
-      component: CameraView,
-      meta: { requiresAuth: true },
-    },
+    // The 7 routes below are what /module/:jid/:tab replaces — see
+    // specs/plans/module-page-rework.md. Kept as redirects, not deleted outright, so existing
+    // bookmarks/links keep working: with a :jid, straight to that module's matching tab; without
+    // one (the old "pick a module for me" case), to Dashboard instead of guessing — Dashboard is
+    // already "go pick a module".
+    ...(
+      [
+        ['roof', 'roof'],
+        ['mode', 'mode'],
+        ['weather', 'weather'],
+        ['autofocus', 'autofocus'],
+        ['autoguiding', 'autoguiding'],
+        ['acquisition', 'acquisition'],
+        ['camera', 'camera'],
+      ] as const
+    ).map(([routeName, tab]) => ({
+      path: `/${routeName}/:jid?`,
+      name: routeName,
+      redirect: (to: { params: { jid?: string } }): RouteLocationRaw =>
+        to.params.jid ? { name: 'module', params: { jid: to.params.jid, tab } } : { name: 'dashboard' },
+    })),
     {
       path: '/logging',
       name: 'logging',

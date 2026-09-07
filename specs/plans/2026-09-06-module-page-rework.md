@@ -1,6 +1,7 @@
 # Plan: Module-grouped drill-down (ModulePage rework)
 
-Status: proposed, not yet started — design and implementation both fully scoped, ready to build
+Status: implemented — all 8 steps of the implementation plan below landed; type-check and unit
+tests both pass clean
 
 Repos: pyobs-web-client (mirrors a model from `../pyobs-gui`, no cross-repo work)
 

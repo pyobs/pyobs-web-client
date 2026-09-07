@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
 import ModuleStateCard from '@/components/ModuleStateCard.vue'
@@ -29,29 +28,11 @@ type AcquisitionResult = {
 }
 type AcquisitionState = { attempts: AcquisitionAttempt[]; result: AcquisitionResult | null; time: string }
 
-const route = useRoute()
-const router = useRouter()
+// One tab on ModulePageView.vue now — see specs/plans/module-page-rework.md.
+const props = defineProps<{ jid: string }>()
 const { modules, executeMethod, subscribeState } = useXmpp()
 
-const acquisitionModules = computed(() =>
-  modules.value.filter((m) => 'IAcquisition' in m.interfaces).sort((a, b) => a.name.localeCompare(b.name)),
-)
-
-const routeJid = computed(() => route.params.jid as string | undefined)
-
-const currentModule = computed(() =>
-  routeJid.value ? acquisitionModules.value.find((m) => m.jid === routeJid.value) : undefined,
-)
-
-// No :jid in the URL: redirect to the first online module (alphabetical), so
-// the single-instance case stays a one-click nav hit with no picker step. If
-// a module goes offline while its page is open, we stay put and fall through
-// to the "not online" empty state below instead of forcing a navigation.
-watchEffect(() => {
-  if (!routeJid.value && acquisitionModules.value.length > 0) {
-    router.replace({ name: 'acquisition', params: { jid: acquisitionModules.value[0]!.jid } })
-  }
-})
+const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
 
 const running = ref(false) // this page's own run() call in flight
 const error = ref('')
@@ -175,88 +156,62 @@ async function abort() {
 </script>
 
 <template>
-  <div style="max-width: 800px">
-    <h5 class="text-light fw-semibold mb-4">Acquisition</h5>
+  <div v-if="currentModule" class="d-flex flex-column gap-2">
+    <ModuleStateCard
+      v-if="currentModule.interfaces['IRunning']"
+      :jid="currentModule.jid"
+      interface-name="IRunning"
+      :version="currentModule.interfaces['IRunning'].version"
+      title="Status"
+    />
 
-    <div v-if="acquisitionModules.length === 0" class="text-muted" style="font-size:0.9rem">
-      <i class="bi bi-info-circle me-1"></i>
-      No IAcquisition modules online.
-    </div>
-
-    <div v-else-if="!currentModule" class="text-muted" style="font-size:0.9rem">
-      <i class="bi bi-info-circle me-1"></i>
-      Acquisition module{{ routeJid ? ` "${routeJid}"` : '' }} is not online.
-    </div>
-
-    <div v-else class="d-flex flex-column gap-2">
-      <div
-        :key="currentModule.jid"
-        class="rounded-3 p-3"
-        style="background-color:#1a1d21; border:1px solid #2d3035"
+    <div class="d-flex flex-wrap align-items-end gap-2 mt-2">
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm"
+        :disabled="running"
+        @click="run"
       >
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <span class="status-dot online flex-shrink-0"></span>
-          <span class="text-light fw-semibold" style="font-size:0.9rem">{{ currentModule.name }}</span>
-          <span class="text-muted" style="font-size:0.75rem">{{ currentModule.jid }}</span>
-        </div>
+        <span v-if="running" class="spinner-border spinner-border-sm me-1" role="status"></span>
+        Acquire
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline-danger btn-sm"
+        :disabled="!runningStateValue?.running"
+        @click="abort"
+      >
+        Abort
+      </button>
+    </div>
 
-        <ModuleStateCard
-          v-if="currentModule.interfaces['IRunning']"
-          :jid="currentModule.jid"
-          interface-name="IRunning"
-          :version="currentModule.interfaces['IRunning'].version"
-          title="Status"
-        />
+    <div v-if="error" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
+      {{ error }}
+    </div>
 
-        <div class="d-flex flex-wrap align-items-end gap-2 mt-2">
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm"
-            :disabled="running"
-            @click="run"
-          >
-            <span v-if="running" class="spinner-border spinner-border-sm me-1" role="status"></span>
-            Acquire
-          </button>
-          <button
-            type="button"
-            class="btn btn-outline-danger btn-sm"
-            :disabled="!runningStateValue?.running"
-            @click="abort"
-          >
-            Abort
-          </button>
-        </div>
+    <div
+      v-if="acquisitionStateValue?.result"
+      class="alert alert-success py-1 px-2 mt-2 mb-0"
+      style="font-size:0.8rem"
+    >
+      <div>
+        RA/Dec: {{ acquisitionStateValue.result.ra.toFixed(5) }}° / {{ acquisitionStateValue.result.dec.toFixed(5) }}°
+        &nbsp;·&nbsp;
+        Alt/Az: {{ acquisitionStateValue.result.alt.toFixed(3) }}° / {{ acquisitionStateValue.result.az.toFixed(3) }}°
+      </div>
+      <div v-if="resultOffsetLabel">{{ resultOffsetLabel }}</div>
+    </div>
 
-        <div v-if="error" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
-          {{ error }}
-        </div>
-
-        <div
-          v-if="acquisitionStateValue?.result"
-          class="alert alert-success py-1 px-2 mt-2 mb-0"
-          style="font-size:0.8rem"
-        >
-          <div>
-            RA/Dec: {{ acquisitionStateValue.result.ra.toFixed(5) }}° / {{ acquisitionStateValue.result.dec.toFixed(5) }}°
-            &nbsp;·&nbsp;
-            Alt/Az: {{ acquisitionStateValue.result.alt.toFixed(3) }}° / {{ acquisitionStateValue.result.az.toFixed(3) }}°
-          </div>
-          <div v-if="resultOffsetLabel">{{ resultOffsetLabel }}</div>
-        </div>
-
-        <div v-if="distancePoints.length > 0" class="d-flex flex-column gap-2 mt-2">
-          <div class="rounded-3 p-2" style="background-color:#15181c; border:1px solid #2d3035">
-            <DistanceChart :points="distancePoints" />
-          </div>
-          <div
-            v-if="scatterPoints.length > 0"
-            class="rounded-3 p-2"
-            style="background-color:#15181c; border:1px solid #2d3035; max-width:340px"
-          >
-            <OffsetScatterChart :points="scatterPoints" :x-label="scatterAxisLabels.x" :y-label="scatterAxisLabels.y" />
-          </div>
-        </div>
+    <div v-if="distancePoints.length > 0" class="d-flex flex-column gap-2 mt-2">
+      <div class="rounded-3 p-2" style="background-color:#15181c; border:1px solid #2d3035">
+        <DistanceChart :points="distancePoints" />
+      </div>
+      <div
+        v-if="scatterPoints.length > 0"
+        class="rounded-3 p-2"
+        style="background-color:#15181c; border:1px solid #2d3035; max-width:340px"
+      >
+        <OffsetScatterChart :points="scatterPoints" :x-label="scatterAxisLabels.x" :y-label="scatterAxisLabels.y" />
       </div>
     </div>
   </div>

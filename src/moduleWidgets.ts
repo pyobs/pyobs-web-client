@@ -1,4 +1,4 @@
-import type { Component } from 'vue'
+import type { Component, DeepReadonly } from 'vue'
 import type { PyobsModule } from '@/composables/useXmpp'
 import { interfaceLabel } from '@/utils/interfaceLabel'
 import RoofView from '@/views/RoofView.vue'
@@ -9,10 +9,10 @@ import AutoGuidingView from '@/views/AutoGuidingView.vue'
 import AcquisitionView from '@/views/AcquisitionView.vue'
 import CameraView from '@/views/CameraView.vue'
 
-// The module-grouped drill-down's registry — see specs/plans/module-page-rework.md. Replaces
-// useModuleNavSections.ts's per-interface nav grouping: this resolves which widget component(s)
-// a given MODULE renders (ModulePageView.vue, one tab per match), not which modules implement a
-// given interface. Order matters — it's tab order on a multi-widget module, and (in AppLayout's
+// The module-grouped drill-down's registry — see
+// specs/plans/2026-09-06-module-page-rework.md. Resolves which widget component(s) a given
+// MODULE renders (ModulePageView.vue, one tab per match), not which modules implement a given
+// interface. Order matters — it's tab order on a multi-widget module, and (in AppLayout's
 // desktop sidebar) which entry's icon wins for a module's single nav-list icon.
 export type ModuleWidgetEntry = {
   interfaceName: string
@@ -34,6 +34,6 @@ export const MODULE_WIDGETS: ModuleWidgetEntry[] = [
 
 // Matches in registry order — order is tab order on ModulePageView, and the first match's icon
 // is what a module's single desktop-sidebar nav entry shows.
-export function widgetsForModule(mod: Pick<PyobsModule, 'interfaces'>): ModuleWidgetEntry[] {
+export function widgetsForModule(mod: DeepReadonly<Pick<PyobsModule, 'interfaces'>>): ModuleWidgetEntry[] {
   return MODULE_WIDGETS.filter((entry) => entry.interfaceName in mod.interfaces)
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, type DeepReadonly } from 'vue'
+import { useRouter } from 'vue-router'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { interfaceLabel } from '@/utils/interfaceLabel'
@@ -8,8 +9,17 @@ import KeyValueCard from '@/components/KeyValueCard.vue'
 
 type Module = DeepReadonly<PyobsModule>
 
+const router = useRouter()
 const { modules, subscribeState } = useXmpp()
 const { isCompact } = useBreakpoint()
+
+// Compact only: a card now navigates to its ModulePageView instead of
+// expanding inline (that mechanism didn't exist when this triage board was
+// first built — see specs/plans/2026-09-06-module-page-rework.md). Desktop's
+// own toggleExpanded below is untouched.
+function openModule(jid: string) {
+  router.push({ name: 'module', params: { jid } })
+}
 
 const sortedModules = computed(() => [...modules.value].sort((a, b) => a.name.localeCompare(b.name)))
 
@@ -121,10 +131,9 @@ const triage = computed(() => {
 </script>
 
 <template>
-  <!-- Compact: status/triage board — see specs/plans/mobile-first-redesign.md.
-       Tapping a card doesn't navigate anywhere yet (no module-grouped drill-
-       down page exists — that's separate, future work); it just expands
-       inline, same interaction as the desktop list below. -->
+  <!-- Compact: status/triage board — see specs/plans/2026-09-06-mobile-first-redesign.md.
+       Tapping a card navigates to its ModulePageView (see
+       specs/plans/2026-09-06-module-page-rework.md) instead of expanding inline. -->
   <div v-if="isCompact" class="d-flex flex-column gap-3">
     <div v-if="modules.length === 0" class="text-muted" style="font-size:0.9rem">
       <i class="bi bi-info-circle me-1"></i>
@@ -140,28 +149,16 @@ const triage = computed(() => {
         <div
           v-for="mod in triage.attention"
           :key="mod.jid"
-          class="rounded-3"
+          class="rounded-3 d-flex align-items-center gap-2 p-3"
           style="background-color:#241a1b; border:1px solid #dc354560; cursor:pointer"
-          @click="toggleExpanded(mod.jid)"
+          @click="openModule(mod.jid)"
         >
-          <div class="d-flex align-items-center gap-2 p-3">
-            <span class="status-dot" style="background:#dc3545"></span>
-            <div class="flex-grow-1" style="min-width:0">
-              <div class="text-light fw-semibold text-truncate" style="font-size:1rem">{{ mod.name }}</div>
-              <div class="text-truncate" style="font-size:0.8rem; color:#ff8f8f">{{ triage.subtitles.get(mod.jid) }}</div>
-            </div>
-            <i class="bi flex-shrink-0" :class="expanded.has(mod.jid) ? 'bi-chevron-down' : 'bi-chevron-right'" style="font-size:0.8rem; color:#6c757d"></i>
+          <span class="status-dot" style="background:#dc3545"></span>
+          <div class="flex-grow-1" style="min-width:0">
+            <div class="text-light fw-semibold text-truncate" style="font-size:1rem">{{ mod.name }}</div>
+            <div class="text-truncate" style="font-size:0.8rem; color:#ff8f8f">{{ triage.subtitles.get(mod.jid) }}</div>
           </div>
-          <div v-if="expanded.has(mod.jid)" class="px-3 pb-3">
-            <ModuleStateCard
-              v-for="iface in statefulInterfaces(mod)"
-              :key="`state-${mod.jid}-${iface.name}`"
-              :jid="mod.jid"
-              :interface-name="iface.name"
-              :version="iface.version"
-              :title="iface.name"
-            />
-          </div>
+          <i class="bi bi-chevron-right flex-shrink-0" style="font-size:0.8rem; color:#6c757d"></i>
         </div>
       </div>
 
@@ -170,65 +167,34 @@ const triage = computed(() => {
         <div
           v-for="mod in triage.running"
           :key="mod.jid"
-          class="rounded-3"
+          class="rounded-3 d-flex align-items-center gap-2 p-3"
           style="background-color:#1a1d21; border:1px solid #ffca6a40; cursor:pointer"
-          @click="toggleExpanded(mod.jid)"
+          @click="openModule(mod.jid)"
         >
-          <div class="d-flex align-items-center gap-2 p-3">
-            <span class="status-dot" style="background:#ffca6a"></span>
-            <div class="flex-grow-1" style="min-width:0">
-              <div class="text-light fw-semibold text-truncate" style="font-size:1rem">{{ mod.name }}</div>
-              <div class="text-truncate" style="font-size:0.8rem; color:#ffca6a">{{ triage.subtitles.get(mod.jid) }}</div>
-            </div>
-            <i class="bi flex-shrink-0" :class="expanded.has(mod.jid) ? 'bi-chevron-down' : 'bi-chevron-right'" style="font-size:0.8rem; color:#6c757d"></i>
+          <span class="status-dot" style="background:#ffca6a"></span>
+          <div class="flex-grow-1" style="min-width:0">
+            <div class="text-light fw-semibold text-truncate" style="font-size:1rem">{{ mod.name }}</div>
+            <div class="text-truncate" style="font-size:0.8rem; color:#ffca6a">{{ triage.subtitles.get(mod.jid) }}</div>
           </div>
-          <div v-if="expanded.has(mod.jid)" class="px-3 pb-3">
-            <ModuleStateCard
-              v-for="iface in statefulInterfaces(mod)"
-              :key="`state-${mod.jid}-${iface.name}`"
-              :jid="mod.jid"
-              :interface-name="iface.name"
-              :version="iface.version"
-              :title="iface.name"
-            />
-          </div>
+          <i class="bi bi-chevron-right flex-shrink-0" style="font-size:0.8rem; color:#6c757d"></i>
         </div>
       </div>
 
       <div v-if="triage.idle.length" class="d-flex flex-column gap-2">
         <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em; color:#6c757d">Idle · nominal</div>
         <div class="rounded-3" style="background-color:#1a1d21; border:1px solid #2d3035">
-          <template v-for="(mod, i) in triage.idle" :key="mod.jid">
-            <div
-              class="d-flex align-items-center gap-2 px-3"
-              style="min-height:48px; cursor:pointer"
-              :style="i > 0 ? 'border-top:1px solid #2d3035' : ''"
-              @click="toggleExpanded(mod.jid)"
-            >
-              <span class="status-dot online"></span>
-              <div class="flex-grow-1 text-truncate" style="font-size:0.9rem; color:#ced4da">{{ mod.name }}</div>
-              <i class="bi flex-shrink-0" :class="expanded.has(mod.jid) ? 'bi-chevron-down' : 'bi-chevron-right'" style="font-size:0.75rem; color:#6c757d"></i>
-            </div>
-            <div v-if="expanded.has(mod.jid)" class="px-3 pb-3">
-              <div v-if="Object.keys(mod.interfaces).length" class="d-flex flex-wrap gap-1 mb-2">
-                <span v-for="iface in Object.values(mod.interfaces)" :key="iface.name" class="badge bg-secondary" style="font-size:0.65rem; font-weight:400">{{ iface.name }}:{{ iface.version }}</span>
-              </div>
-              <ModuleStateCard
-                v-for="iface in statefulInterfaces(mod)"
-                :key="`state-${mod.jid}-${iface.name}`"
-                :jid="mod.jid"
-                :interface-name="iface.name"
-                :version="iface.version"
-                :title="iface.name"
-              />
-              <KeyValueCard
-                v-for="[ifaceName, caps] in Object.entries(mod.capabilities)"
-                :key="`caps-${mod.jid}-${ifaceName}`"
-                :title="`${ifaceName} capabilities`"
-                :value="caps"
-              />
-            </div>
-          </template>
+          <div
+            v-for="(mod, i) in triage.idle"
+            :key="mod.jid"
+            class="d-flex align-items-center gap-2 px-3"
+            style="min-height:48px; cursor:pointer"
+            :style="i > 0 ? 'border-top:1px solid #2d3035' : ''"
+            @click="openModule(mod.jid)"
+          >
+            <span class="status-dot online"></span>
+            <div class="flex-grow-1 text-truncate" style="font-size:0.9rem; color:#ced4da">{{ mod.name }}</div>
+            <i class="bi bi-chevron-right flex-shrink-0" style="font-size:0.75rem; color:#6c757d"></i>
+          </div>
         </div>
       </div>
     </template>

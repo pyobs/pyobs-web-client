@@ -1,14 +1,25 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useXmpp } from '@/composables/useXmpp'
 import { useBreakpoint } from '@/composables/useBreakpoint'
-import { useModuleNavSections } from '@/composables/useModuleNavSections'
+import { widgetsForModule } from '@/moduleWidgets'
 
 const router = useRouter()
 const route = useRoute()
-const { jid, disconnect } = useXmpp()
+const { jid, disconnect, modules } = useXmpp()
 const { isCompact } = useBreakpoint()
-const { navSections } = useModuleNavSections()
+
+// One nav entry per module (not per interface) — see
+// specs/plans/2026-09-06-module-page-rework.md. The icon shown is whichever
+// widget entry matches first, mirroring pyobs-gui's own "first-entry-wins"
+// convention for a module's single nav-list icon.
+const moduleNavEntries = computed(() =>
+  modules.value
+    .map((mod) => ({ mod, widgets: widgetsForModule(mod) }))
+    .filter((entry) => entry.widgets.length > 0)
+    .sort((a, b) => a.mod.name.localeCompare(b.mod.name)),
+)
 
 function handleLogout() {
   disconnect()
@@ -146,38 +157,21 @@ const appVersion = __APP_VERSION__
           Settings
         </a>
 
-        <template v-if="navSections.length > 0">
+        <template v-if="moduleNavEntries.length > 0">
           <div class="px-2 pb-1 pt-2">
             <span class="text-uppercase text-muted fw-semibold" style="font-size:0.65rem;letter-spacing:.08em">Modules</span>
           </div>
 
-          <template v-for="section in navSections" :key="section.interfaceName">
-            <a
-              v-if="section.modules.length === 1"
-              class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
-              :class="{ active: route.name === section.routeName }"
-              @click="navigate(`/${section.routeName}/${section.modules[0]!.jid}`)"
-            >
-              <i :class="section.icon" style="font-size:0.8rem"></i>
-              {{ section.label }}
-            </a>
-
-            <template v-else>
-              <div class="px-2 pb-1 pt-1 d-flex align-items-center gap-2">
-                <i :class="section.icon" class="text-muted" style="font-size:0.8rem"></i>
-                <span class="text-muted" style="font-size:0.8rem">{{ section.label }}</span>
-              </div>
-              <a
-                v-for="m in section.modules"
-                :key="m.jid"
-                class="sidebar-link d-flex align-items-center gap-2 px-2 py-2 ps-4"
-                :class="{ active: route.name === section.routeName && route.params.jid === m.jid }"
-                @click="navigate(`/${section.routeName}/${m.jid}`)"
-              >
-                {{ m.name }}
-              </a>
-            </template>
-          </template>
+          <a
+            v-for="entry in moduleNavEntries"
+            :key="entry.mod.jid"
+            class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
+            :class="{ active: route.name === 'module' && route.params.jid === entry.mod.jid }"
+            @click="navigate(`/module/${entry.mod.jid}`)"
+          >
+            <i :class="entry.widgets[0]!.icon" style="font-size:0.8rem"></i>
+            {{ entry.mod.name }}
+          </a>
         </template>
       </div>
 

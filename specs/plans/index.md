@@ -10,6 +10,9 @@ Implementation plans, checklist-style.
 - [2026-08-03-events-page-send-tool.md](2026-08-03-events-page-send-tool.md) — send event tool. **done**
 - [2026-08-03-mode-widget.md](2026-08-03-mode-widget.md) — `IMode` widget. **done**
 - [2026-08-03-weather-widget.md](2026-08-03-weather-widget.md) — `IWeather` widget. **done**
+- [2026-09-06-module-page-rework.md](2026-09-06-module-page-rework.md) — one nav destination per module (tabs per
+  interface, shared section across tabs), mirroring pyobs-gui's own `ModulePage` redesign; replaces
+  today's 7 separate per-interface routes. **done**
 
 ## Not finished
 
@@ -23,9 +26,6 @@ Implementation plans, checklist-style.
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** (Phase 1 done;
   Dashboard + Connections/Login migrated)
-- [2026-09-06-module-page-rework.md](2026-09-06-module-page-rework.md) — one nav destination per module (tabs per
-  interface, shared section across tabs), mirroring pyobs-gui's own `ModulePage` redesign; replaces
-  today's 7 separate per-interface routes. **proposed, scoping only**
 - [2026-08-03-telescope-page.md](2026-08-03-telescope-page.md) — telescope page for `ITelescope` modules. **proposed**
 - [2026-08-04-vfs-token-auth.md](2026-08-04-vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token).
   **proposed**

@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useXmpp } from '@/composables/useXmpp'
-import { useModuleNavSections } from '@/composables/useModuleNavSections'
 
-// Compact-shell counterpart to the desktop sidebar's "Tools"/"Modules"
-// sections — everything not on a primary bottom tab (Dashboard, Logs).
-// Still lists the per-interface module pages directly, same as the sidebar
-// does today: the module-grouped drill-down (tabs per interface, mirroring
-// pyobs-gui's ModulePage — see specs/plans/mobile-first-redesign.md) is a
-// separate, not-yet-built piece of work, not part of this pass.
+// Compact-shell counterpart to the desktop sidebar's "Tools" section —
+// everything not on a primary bottom tab (Dashboard, Logs) and not a module
+// (Dashboard cards navigate to a module's ModulePageView directly now — see
+// specs/plans/2026-09-06-module-page-rework.md — so this no longer needs to
+// duplicate module access).
 //
 // Sign-out lives here too — missed entirely in the first pass (and in the
 // mockup before it), since the compact shell has no sidebar to hold it.
 const router = useRouter()
 const { jid, disconnect } = useXmpp()
-const { navSections } = useModuleNavSections()
 
 function navigate(to: string) {
   router.push(to)
@@ -46,28 +43,6 @@ function handleLogout() {
         <span class="flex-grow-1">Settings</span>
         <i class="bi bi-chevron-right text-secondary" style="font-size:0.8rem"></i>
       </a>
-
-      <template v-for="section in navSections" :key="section.interfaceName">
-        <a
-          v-if="section.modules.length === 1"
-          class="more-row"
-          @click="navigate(`/${section.routeName}/${section.modules[0]!.jid}`)"
-        >
-          <i :class="section.icon"></i>
-          <span class="flex-grow-1">{{ section.label }}</span>
-          <i class="bi bi-chevron-right text-secondary" style="font-size:0.8rem"></i>
-        </a>
-        <a
-          v-for="m in section.modules.length > 1 ? section.modules : []"
-          :key="m.jid"
-          class="more-row"
-          @click="navigate(`/${section.routeName}/${m.jid}`)"
-        >
-          <i :class="section.icon"></i>
-          <span class="flex-grow-1">{{ section.label }} — {{ m.name }}</span>
-          <i class="bi bi-chevron-right text-secondary" style="font-size:0.8rem"></i>
-        </a>
-      </template>
     </div>
 
     <button

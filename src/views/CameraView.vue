@@ -13,8 +13,10 @@
 // configured interface, immediately before each grab_data() call, matching
 // pyobs-gui's camerawidget.py:271-330. IFilters deferred — no live module
 // implements it to verify against yet.
-import { ref, computed, watch, watchEffect, type DeepReadonly } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+//
+// One tab on ModulePageView.vue now, not its own routed page — see
+// specs/plans/module-page-rework.md.
+import { ref, computed, watch, type DeepReadonly } from 'vue'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import { useVfsConfig } from '@/composables/useVfsConfig'
 import {
@@ -30,26 +32,11 @@ import ModuleStateCard from '@/components/ModuleStateCard.vue'
 import FitsCanvas from '@/components/FitsCanvas.vue'
 import ParamForm from '@/components/ParamForm.vue'
 
-const route = useRoute()
-const router = useRouter()
+const props = defineProps<{ jid: string }>()
 const { modules, executeMethod } = useXmpp()
 const { resolveVfsEndpoint } = useVfsConfig()
 
-const cameraModules = computed(() =>
-  modules.value.filter((m) => 'ICamera' in m.interfaces).sort((a, b) => a.name.localeCompare(b.name)),
-)
-
-const routeJid = computed(() => route.params.jid as string | undefined)
-
-const currentModule = computed(() =>
-  routeJid.value ? cameraModules.value.find((m) => m.jid === routeJid.value) : undefined,
-)
-
-watchEffect(() => {
-  if (!routeJid.value && cameraModules.value.length > 0) {
-    router.replace({ name: 'camera', params: { jid: cameraModules.value[0]!.jid } })
-  }
-})
+const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
 
 // ── Phase 3: per-interface settings, staged in one form and applied
 // immediately before each Expose ──────────────────────────────────────────
@@ -196,75 +183,49 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
 </script>
 
 <template>
-  <div style="max-width: 800px">
-    <h5 class="text-light fw-semibold mb-4">Camera</h5>
+  <div v-if="currentModule" class="d-flex flex-column gap-2">
+    <ModuleStateCard
+      v-if="currentModule.interfaces['IExposure']"
+      :jid="currentModule.jid"
+      interface-name="IExposure"
+      :version="currentModule.interfaces['IExposure'].version"
+      title="Exposure"
+    />
 
-    <div v-if="cameraModules.length === 0" class="text-muted" style="font-size:0.9rem">
-      <i class="bi bi-info-circle me-1"></i>
-      No ICamera modules online.
-    </div>
-
-    <div v-else-if="!currentModule" class="text-muted" style="font-size:0.9rem">
-      <i class="bi bi-info-circle me-1"></i>
-      Camera module{{ routeJid ? ` "${routeJid}"` : '' }} is not online.
-    </div>
-
-    <div v-else class="d-flex flex-column gap-2">
-      <div
-        :key="currentModule.jid"
-        class="rounded-3 p-3"
-        style="background-color:#1a1d21; border:1px solid #2d3035"
+    <div v-if="settingsGroups.length > 0" class="mt-2">
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm"
+        @click="showSettings = !showSettings"
       >
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <span class="status-dot online flex-shrink-0"></span>
-          <span class="text-light fw-semibold" style="font-size:0.9rem">{{ currentModule.name }}</span>
-          <span class="text-muted" style="font-size:0.75rem">{{ currentModule.jid }}</span>
+        <i class="bi" :class="showSettings ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+        Settings
+      </button>
+
+      <div v-if="showSettings" class="mt-2 rounded-3 p-3" style="background-color:#16181b; border:1px solid #2d3035">
+        <div v-for="group in settingsGroups" :key="group.key" class="mb-2">
+          <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ group.title }}</div>
+          <ParamForm v-model="settingsParams" :fields="group.fields" :enums="group.enums" :testid="`camera-settings-${group.key}`" />
         </div>
-
-        <ModuleStateCard
-          v-if="currentModule.interfaces['IExposure']"
-          :jid="currentModule.jid"
-          interface-name="IExposure"
-          :version="currentModule.interfaces['IExposure'].version"
-          title="Exposure"
-        />
-
-        <div v-if="settingsGroups.length > 0" class="mt-2">
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm"
-            @click="showSettings = !showSettings"
-          >
-            <i class="bi" :class="showSettings ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
-            Settings
-          </button>
-
-          <div v-if="showSettings" class="mt-2 rounded-3 p-3" style="background-color:#16181b; border:1px solid #2d3035">
-            <div v-for="group in settingsGroups" :key="group.key" class="mb-2">
-              <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ group.title }}</div>
-              <ParamForm v-model="settingsParams" :fields="group.fields" :enums="group.enums" :testid="`camera-settings-${group.key}`" />
-            </div>
-          </div>
-        </div>
-
-        <div class="d-flex flex-wrap gap-2 mt-2">
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm"
-            :disabled="!!exposing[currentModule.jid] || hasUnsupportedSettingsField"
-            @click="expose(currentModule)"
-          >
-            <span v-if="exposing[currentModule.jid]" class="spinner-border spinner-border-sm me-1" role="status"></span>
-            Expose
-          </button>
-        </div>
-
-        <div v-if="errors[currentModule.jid]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
-          {{ errors[currentModule.jid] }}
-        </div>
-
-        <FitsCanvas v-if="images[currentModule.jid]" class="mt-2" :data="images[currentModule.jid]!" />
       </div>
     </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-2">
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm"
+        :disabled="!!exposing[currentModule.jid] || hasUnsupportedSettingsField"
+        @click="expose(currentModule)"
+      >
+        <span v-if="exposing[currentModule.jid]" class="spinner-border spinner-border-sm me-1" role="status"></span>
+        Expose
+      </button>
+    </div>
+
+    <div v-if="errors[currentModule.jid]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
+      {{ errors[currentModule.jid] }}
+    </div>
+
+    <FitsCanvas v-if="images[currentModule.jid]" class="mt-2" :data="images[currentModule.jid]!" />
   </div>
 </template>
