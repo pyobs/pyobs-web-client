@@ -22,6 +22,7 @@ const { cycleTheme, themeIcon, themeLabel } = useTheme()
 const NAV_INTERFACES = [
   { interfaceName: 'IRoof', icon: 'bi-house-door' },
   { interfaceName: 'ICamera', icon: 'bi-camera' },
+  { interfaceName: 'ITelescope', icon: 'bi-stars' },
   { interfaceName: 'IMode', icon: 'bi-sliders' },
   { interfaceName: 'IWeather', icon: 'bi-cloud-sun' },
   { interfaceName: 'IAutoFocus', icon: 'bi-bullseye' },

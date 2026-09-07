@@ -1,6 +1,11 @@
 # Plan: Telescope page — for `ITelescope` modules
 
-Status: proposed, not yet implemented — two open questions below unresolved.
+Status: implemented (`TelescopeView.vue`, `src/utils/astroCoords.ts` for the destination
+preview). Type-checks, builds, and existing + new unit tests pass (the coordinate-transform
+tests use fixtures generated from `../pyobs-core`'s own astropy install, not hand-invented);
+not yet verified live against a real `DummyAltAzTelescope` — do that before calling this fully
+done (this dev environment's ejabberd has no WebSocket listener up and registering the
+`telescope` account needs interactive `sudo`, neither available non-interactively here).
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -175,20 +180,21 @@ unevaluated unknown — concrete implementation paths exist:
   error ("this telescope module did not report an observer location"), not
   a manual-entry form standing in for it.
 
-## Open questions (unresolved — need a decision before implementation)
+## Open questions — resolved 2026-09-07
 
-- Whether the destination-coordinate preview (using the module's own
-  reported `ModuleLocation`, see above) belongs in v1 or is itself a
-  fast-follow — it's cheap (no new wire code) but is a genuinely new small
-  feature (computing/displaying where a typed RA/Dec or Alt/Az destination
-  actually points to before the operator commits to Move), not assumed
-  either way here.
-- Whether Init/Park/Stop deserve dedicated buttons here at all, given Shell
-  can already call any `IMotion` RPC generically — leaning yes, since
-  starting/stopping a telescope is frequent enough during real operation to
-  deserve one-click access without going through Shell's module→method→params
-  flow, but worth confirming this small duplication is wanted.
-- Whether RA/Dec and Alt/Az sections (and now `ITrackingMode`/`ITrackingRate`/
-  `IPointingBody`) should render together on one page (whichever interfaces a
-  module implements, shown side by side) or as separate tabs/sections when a
-  module implements more than one.
+- **Destination-coordinate preview: in v1.** Implemented in `src/utils/astroCoords.ts`
+  (RA/Dec↔Alt/Az, mean GMST + IAU 1976 low-precision precession — `move_radec`'s ra/dec is
+  ICRS/J2000, per every `SkyCoord(..., frame="icrs")` in
+  `../pyobs-core/pyobs/modules/telescope/basetelescope.py`, so precession alone would otherwise
+  misplace the preview by tens of arcminutes today, growing with time). Verified against
+  astropy's own ICRS↔AltAz transform to within ~0.01° across three epochs — see
+  `src/utils/astroCoords.spec.ts`. When a module hasn't reported a location, `TelescopeView.vue`
+  shows a muted note next to just the preview line rather than blocking the page or the Move
+  button — the actual pointing math happens server-side regardless.
+- **Init/Park/Stop: dedicated buttons.** Implemented, copied from `RoofView.vue`'s
+  Open/Close/Stop pattern (same `IMotion` commands, relabeled Init/Park/Stop).
+- **RA/Dec vs Alt/Az vs Tracking layout: tabs.** `TelescopeView.vue` shows a manual tab bar
+  (plain buttons + a ref, no Bootstrap JS — nothing in this app loads `bootstrap.bundle.js`)
+  when a module implements more than one of the three sections; a module implementing exactly
+  one renders it directly with no tab bar. `IPointingOrbitalElements` stays out of v1 (still
+  blocked on the same struct-typed-param gap as `specs/plans/struct-typed-command-params.md`).

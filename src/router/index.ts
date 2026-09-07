@@ -9,6 +9,7 @@ import AutoFocusView from '@/views/AutoFocusView.vue'
 import AutoGuidingView from '@/views/AutoGuidingView.vue'
 import AcquisitionView from '@/views/AcquisitionView.vue'
 import CameraView from '@/views/CameraView.vue'
+import TelescopeView from '@/views/TelescopeView.vue'
 import LoggingView from '@/views/LoggingView.vue'
 import EventsView from '@/views/EventsView.vue'
 import SettingsView from '@/views/SettingsView.vue'
@@ -74,6 +75,12 @@ const router = createRouter({
       path: '/camera/:jid?',
       name: 'camera',
       component: CameraView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/telescope/:jid?',
+      name: 'telescope',
+      component: TelescopeView,
       meta: { requiresAuth: true },
     },
     {

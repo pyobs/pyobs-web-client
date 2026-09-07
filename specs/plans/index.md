@@ -9,6 +9,8 @@ Implementation plans, checklist-style.
   **done**
 - [events-page-send-tool.md](events-page-send-tool.md) — send event tool. **done**
 - [mode-widget.md](mode-widget.md) — `IMode` widget. **done**
+- [telescope-page.md](telescope-page.md) — telescope page for `ITelescope` modules, incl.
+  non-sidereal tracking. **implemented**
 - [weather-widget.md](weather-widget.md) — `IWeather` widget. **done**
 
 ## Not finished
@@ -20,6 +22,5 @@ Implementation plans, checklist-style.
 - [rpc-fault-call-id.md](rpc-fault-call-id.md) — surface `call_id` on RPC faults. **proposed**
 - [struct-typed-command-params.md](struct-typed-command-params.md) — `struct<Name>`-typed command
   params. **blocked on upstream**
-- [telescope-page.md](telescope-page.md) — telescope page for `ITelescope` modules. **proposed**
 - [vfs-token-auth.md](vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token).
   **proposed**
