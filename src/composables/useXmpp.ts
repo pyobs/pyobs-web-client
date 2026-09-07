@@ -111,13 +111,18 @@ function buildWsUrl(domain: string): string {
     ? (import.meta.env.VITE_XMPP_WS_URL as string)
     : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${domain}:5280/ws`
 
-  // The override only ever flips the scheme on top of whatever URL would
-  // otherwise be used (env var or auto-construction) — it must never replace
-  // the host/port/path, or a configured VITE_XMPP_WS_URL (e.g. a non-default
+  // Both overrides only ever apply on top of whatever URL would otherwise be
+  // used (env var or auto-construction) — they must never replace the
+  // host/path wholesale, or a configured VITE_XMPP_WS_URL (e.g. a non-default
   // port for local dev) becomes unreachable the instant any override exists.
-  const forceSecure = useServerConfig().getForceSecure(domain)
-  if (forceSecure === undefined) return base
-  return base.replace(/^wss?:/, forceSecure ? 'wss:' : 'ws:')
+  const config = useServerConfig()
+  const forceSecure = config.getForceSecure(domain)
+  const port = config.getPort(domain)
+
+  let url = base
+  if (forceSecure !== undefined) url = url.replace(/^wss?:/, forceSecure ? 'wss:' : 'ws:')
+  if (port !== undefined) url = url.replace(/^(wss?:\/\/[^/:]+)(:\d+)?/, `$1:${port}`)
+  return url
 }
 
 function sendIQ(stanza: Element): Promise<Element> {

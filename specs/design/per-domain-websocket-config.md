@@ -69,9 +69,8 @@ account.
   endpoints.
 - Removing `VITE_XMPP_WS_URL` entirely — kept as a lowest-priority fallback
   for simple single-server deployments that already rely on it.
-- **Overriding port or path** — no real deployment has needed this yet; if
-  one does, it'd need its own follow-up (either extra fields alongside the
-  checkbox, or falling back to a free-text override), not assumed here.
+- **Overriding path** — no real deployment has needed this; ejabberd's `/ws`
+  mapping is assumed fixed.
 
 ## Decided
 
@@ -177,3 +176,28 @@ default (checked) → `wss://localhost:5281/ws` (port preserved); unchecked →
 
 Verified live via a temporary Playwright driver (not committed) and the
 existing unit-test setup.
+
+## Extended: per-domain port override (2026-09-07)
+
+A real deployment moved ejabberd's `/ws` listener off the port-5280 default
+onto 443 (alongside the site's other HTTPS traffic) — the exact "overriding
+port" case this doc originally called out of scope. Extended rather than
+re-designed, since it's the same mechanism: `useServerConfig.ts`'s per-domain
+entry is now `{ forceSecure?: boolean; port?: number }` (was a bare
+`forceSecure` boolean), with `getPort`/`setPort` alongside the existing
+`getForceSecure`/`setForceSecure`; a domain's stored value from before this
+change (a bare boolean) is migrated to `{ forceSecure: <value> }` on read.
+
+`buildWsUrl(domain)` applies the port override the same way it already
+applied `forceSecure` — as a regex substitution on top of whatever base URL
+would otherwise be used (`VITE_XMPP_WS_URL` or auto-construction), never by
+replacing the URL wholesale, for the same reason recorded above (a
+non-default `VITE_XMPP_WS_URL` port for local dev must survive an unrelated
+override existing for that domain).
+
+UI: both `LoginView.vue` (pre-login) and `EditConnectionView.vue`
+(post-login, per saved connection) gained an optional numeric "WebSocket
+port" field next to the existing secure-WebSocket checkbox. Blank means "no
+override" (keep the 5280 default); only a valid 1-65535 integer is ever
+persisted, matching the same soft-validation-by-ignoring approach as the
+rest of this config (no error message, invalid input just doesn't persist).

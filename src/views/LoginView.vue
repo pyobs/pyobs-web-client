@@ -21,7 +21,7 @@ function openEdit(jid: string) {
   editingJid.value = jid
   screen.value = 'edit'
 }
-const { getForceSecure, setForceSecure } = useServerConfig()
+const { getForceSecure, setForceSecure, getPort, setPort } = useServerConfig()
 const { getPassword, setPassword } = useCredentialStore()
 
 const jid = ref('')
@@ -65,6 +65,23 @@ const forceSecure = computed<boolean>({
   set: (value) => {
     if (!domain.value) return
     setForceSecure(domain.value, value)
+  },
+})
+
+// Blank means "no override" (auto/default port), not "port 0" — only a valid
+// 1-65535 integer is ever persisted; anything else (blank, non-numeric, out
+// of range) clears the override instead of persisting garbage.
+const portInput = computed<string>({
+  get: () => getPort(domain.value)?.toString() ?? '',
+  set: (value) => {
+    if (!domain.value) return
+    const trimmed = value.trim()
+    if (!trimmed) {
+      setPort(domain.value, undefined)
+      return
+    }
+    const parsed = Number(trimmed)
+    if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) setPort(domain.value, parsed)
   },
 })
 
@@ -217,6 +234,22 @@ async function handleLogin() {
             <label class="form-check-label text-muted" for="forceSecureWs" style="font-size:0.8rem">
               Use secure WebSocket (wss) for this server
             </label>
+          </div>
+
+          <!-- Per-domain WS port override (step 1 only) -->
+          <div v-if="step === 'jid'" class="mb-3">
+            <label class="form-label text-muted" for="wsPort" style="font-size:0.8rem">
+              WebSocket port <span class="text-secondary">(optional)</span>
+            </label>
+            <input
+              id="wsPort"
+              v-model="portInput"
+              type="text"
+              inputmode="numeric"
+              class="form-control form-control-sm bg-dark border-secondary text-light"
+              placeholder="default (443/80)"
+              :disabled="!domain"
+            />
           </div>
 
           <!-- Continue (step 1 -> step 2) -->

@@ -93,6 +93,12 @@ startup.) This is safe even though the page itself is `http://`: browser
 mixed-content rules only block a secure page from opening an insecure
 connection, not the other way around.
 
+If your server's `/ws` listener isn't on port 5280 (e.g. it shares 443 with
+the rest of your HTTPS traffic), there's no need to touch `.env.local` for
+this either — the Login screen (and each saved connection's edit screen)
+has a per-domain "WebSocket port" field for exactly this case, alongside the
+secure-WebSocket checkbox.
+
 If ejabberd uses a self-signed certificate, the browser's WebSocket API has
 no way to bypass the trust check (unlike `curl -k`), so login will fail
 silently with "Connection failed. Check server address." until the browser

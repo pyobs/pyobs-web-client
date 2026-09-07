@@ -10,7 +10,7 @@ const props = defineProps<{ jid: string }>()
 const emit = defineEmits<{ back: [] }>()
 
 const { forgetLogin } = useXmpp()
-const { getForceSecure, setForceSecure } = useServerConfig()
+const { getForceSecure, setForceSecure, getPort, setPort } = useServerConfig()
 const { getPassword, setPassword, removePassword } = useCredentialStore()
 
 const domain = computed(() => Strophe.getDomainFromJid(props.jid) ?? '')
@@ -44,6 +44,23 @@ const forceSecure = computed<boolean>({
   get: () => getForceSecure(domain.value) ?? true,
   set: (value) => {
     if (domain.value) setForceSecure(domain.value, value)
+  },
+})
+
+// Blank means "no override" (auto/default port), not "port 0" — only a valid
+// 1-65535 integer is ever persisted; anything else (blank, non-numeric, out
+// of range) clears the override instead of persisting garbage.
+const portInput = computed<string>({
+  get: () => getPort(domain.value)?.toString() ?? '',
+  set: (value) => {
+    if (!domain.value) return
+    const trimmed = value.trim()
+    if (!trimmed) {
+      setPort(domain.value, undefined)
+      return
+    }
+    const parsed = Number(trimmed)
+    if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) setPort(domain.value, parsed)
   },
 })
 
@@ -113,6 +130,19 @@ function removeConnection() {
           </div>
           <input id="editForceSecureWs" v-model="forceSecure" type="checkbox" class="form-check-input flex-shrink-0" role="switch" />
         </div>
+
+        <hr class="border-secondary-subtle my-3" />
+
+        <label class="text-light" for="editWsPort" style="font-size:0.9rem">WebSocket port <span class="text-secondary">(optional)</span></label>
+        <input
+          id="editWsPort"
+          v-model="portInput"
+          type="text"
+          inputmode="numeric"
+          class="form-control form-control-sm bg-dark border-secondary text-light mt-1"
+          placeholder="default (443/80)"
+        />
+        <div class="text-muted mt-1" style="font-size:0.75rem">Leave blank to use the default port for ws/wss.</div>
       </div>
     </div>
 

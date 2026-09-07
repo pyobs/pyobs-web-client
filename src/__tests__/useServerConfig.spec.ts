@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useServerConfig } from '../composables/useServerConfig'
 
 // useServerConfig's store is a module-level singleton (same pattern as useXmpp/
@@ -29,7 +29,50 @@ describe('useServerConfig', () => {
     expect(getForceSecure(other)).toBeUndefined()
 
     const persisted = JSON.parse(localStorage.getItem('pyobs_server_config')!)
-    expect(persisted[domain]).toBe(true)
+    expect(persisted[domain]).toEqual({ forceSecure: true })
+  })
+
+  it('migrates the pre-port storage format (a bare boolean per domain)', async () => {
+    const domain = freshDomain()
+    localStorage.setItem('pyobs_server_config', JSON.stringify({ [domain]: true }))
+
+    // The store is a module-level singleton loaded once at import time, so
+    // reset the module registry and re-import to exercise loadStore() fresh
+    // against the legacy value just written.
+    vi.resetModules()
+    const { useServerConfig: freshUseServerConfig } = await import('../composables/useServerConfig')
+    const { getForceSecure } = freshUseServerConfig()
+    expect(getForceSecure(domain)).toBe(true)
+  })
+
+  it('sets and persists a port override, independent of forceSecure', () => {
+    const domain = freshDomain()
+    const { getPort, setPort, getForceSecure, setForceSecure } = useServerConfig()
+
+    setForceSecure(domain, false)
+    setPort(domain, 443)
+
+    expect(getPort(domain)).toBe(443)
+    expect(getForceSecure(domain)).toBe(false)
+  })
+
+  it('clears a port override back to "no override" without touching forceSecure', () => {
+    const domain = freshDomain()
+    const { getPort, setPort, getForceSecure, setForceSecure } = useServerConfig()
+
+    setForceSecure(domain, true)
+    setPort(domain, 5281)
+    setPort(domain, undefined)
+
+    expect(getPort(domain)).toBeUndefined()
+    expect(getForceSecure(domain)).toBe(true)
+  })
+
+  it('ignores setting a port override for an empty domain', () => {
+    const { getPort, setPort } = useServerConfig()
+
+    setPort('', 443)
+    expect(getPort('')).toBeUndefined()
   })
 
   it('clears an override back to "no override" (undefined), not false', () => {
