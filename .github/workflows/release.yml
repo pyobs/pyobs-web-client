@@ -24,7 +24,39 @@ jobs:
           cd dist
           zip -r "../pyobs-web-client-${{ github.ref_name }}.zip" .
 
+      # Android debug APK, attached to the same release as the web bundle —
+      # see pyobs-web-client#29. Signing is already solved: the checked-in
+      # android/app/debug-shared.keystore is what both this job and local
+      # dev sign with, so there's no keystore secret to provision here.
+      # versionName/versionCode are derived from package.json in
+      # android/app/build.gradle, so nothing version-related is needed in
+      # this workflow either.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - run: npx cap sync android
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - working-directory: android
+        run: ./gradlew assembleDebug
+
       - uses: softprops/action-gh-release@v2
         with:
-          files: pyobs-web-client-${{ github.ref_name }}.zip
+          files: |
+            pyobs-web-client-${{ github.ref_name }}.zip
+            android/app/build/outputs/apk/debug/app-debug.apk
           generate_release_notes: true
