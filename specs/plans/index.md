@@ -14,7 +14,7 @@ Implementation plans, checklist-style.
   interface, shared section across tabs), mirroring pyobs-gui's own `ModulePage` redesign; replaces
   today's 7 separate per-interface routes. **done**
 - [2026-08-03-telescope-page.md](2026-08-03-telescope-page.md) — telescope page for `ITelescope` modules, incl.
-  non-sidereal tracking. **implemented**
+  non-sidereal tracking. **done**
 
 ## Not finished
 

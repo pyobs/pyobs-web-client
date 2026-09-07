@@ -1,10 +1,13 @@
 # Plan: Telescope page — for `ITelescope` modules
 
-Status: implemented (`TelescopeView.vue`, registered in `src/moduleWidgets.ts`; `src/utils/astroCoords.ts`
-for the destination preview). Type-checks, builds, and existing + new unit tests pass (the
+Status: done. `TelescopeView.vue`, registered in `src/moduleWidgets.ts`; `src/utils/astroCoords.ts`
+for the destination preview. Type-checks, builds, and existing + new unit tests pass (the
 coordinate-transform tests use fixtures generated from `../pyobs-core`'s own astropy install, not
-hand-invented); not yet verified live against a real `DummyAltAzTelescope` — do that before
-calling this fully done. Re-implemented 2026-09-07 against the module-page-rework architecture
+hand-invented). Live-verified 2026-09-07 on a real Android device (Capacitor build) against a real
+`telescope@monet.saao.ac.za` module: Init/Park/Stop, the Alt/Az tab's live position and offset
+state, and the destination preview (typed Alt 0°/Az 0° correctly resolved to RA 198.7°/Dec 57.8°)
+all rendered correctly end-to-end — not just the planned `DummyAltAzTelescope` fixture, a live
+remote telescope. Re-implemented 2026-09-07 against the module-page-rework architecture
 (`specs/plans/2026-09-06-module-page-rework.md`) after an earlier implementation landed on a
 branch that got reset before merging — no design change from that earlier pass, just adapted
 from a standalone routed page to a `moduleWidgets.ts` registry entry (see "Scope for a first
