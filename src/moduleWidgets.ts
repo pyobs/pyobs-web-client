@@ -8,6 +8,7 @@ import AutoFocusView from '@/views/AutoFocusView.vue'
 import AutoGuidingView from '@/views/AutoGuidingView.vue'
 import AcquisitionView from '@/views/AcquisitionView.vue'
 import CameraView from '@/views/CameraView.vue'
+import TelescopeView from '@/views/TelescopeView.vue'
 
 // The module-grouped drill-down's registry — see
 // specs/plans/2026-09-06-module-page-rework.md. Resolves which widget component(s) a given
@@ -30,6 +31,7 @@ export const MODULE_WIDGETS: ModuleWidgetEntry[] = [
   { interfaceName: 'IAutoFocus', routeName: 'autofocus', label: interfaceLabel('IAutoFocus'), icon: 'bi-bullseye', component: AutoFocusView },
   { interfaceName: 'IAutoGuiding', routeName: 'autoguiding', label: interfaceLabel('IAutoGuiding'), icon: 'bi-compass', component: AutoGuidingView },
   { interfaceName: 'IAcquisition', routeName: 'acquisition', label: interfaceLabel('IAcquisition'), icon: 'bi-crosshair', component: AcquisitionView },
+  { interfaceName: 'ITelescope', routeName: 'telescope', label: interfaceLabel('ITelescope'), icon: 'bi-stars', component: TelescopeView },
 ]
 
 // Matches in registry order — order is tab order on ModulePageView, and the first match's icon
