@@ -1,6 +1,6 @@
 # Plan: Module-grouped drill-down (ModulePage rework)
 
-Status: proposed, not yet started — scoping only
+Status: proposed, not yet started — design and implementation both fully scoped, ready to build
 
 Repos: pyobs-web-client (mirrors a model from `../pyobs-gui`, no cross-repo work)
 
@@ -130,6 +130,58 @@ module-grouped registry/routing; only the chrome around it (sidebar vs. bottom-n
 
 None outstanding — routing, desktop nav, and the empty-state question are all resolved above.
 Implementation may still surface real ones (it usually does).
+
+## Implementation plan
+
+Two things fell out of actually thinking through the build order that weren't obvious from the
+design decisions alone:
+
+- **`MoreView.vue`'s per-interface module list becomes removable, not just re-grouped.** Once
+  Dashboard's cards navigate to `/module/:jid` instead of only expanding inline, Dashboard is
+  already the module-first destination on compact — there's nothing left for More's module list
+  to do. More shrinks to genuinely cross-cutting items only (Events, Shell, Settings), which is
+  what it was reaching for the first time it was built but couldn't yet achieve.
+- **Old bare routes (`/roof`, `/camera`, etc. with no `:jid`) redirect to Dashboard, not to a
+  guessed module.** Today each view's own `watchEffect` picks the first available module of its
+  type when no `:jid` is given. Reimplementing that per-interface "pick one for me" logic as a
+  static route redirect would need reactive access to the module list from route config, which is
+  awkward for no real benefit — Dashboard already *is* "go pick a module," so the bare case just
+  goes there. Only the with-`:jid` case needs a real redirect (to `/module/:jid/<tab>`).
+
+Ordered steps:
+
+1. **Registry.** New `src/moduleWidgets.ts` (not extending `useModuleNavSections.ts` in place —
+   its job changes from "group nav links" to "resolve which components a module's page renders,"
+   worth a clearer home). Exports the 7 entries (interfaceName, icon, label, routeName, component)
+   plus a `widgetsForModule(module)` helper returning matches in registry order.
+2. **`ModulePageView.vue`** (new). Resolves `jid` from `route.params.jid` directly (no
+   interface-filtered module list — just "the module with this jid" from the full list), calls
+   `widgetsForModule`, redirects to the first match's `routeName` if `route.params.tab` is
+   missing, renders a tab strip only when there are ≥2 matches, renders the active tab's component
+   with `:jid`, and shows one generic "module not online" state if the module isn't found at all
+   (replacing the 7 near-duplicate per-widget empty states). The shared-section slot exists here
+   but has nothing to put in it yet (see "Shared section" above) — leave it empty, not stubbed
+   with placeholder content.
+3. **Router** (`src/router/index.ts`): add `/module/:jid/:tab?` → `ModulePageView`. Change the 7
+   existing routes (`/roof/:jid?`, etc.) to `redirect` — with `:jid`, to
+   `/module/:jid/<that route's tab name>`; without it, to `/` (Dashboard) per the finding above.
+4. **Per-widget component refactor** (`RoofView.vue`, `ModeView.vue`, `WeatherView.vue`,
+   `AutoFocusView.vue`, `AutoGuidingView.vue`, `AcquisitionView.vue`, `CameraView.vue`): drop each
+   one's own interface-filtered module list, `routeJid`/`currentModule` computed, and redirect
+   `watchEffect` — replace with `defineProps<{ jid: string }>()` and a plain
+   `modules.value.find(m => m.jid === props.jid)` lookup. Same shape of change, 7 times; land as
+   one view per commit rather than all at once, so a mistake in one doesn't block the rest.
+5. **`DashboardView.vue`** (compact only): the three `@click="toggleExpanded(mod.jid)"` handlers
+   (attention/running/idle sections) become `router.push`-to-`/module/:jid` instead. Desktop's own
+   `toggleExpanded` usage is untouched — inline expand stays exactly as it is there.
+6. **`AppLayout.vue`** (desktop sidebar): the "Modules" section switches from
+   `useModuleNavSections`'s per-interface grouping to one link per module (from `widgetsForModule`
+   grouped the other way — by module, taking the first match's icon per pyobs-gui's own
+   "first-entry-wins" convention for the nav icon), linking to `/module/:jid`.
+7. **`MoreView.vue`**: drop the module-listing section entirely per the finding above; keep
+   Events/Shell/Settings.
+8. **Delete `useModuleNavSections.ts`** once nothing imports it — both its former consumers
+   (`AppLayout.vue`, `MoreView.vue`) are replaced by step 6/7.
 
 ## References
 
