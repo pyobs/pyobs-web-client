@@ -1,8 +1,18 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import { useVfsConfig, type VfsEndpoint } from '@/composables/useVfsConfig'
+import { usePushNotifications } from '@/composables/usePushNotifications'
 
 const { vfsEndpoints, addEndpoint, updateEndpoint, removeEndpoint } = useVfsConfig()
+
+// Diagnostic only, for the push-notification feasibility spike (see
+// specs/design/native-app-shell-capacitor.md) — lets a real device's
+// registration outcome be checked without digging through logcat. App.vue
+// already calls initialize() on mount; this just reads the same shared
+// state.
+const { token: pushToken, registrationError: pushError, lastReceived: pushLastReceived } = usePushNotifications()
+const isNativePlatform = Capacitor.isNativePlatform()
 
 const editingIndex = ref<number | null>(null) // null while the form is closed
 const isNew = ref(false)
@@ -114,6 +124,32 @@ function save() {
         <button class="btn btn-primary btn-sm" :disabled="!form.root || !form.baseUrl" @click="save">Save</button>
         <button class="btn btn-outline-secondary btn-sm" @click="cancel">Cancel</button>
       </div>
+    </div>
+
+    <!-- Diagnostic panel for the push-notification feasibility spike (see
+         specs/design/native-app-shell-capacitor.md) — not a user-facing
+         setting, just visibility into registration outcome without logcat. -->
+    <h6 class="text-light mb-2 mt-4" style="font-size:0.9rem">Push Notifications</h6>
+    <div class="rounded-3 p-3" style="background-color:#1a1d21; border:1px solid #2d3035; font-size:0.8rem">
+      <div v-if="!isNativePlatform" class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>
+        Native (Android/iOS) only — not available in the browser.
+      </div>
+      <template v-else>
+        <div v-if="pushToken" class="text-success mb-1">
+          <i class="bi bi-check-circle me-1"></i>Registered
+        </div>
+        <div v-if="pushToken" class="text-muted text-break mb-2" style="font-size:0.7rem">{{ pushToken }}</div>
+        <div v-if="pushError" class="text-danger mb-2">{{ pushError }}</div>
+        <div v-if="!pushToken && !pushError" class="text-muted">
+          <span class="spinner-border spinner-border-sm me-1" role="status"></span>Registering…
+        </div>
+        <div v-if="pushLastReceived" class="mt-2">
+          <div class="text-muted text-uppercase mb-1" style="font-size:0.65rem; letter-spacing:.06em">Last received</div>
+          <div class="text-light">{{ pushLastReceived.title }}</div>
+          <div class="text-secondary">{{ pushLastReceived.body }}</div>
+        </div>
+      </template>
     </div>
   </div>
 </template>

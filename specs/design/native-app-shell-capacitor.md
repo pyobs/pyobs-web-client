@@ -2,7 +2,9 @@
 
 Status: in progress. Goals 1 (icon/splash/no browser chrome), 2 (XMPP password only — VFS
 credentials not yet migrated, see Credential storage), and 4 (offline saved-connections screen,
-built further than described below) are done. Goal 3 (push) not started. Forward evolution of the
+built further than described below) are done. Goal 3 (push) in progress — web-side plumbing and
+crash-safety verified on a real device, real FCM delivery still blocked on a Firebase project (see
+"Push notifications" below). Forward evolution of the
 UI built here — the compact shell, Dashboard, and the Connections/Add/Edit split — is tracked in
 `specs/plans/2026-09-06-mobile-first-redesign.md`, not this doc.
 
@@ -140,7 +142,42 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
    turned out to sign debug builds differently on this dev machine.
 2. ⚠️ Secure-storage plugin swap — **XMPP password only**. VFS token/credentials not migrated;
    see Credential storage above.
-3. Push notification spike — not started.
+3. ⚠️ Push notification spike — web-side plumbing done and **verified crash-safe on a real device**
+   (Motorola Edge 50 Neo, Android 16) without Firebase configured yet; real FCM registration still
+   blocked on a Firebase project. `@capacitor/push-notifications` installed,
+   `src/composables/usePushNotifications.ts` (permission request + `register()` + listeners,
+   native-only, no-op on web), wired from `App.vue` on mount, a diagnostic panel in
+   `SettingsView.vue` (token/error/last-received). `npx cap sync android` already added the
+   plugin's Gradle project reference, and — corrected from an earlier, overcautious note in this
+   doc — the Capacitor Android template *already* guards `apply plugin:
+   'com.google.gms.google-services'` behind a `google-services.json` existence check
+   (`android/app/build.gradle`), so that plugin was never actually at risk of breaking the build.
+
+   **Real bug found and fixed by testing on-device**: calling `PushNotifications.register()`
+   without a configured Firebase project doesn't fail gracefully — it's an uncaught
+   `IllegalStateException` ("Default FirebaseApp is not initialized") on a Capacitor plugin thread,
+   crashing the whole app on launch. Not reachable from any JS `try`/`catch`, confirmed via
+   `adb logcat`'s crash buffer. Fixed with a build-time flag: `vite.config.ts` checks whether
+   `android/app/google-services.json` exists and injects `__PUSH_NOTIFICATIONS_CONFIGURED__`
+   (same pattern as `__APP_VERSION__`); `usePushNotifications.ts` skips the entire flow — permission
+   prompt included, since it unlocks nothing yet — until that's `true`. Rebuilt, reinstalled, and
+   relaunched on the same device: no crash, diagnostic panel shows "not configured" as expected.
+
+   **Still blocked on manual setup only this doc's author can do**: create a Firebase project,
+   register the Android app (id `org.pyobs.app`, from `capacitor.config.ts`), download
+   `google-services.json` into `android/app/`. Once that file exists, the build-time flag flips
+   automatically — no code change needed — and `register()` should return a real FCM token.
+
+   **Local build-environment notes, in case another machine hits the same wall**: this needs a
+   *complete* Android SDK platform (a partial/corrupted auto-download of "Android SDK Platform 36"
+   was missing `android.jar` entirely — delete `~/Android/Sdk/platforms/android-36` and let Gradle
+   redownload it if `compileDebugJavaWithJavac` fails with an opaque
+   `MissingValueException: Cannot query the value of this provider because it has no value
+   available`), and a **full JDK 21+ with `jlink`** (`@capacitor/android`'s `sourceCompatibility` is
+   21; a JetBrains-IDE-bundled JBR can be missing `jlink`, which fails only at the
+   `core-for-system-modules.jar` transform step, downstream of everything else succeeding —
+   `openjdk-21-jdk-headless` from apt works fine). iOS side (APNs, paid Developer Program account)
+   not started at all.
 4. ✅ Saved-connections screen (offline CRUD) — done, shape described above; `pyobs-polaris`'s
    model was never checked (see that section).
 5. iOS build + TestFlight distribution — not started, blocked on Mac access.
