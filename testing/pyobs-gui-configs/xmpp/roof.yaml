@@ -5,12 +5,19 @@
 #
 # This is the exact config used to manually verify EventsView.vue (see
 # specs/plans/events-page.md) against a live backend.
+#
+# Needs a current pyobs-core: this repo's pinned testing/.venv (2.0.0.dev53) predates
+# Module.__init__'s name -> label rename below; use an editable install of ../pyobs-core
+# instead (uv pip install --python testing/.venv -e ../pyobs-core[full]) until the pin is
+# bumped — see specs/plans/2026-08-04-vfs-token-auth.md's "Remaining action" note. Every
+# other config in this directory has the same stale `name:` key; not fixed here, tracked in
+# specs/steering/open-items.md.
 class: pyobs.modules.MultiModule
 
 modules:
   roof:
     class: pyobs.modules.roof.DummyRoof
-    name: roof
+    label: roof
     comm:
       class: pyobs.comm.xmpp.XmppComm
       domain: localhost

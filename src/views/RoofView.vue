@@ -2,6 +2,7 @@
 import { ref, computed, type DeepReadonly } from 'vue'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
+import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import ModuleStateCard from '@/components/ModuleStateCard.vue'
 
 // One tab on ModulePageView.vue now, not its own routed page — jid is already
@@ -14,6 +15,10 @@ const { modules, executeMethod } = useXmpp()
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
 
 type Action = 'init' | 'park' | 'stop_motion'
+
+function permitted(action: Action): boolean {
+  return isMethodPermitted(currentModule.value?.permittedMethods, action)
+}
 
 const running = ref<Record<string, Action>>({}) // jid -> action currently in flight
 const errors = ref<Record<string, string>>({}) // jid -> last command's error, if any
@@ -59,7 +64,8 @@ async function run(mod: DeepReadonly<PyobsModule>, action: Action) {
       <button
         type="button"
         class="btn btn-outline-secondary btn-sm"
-        :disabled="!!running[currentModule.jid]"
+        :disabled="!!running[currentModule.jid] || !permitted('init')"
+        :title="permitted('init') ? undefined : NOT_PERMITTED_TITLE"
         @click="run(currentModule, 'init')"
       >
         <span v-if="running[currentModule.jid] === 'init'" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -68,7 +74,8 @@ async function run(mod: DeepReadonly<PyobsModule>, action: Action) {
       <button
         type="button"
         class="btn btn-outline-secondary btn-sm"
-        :disabled="!!running[currentModule.jid]"
+        :disabled="!!running[currentModule.jid] || !permitted('park')"
+        :title="permitted('park') ? undefined : NOT_PERMITTED_TITLE"
         @click="run(currentModule, 'park')"
       >
         <span v-if="running[currentModule.jid] === 'park'" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -77,7 +84,8 @@ async function run(mod: DeepReadonly<PyobsModule>, action: Action) {
       <button
         type="button"
         class="btn btn-outline-danger btn-sm"
-        :disabled="!!running[currentModule.jid]"
+        :disabled="!!running[currentModule.jid] || !permitted('stop_motion')"
+        :title="permitted('stop_motion') ? undefined : NOT_PERMITTED_TITLE"
         @click="run(currentModule, 'stop_motion')"
       >
         <span v-if="running[currentModule.jid] === 'stop_motion'" class="spinner-border spinner-border-sm me-1" role="status"></span>

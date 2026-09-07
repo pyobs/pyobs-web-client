@@ -10,7 +10,10 @@ side-by-side) inputs on narrow viewports, verified with an actual
 mobile-viewport (390×844) screenshot pass, not just desktop.
 
 `specs/plans/2026-08-03-camera-page.md` (image sizing) and `specs/plans/2026-08-03-telescope-page.md`
-(coordinate-form stacking) are the two currently-open plans with real
-mobile-layout risk, annotated inline in each. Apply the same bar to any new
-plan added after this note too — call out the specific mobile risk in the
-plan itself, don't just assume it'll be fine.
+(coordinate-form stacking) were the plans that first exercised this bar — both now done and
+live-verified, mobile risk resolved. `specs/plans/2026-09-06-mobile-first-redesign.md` (in
+progress) is the currently-open plan most directly about this constraint — it's the breakpoint-
+adaptive shell this bar has been building toward. `specs/plans/2026-08-03-idatasequence.md` also
+carries an explicit but unverified mobile note (count/delay input layout). Apply the same bar to
+any new plan added after this note too — call out the specific mobile risk in the plan itself,
+don't just assume it'll be fine.

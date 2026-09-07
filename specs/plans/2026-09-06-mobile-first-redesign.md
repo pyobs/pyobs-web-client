@@ -1,7 +1,10 @@
 # Plan: Mobile-first redesign of the app shell and views
 
-Status: in progress — Phase 1 implemented; Dashboard and the Connections/Login flow migrated
-(Phase 2, partial). Remaining Phase 2 views, Phase 3, and Phase 4 not started.
+Status: in progress — Phase 1 implemented; Dashboard, the Connections/Login flow, and the
+ModulePage-style drill-down migrated (Phase 2, partial — see `specs/plans/2026-09-06-module-page-rework.md`,
+now implemented). Remaining Phase 2 per-view migrations (Roof/Mode/Weather/AutoFocus/AutoGuiding/
+Acquisition/Camera/Settings still reached via `MoreView.vue`'s plain list, not yet redesigned for
+the compact shell), Phase 3, and Phase 4 not started.
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -22,7 +25,8 @@ unchanged. A tablet lands wherever its actual on-screen width places it — this
 phone/tablet/desktop three-way split, it's one shell that switches at one width threshold. This
 matches the breakpoint approach already floated in the (now superseded) original mobile-app design
 doc, and this repo's own standing "every design must work on mobile and desktop" constraint
-(`DEVELOPMENT.md`), now applied deliberately to the compact end instead of just "doesn't break."
+(`specs/steering/mobile-and-desktop.md`), now applied deliberately to the compact end instead of
+just "doesn't break."
 
 ## Non-goals
 
@@ -85,14 +89,15 @@ For each existing view — `DashboardView`, `ShellView`, `RoofView`, `ModeView`,
 breakpoint switch, redesign for the compact shell, or descope from primary mobile navigation
 (still reachable, just not a top-level destination).
 
-- **`DashboardView` — done.** Compact rendering groups modules by live status (needs attention /
-  running / idle) rather than a flat list, subscribing every stateful interface up front instead
-  of lazily per expanded row. Desktop rendering is untouched. Tapping a card only expands it
-  inline (same as before) — it does **not** navigate to a module page, since that requires the
-  ModulePage-style rework below, which hasn't happened yet. Expanding a card also still shows the
-  same raw per-field state dump (`ModuleStateCard`/`KeyValueCard`) as desktop, not a curated
-  one/two-line summary like the mockup's illustrative example — a known, deliberate simplification
-  to keep this pass scoped, not an oversight.
+- **`DashboardView` — done, then extended.** Compact rendering groups modules by live status
+  (needs attention / running / idle) rather than a flat list, subscribing every stateful interface
+  up front instead of lazily per expanded row. Desktop rendering (list + inline expand/collapse)
+  is untouched. Tapping a compact card originally only expanded it inline, showing the same raw
+  per-field state dump (`ModuleStateCard`/`KeyValueCard`) as desktop — that's now superseded: since
+  the ModulePage-style rework below landed, tapping a compact card navigates straight to that
+  module's `ModulePageView` (`openModule()`, `router.push({ name: 'module', params: { jid } })`)
+  instead, per `DashboardView.vue`'s own inline comment pointing at
+  `specs/plans/2026-09-06-module-page-rework.md`.
 - **Login/Connections flow — done, and restructured further than the original mockup.**
   `ConnectionsView.vue` is now a card list (tap to connect, "⋯" to edit) with a FAB for adding a
   connection; editing (secure-WebSocket toggle, VFS endpoints, password) moved to a new
@@ -102,20 +107,25 @@ breakpoint switch, redesign for the compact shell, or descope from primary mobil
   wasn't in the original mockup but removes the login-form step entirely once a password is set.
 - **`LoggingView`/`EventsView`** — the narrow-width table→flowing-list fix from earlier this
   session stands; not revisited against the Phase 0 visual language yet.
-- **Module-grouped drill-down (`ModulePage`, mirroring `pyobs-gui`'s own redesign) — scoped, not
-  started.** This is the piece that makes Dashboard cards navigate anywhere instead of just
-  expanding inline, and what would let `CameraView`/`RoofView`/etc. stop being separate top-level
-  routes. Scoping moved to its own doc, `specs/plans/2026-09-06-module-page-rework.md` — it turned out to
-  have a bigger blast radius than a per-view migration item (it changes desktop nav grouping too,
-  not just compact).
+- **Module-grouped drill-down (`ModulePage`, mirroring `pyobs-gui`'s own redesign) — done.** Scoped
+  and implemented in its own doc, `specs/plans/2026-09-06-module-page-rework.md` (it turned out to
+  have a bigger blast radius than a per-view migration item — it changes desktop nav grouping too,
+  not just compact). This is the piece that makes Dashboard cards navigate to a module page instead
+  of just expanding inline (see the `DashboardView` bullet above), and that lets the widgets below
+  stop being separate top-level routes — `RoofView`/`CameraView`/`ModeView`/`WeatherView`/
+  `AutoFocusView`/`AutoGuidingView`/`AcquisitionView` are all registered in `moduleWidgets.ts` and
+  render as tabs on `ModulePageView.vue` now, one nav entry per module rather than per interface.
 - **`ShellView`** — resolved: stays reachable on mobile (via More), not descoped. It's the only
   way to operate a module with no dedicated widget of its own, so cutting it isn't an option.
 - Remaining unmigrated: `RoofView`, `ModeView`, `WeatherView`, `AutoFocusView`, `AutoGuidingView`,
-  `AcquisitionView`, `CameraView`, `SettingsView` — all still reached via `MoreView.vue`'s plain
-  list, same routes the old sidebar used, not yet redesigned or folded into ModulePage.
+  `AcquisitionView`, `CameraView` — folded into `ModulePageView` as tabs (routing done, see the
+  drill-down bullet above), but none of their own content has had a compact-width visual pass
+  against the Phase 0 mockup language yet; they still render the same markup on both widths.
+  `SettingsView` is separate — never folded into ModulePage (it isn't per-module), still reached
+  via `MoreView.vue`'s plain list, same route the old sidebar used, not yet redesigned either.
 
 Migrate incrementally, each view landing as its own reviewable change. Suggested order (highest
-real-world phone use first): ~~Dashboard~~ → ~~Connections/Login~~ → the ModulePage rework →
+real-world phone use first): ~~Dashboard~~ → ~~Connections/Login~~ → ~~the ModulePage rework~~ →
 Roof/Mode/Weather → Logging/Events visual pass → Settings → AutoFocus/AutoGuiding/Acquisition.
 
 ## Phase 3 — Cross-cutting polish
@@ -148,9 +158,9 @@ fix safe-area/keyboard/scroll-physics quirks specific to iOS's WebView. Not a re
   now remember passwords, which makes this more relevant than when it was first raised, not less.
 - **Whether `ShellView` stays in primary mobile navigation — resolved.** Stays, reachable via
   More: it's the only way to operate a module with no dedicated widget of its own.
-- **The ModulePage-style module-grouped drill-down** (Phase 2) — scoped in
-  `specs/plans/2026-09-06-module-page-rework.md`; several real decisions there (routing scheme, desktop nav
-  grouping) still open.
+- **The ModulePage-style module-grouped drill-down** (Phase 2) — **resolved, implemented.** Scoped
+  and shipped in `specs/plans/2026-09-06-module-page-rework.md` (routing scheme and desktop nav
+  grouping both resolved there).
 
 ## Incidental fixes found along the way
 
@@ -172,4 +182,4 @@ Not part of the redesign itself, but surfaced while building it:
 - `specs/design/native-app-shell-capacitor.md` — why Vue/Capacitor, not a rewrite.
 - `pyobs-core/specs/design/mobile-app-and-shared-ts-client-core.md` (superseded) — origin of the
   breakpoint-adaptive-layout idea this plan reuses.
-- `DEVELOPMENT.md` — this repo's standing "mobile and desktop" constraint.
+- `specs/steering/mobile-and-desktop.md` — this repo's standing "mobile and desktop" constraint.

@@ -46,7 +46,12 @@ function goBackToJid() {
   step.value = 'jid'
 }
 
-const domain = computed(() => (jid.value ? (Strophe.getDomainFromJid(jid.value) ?? '') : ''))
+// Only a real user@domain shape counts — Strophe.getDomainFromJid treats a
+// bare, @-less string as a domain-only JID (valid XMPP, but not what a
+// partially-typed JID here means), which used to persist a `forceSecure`
+// override for every single keystroke before the "@" appeared (e.g. "a",
+// "ad", "adm", ...) via the watcher below.
+const domain = computed(() => (jid.value.includes('@') ? (Strophe.getDomainFromJid(jid.value) ?? '') : ''))
 
 // The checkbox defaults to checked, so a newly-seen domain needs an explicit
 // `true` override persisted the moment it's known — otherwise connecting before

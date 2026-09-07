@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1008613491542",
+    "project_id": "pyobs-51a29",
+    "storage_bucket": "pyobs-51a29.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1008613491542:android:eacc45a763b7cea38a4cf7",
+        "android_client_info": {
+          "package_name": "org.pyobs.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDxPxnX_Lgw8P28cY9X4zVcbBlg0_WZSLY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -68,6 +68,12 @@ live-updating state label. Rows are kept sorted by module name on insert
   looking at it, which is exactly the kind of cost that compounds as the
   fleet grows. This isn't just visual decluttering; it reduces live
   subscription count proportionally to how many rows are actually open.
+  **No longer universally true**: the compact/mobile "triage board" rendering
+  added by `specs/plans/2026-09-06-module-page-rework.md` subscribes to every
+  stateful interface of every module up front (`DashboardView.vue`'s
+  compact-mode branch), by design, to sort modules into status buckets
+  without waiting for each row to expand — this doc's collapsed-row list and
+  its subscribe-on-expand savings describe desktop rendering only.
 
 ## Decided
 

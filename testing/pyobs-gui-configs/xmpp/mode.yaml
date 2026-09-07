@@ -2,12 +2,14 @@
 # specs/steering/testing-against-live-backend.md for the transformation.
 # Requires an ejabberd account "mode" on domain "localhost". Run with:
 #   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/mode.yaml
+#
+# Needs a current pyobs-core, see specs/steering/open-items.md's fixture-staleness note.
 class: pyobs.modules.MultiModule
 
 modules:
   mode:
     class: pyobs.modules.utils.dummymode.DummyMode
-    name: mode
+    label: mode
     comm:
       class: pyobs.comm.xmpp.XmppComm
       domain: localhost

@@ -1,6 +1,13 @@
 # Roof page — status + Open/Close/Stop for `IRoof` modules
 
-Status: implemented, closed.
+Status: implemented, closed — routing since superseded. The Open/Close/Stop design and live
+verification below are still accurate for `RoofView.vue`'s own behavior, but the standalone
+`/roof` route and dedicated "Modules" sidebar section it describes are gone: per
+`specs/plans/2026-09-06-module-page-rework.md`, `RoofView.vue` is now registered in
+`moduleWidgets.ts` and rendered as a tab inside `ModulePageView.vue` (`/module/:jid/:tab?`);
+`/roof` is a redirect stub. `AppLayout.vue`'s `hasRoofModules` conditional-nav-link logic described
+below no longer exists in that form either — replaced by the module-page-rework's one-entry-
+per-module sidebar.
 
 ## Outcome
 

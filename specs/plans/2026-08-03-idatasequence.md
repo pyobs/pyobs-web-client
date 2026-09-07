@@ -7,7 +7,8 @@ mechanic on top of that already-working display path, not a second one.
 
 Repos: pyobs-web-client (all implementation here)
 
-Supersedes the "`IDataSequence`" Todo item in `DEVELOPMENT.md`, and the
+Supersedes the "`IDataSequence`" item originally in the (since-deleted) repo-root
+`DEVELOPMENT.md` (see `specs/steering/open-items.md`), and the
 explicit deferral in `specs/plans/2026-08-03-camera-page.md`'s Scope section.
 
 ## What `IDataSequence` actually provides

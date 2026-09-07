@@ -1,7 +1,9 @@
 # Plan: `IMode` widget
 
-Status: **done**. Implemented as `ModeView.vue` (see DEVELOPMENT.md's Todo
-entry and PR #10).
+Status: **done**. Implemented as `ModeView.vue` (PR #10).
+Routing since changed: no longer a standalone page/sidebar entry — registered in
+`moduleWidgets.ts` and rendered as a tab on `ModulePageView.vue`, per
+`specs/plans/2026-09-06-module-page-rework.md`. Widget content/behavior below unaffected.
 
 Repos: pyobs-web-client (all implementation here)
 

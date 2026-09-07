@@ -1,7 +1,15 @@
 # Plan: VFS endpoint auth — Basic Auth → Bearer token
 
-Status: proposed (unblocked — the `pyobs-core` release has shipped). No design questions;
-mechanical follow-through of an upstream API change.
+Status: done. `VfsEndpoint`'s `username`/`password` → single `token`; `CameraView.vue`'s
+`Authorization: Basic ...` → `Authorization: Bearer ${token}`; `SettingsView.vue`/
+`EditConnectionView.vue`'s two fields → one Token field. Unit tests updated. Went one step further
+than this plan's original scope while touching this code anyway: the token is now also
+secure-storage-backed (Keychain/Keystore via `useCredentialStore.ts`, same pattern as the XMPP
+password), not plain `localStorage` — see `specs/steering/open-items.md`'s former "VFS credentials
+still unmigrated" item, now resolved by the same change. Nothing needed migrating from the old
+`username`/`password` shape per this plan's own "Not in scope" call (never actually enforced
+server-side, confirmed empirically against a real saved connection with none stored).
+
 Repos: pyobs-web-client (all implementation here)
 
 ## Background

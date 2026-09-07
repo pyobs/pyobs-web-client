@@ -5,8 +5,8 @@ because nothing currently consumes it.
 
 Repos: pyobs-web-client (all implementation here)
 
-Supersedes the exception-registry/`call_id` note added to
-`DEVELOPMENT.md`'s ACL Todo entry.
+Supersedes the exception-registry/`call_id` note originally added to the (since-deleted)
+repo-root `DEVELOPMENT.md`'s ACL Todo entry; see `specs/steering/open-items.md`.
 
 ## Background
 
@@ -22,7 +22,7 @@ fault). It exists specifically so an operator debugging a caller-side error
 can jump straight to the matching detailed log line on the module that
 actually raised it.
 
-This client's `findRpcFault` (`useXmpp.ts:271-282`) only reads `exception`/
+This client's `findRpcFault` (`useXmpp.ts:417-428`) only reads `exception`/
 `message` off the fault XML — the fault's own IQ `id` attribute (same value)
 is available on the parent stanza but never propagated into `RpcResult`.
 

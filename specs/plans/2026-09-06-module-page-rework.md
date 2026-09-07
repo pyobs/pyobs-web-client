@@ -191,3 +191,7 @@ Ordered steps:
 - `specs/plans/2026-09-06-mobile-first-redesign.md` — where this was deferred from (Phase 2).
 - `src/composables/useModuleNavSections.ts`, `src/views/RoofView.vue`, `src/views/CameraView.vue` —
   current interface-grouped nav and the per-view pattern being replaced.
+- Supersedes `specs/design/interface-nav-per-module-routes.md` and the routing/nav-entry portions
+  of `specs/design/roof-page.md` (both marked superseded, kept as historical record) and the
+  standalone-page routing described in every `2026-08-03-*-widget.md`/`camera-page.md` plan's own
+  Status line — those widgets' actual behavior is unaffected, only where they're mounted.

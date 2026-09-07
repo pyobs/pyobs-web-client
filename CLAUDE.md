@@ -8,8 +8,8 @@ Entry points for working in this repo.
 Astrophysics Göttingen's telescope-control framework, `../pyobs-core`). It
 re-implements pyobs-core 2.0's XMPP wire protocol by hand — raw Strophe.js
 stanzas for disco#info, XEP-0009 RPC, and PubSub — rather than depending on any
-build-time codegen against the Python interfaces. See `DEVELOPMENT.md` for
-current implementation status.
+build-time codegen against the Python interfaces. See `specs/design/index.md` for
+current implementation status and `specs/steering/open-items.md` for what's still open.
 
 ## Design history and planning
 
@@ -25,15 +25,14 @@ See `specs/index.md` for the full convention, including how this relates to
 `pyobs-core`'s own `specs/` tree (some docs — the wire protocol, fleet-wide
 steering — genuinely live there instead, tagged `Repos:`).
 
-`DEVELOPMENT.md` (repo root) is the condensed, current-state overview: what the
-client does today, what's tested, what's still open (Todo section). All design docs,
-implementation plans, and ADRs belong in `specs/`, not inline in `DEVELOPMENT.md`.
+There is no repo-root `DEVELOPMENT.md` — all design docs, implementation plans, and ADRs belong in
+`specs/` directly, nothing inline elsewhere.
 
 ## Standing constraint
 
 Every design must work on mobile *and* desktop — not weighed per-feature, a
-blanket bar every layout must clear. See `DEVELOPMENT.md`'s "Standing
-constraint" section for the detail and precedent.
+blanket bar every layout must clear. See `specs/steering/mobile-and-desktop.md`
+for the detail and precedent.
 
 ## Tooling
 
@@ -51,7 +50,7 @@ constraint" section for the detail and precedent.
 `../pyobs-core` is checked out as a sibling directory and used as a live
 reference (interfaces, wire format, VFS behavior) during development — this
 repo has no build-time dependency on it, no generated files, no local checkout
-requirement to build or run. Grounding notes throughout `DEVELOPMENT.md` and
-`specs/` cite specific `../pyobs-core` files/line numbers checked at the time;
+requirement to build or run. Grounding notes throughout `specs/` cite specific
+`../pyobs-core` files/line numbers checked at the time;
 treat those as a snapshot, not a live guarantee — re-check against current
 `pyobs-core` state before relying on one that's aged.

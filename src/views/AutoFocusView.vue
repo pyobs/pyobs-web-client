@@ -2,6 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
+import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import ModuleStateCard from '@/components/ModuleStateCard.vue'
 import FocusCurveChart from '@/components/FocusCurveChart.vue'
 
@@ -15,6 +16,10 @@ const props = defineProps<{ jid: string }>()
 const { modules, executeMethod, subscribeState } = useXmpp()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
+
+function permitted(method: string): boolean {
+  return isMethodPermitted(currentModule.value?.permittedMethods, method)
+}
 
 const count = ref(3)
 const step = ref(1)
@@ -136,7 +141,8 @@ async function abort() {
       <button
         type="button"
         class="btn btn-outline-secondary btn-sm"
-        :disabled="running"
+        :disabled="running || !permitted('auto_focus')"
+        :title="permitted('auto_focus') ? undefined : NOT_PERMITTED_TITLE"
         @click="run"
       >
         <span v-if="running" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -145,7 +151,8 @@ async function abort() {
       <button
         type="button"
         class="btn btn-outline-danger btn-sm"
-        :disabled="!runningStateValue?.running"
+        :disabled="!runningStateValue?.running || !permitted('abort')"
+        :title="permitted('abort') ? undefined : NOT_PERMITTED_TITLE"
         @click="abort"
       >
         Abort

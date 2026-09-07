@@ -16,7 +16,8 @@ async function login(page: Page): Promise<void> {
 
 // A freshly-connecting session only sees a module if it's already online
 // when the connection is made — there's no roster-subscription-based
-// presence redelivery in every ejabberd setup (see DEVELOPMENT.md). Treat
+// presence redelivery in every ejabberd setup (see
+// specs/design/pyobs-2-0-wire-protocol-client.md). Treat
 // "no module ever appeared" as an environment precondition, not a failure.
 async function anyModuleCameOnline(page: Page): Promise<boolean> {
   try {

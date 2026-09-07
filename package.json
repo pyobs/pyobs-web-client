@@ -1,6 +1,6 @@
 {
   "name": "pyobs-web-client",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -32,6 +32,7 @@
     "@capacitor/android": "^8.5.1",
     "@capacitor/cli": "^8.5.1",
     "@capacitor/core": "^8.5.1",
+    "@capacitor/push-notifications": "^8.1.2",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
     "pyobs-fits": "^0.1.0",

@@ -5,12 +5,17 @@ Status: split into three phases (below), all done and live-verified
 A fourth phase (temperature/cooling status, `ICooling`) was scoped
 originally but scrapped from this plan — deliberately taken up later as
 its own thing, not because it's unwanted.
+Routing since changed: no longer a standalone page/sidebar entry — registered in
+`moduleWidgets.ts` and rendered as a tab on `ModulePageView.vue`, per
+`specs/plans/2026-09-06-module-page-rework.md`. Capture/display behavior below unaffected.
 
 Repos: pyobs-web-client (all implementation here)
 
-Supersedes DEVELOPMENT.md's "Proposed: Camera page" section (kept there as
-historical record, not deleted) — this plan is the current source of truth for
-scope and open questions going forward.
+Supersedes the repo-root `DEVELOPMENT.md`'s "Proposed: Camera page" section — this plan is the
+current source of truth for scope and open questions going forward. `DEVELOPMENT.md` itself has
+since been deleted (its remaining content folded into `specs/`, see `specs/index.md`); that
+original section is preserved in git history, not duplicated here — see
+`git log -p -- DEVELOPMENT.md`.
 
 **Phasing.** Originally scoped as one v1 pass; split into phases to
 de-risk the actual hard part (FITS decode/render) before wiring it to a live

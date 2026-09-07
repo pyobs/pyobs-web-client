@@ -4,6 +4,9 @@ Status: implemented (`AutoGuidingView.vue`, `OffsetMagnitudeChart.vue`,
 `OffsetScatterChart.vue`). Type-checks, builds, and existing unit tests
 pass; live-verified against `pyobs.modules.pointing.DummyAutoGuiding`
 (`testing/pyobs-gui-configs/xmpp/guiding.yaml`).
+Routing since changed: no longer a standalone page/sidebar entry — registered in
+`moduleWidgets.ts` and rendered as a tab on `ModulePageView.vue`, per
+`specs/plans/2026-09-06-module-page-rework.md`. Widget content/behavior below unaffected.
 
 Repos: pyobs-web-client (all implementation here)
 

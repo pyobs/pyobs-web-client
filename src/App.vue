@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import AppLayout from '@/components/AppLayout.vue'
 import LoginView from '@/views/LoginView.vue'
 import { useXmpp } from '@/composables/useXmpp'
+import { usePushNotifications } from '@/composables/usePushNotifications'
 
 const { status } = useXmpp()
+
+// A no-op on the web (see usePushNotifications.ts) — safe to call
+// unconditionally regardless of login state.
+onMounted(() => usePushNotifications().initialize())
 </script>
 
 <template>

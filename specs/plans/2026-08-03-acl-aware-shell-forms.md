@@ -1,12 +1,33 @@
 # Plan: ACL-aware Shell forms
 
-Status: proposed, not yet designed in detail.
+Status: done. Both open questions below resolved. Infrastructure (`PyobsModule.permittedMethods`,
+`fetchModuleInfo`'s `get_permitted_methods()` fetch, `src/utils/acl.ts`) is in and applied to every
+control this plan scoped, per the "gate every RPC-triggering control project-wide" resolution below
+— **not** Shell itself, which stays the one deliberate exception: `RoofView.vue` (Init/Park/Stop),
+`TelescopeView.vue` (Init/Park/Stop, move/offset/tracking commands), `ModeModuleCard.vue` (per-group
+mode select), `AutoFocusView.vue`/`AcquisitionView.vue` (Run-or-equivalent/Abort),
+`AutoGuidingView.vue` (Start/Stop/Set exposure time), and `CameraView.vue`'s Expose button, gated on
+the *whole batch* of settings + `grab_data` RPCs it fires as one unit (per the "Resolved by
+pyobs-polaris" section) — permitted only if every method in the batch is.
+
+Live-verified against real ejabberd + `pyobs-core`, three scenarios: `telescope_acl.yaml`'s partial
+allow-list (`init`/`move_radec` stayed enabled, `park`/`stop_motion`/Alt-Az/tracking controls
+correctly disabled with a "Not permitted for this connection" tooltip); `telescope_acl_denied.yaml`'s
+empty allow-list (every control disabled, module still renders normally on Dashboard and its own
+page — confirms "grey out, not hide" holds at the module-list level too, not just per-button); and
+no ACL configured at all across `roof.yaml`/`mode.yaml`/`autofocus.yaml`/`guiding.yaml`/
+`acquisition.yaml`/`camera.yaml` (everything enabled; a real `init()` call on Roof round-tripped
+end-to-end via live PubSub). The batch-gating logic specifically was proven with a scratch ACL
+config permitting every command `CameraView`'s Expose fires *except* `set_window` — Expose correctly
+disabled (with the same tooltip) even though `grab_data` itself and every other settings command
+were permitted, confirming a partial-batch denial gates the whole action, not just the denied piece.
 
 Repos: pyobs-web-client (all implementation here); depends on
 `IModule.get_permitted_methods()` in `../pyobs-core` (already implemented,
 `pyobs/modules/module.py:871`)
 
-Supersedes the "ACL-aware Shell forms" Todo item in `DEVELOPMENT.md`.
+Supersedes the "ACL-aware Shell forms" item originally in the (since-deleted) repo-root
+`DEVELOPMENT.md`; see `specs/steering/open-items.md`.
 
 ## Problem statement
 
@@ -14,10 +35,9 @@ Supersedes the "ACL-aware Shell forms" Todo item in `DEVELOPMENT.md`.
 command schema) let an operator pick any method any connected module exposes,
 including ones ACLs (`acl:` config block, `../pyobs-core` 2.0) deny them from
 actually calling. Today the only feedback is reactive: submit the call, get a
-`ForbiddenError` back after the fact (see "Reactive handling" note in
-`DEVELOPMENT.md`'s ACL entry for the exact mechanics — it arrives via
-`executeMethod`'s generic XMPP-level error branch, `useXmpp.ts:314-323`, not
-`findRpcFault`). This plan is the proactive half: grey out or hide methods the
+`ForbiddenError` back after the fact (see `specs/design/acl-reactive-error-handling.md` for the
+exact mechanics — it arrives via `executeMethod`'s generic XMPP-level error branch,
+`useXmpp.ts:460-468`, not `findRpcFault`). This plan is the proactive half: grey out or hide methods the
 connected identity can't call, before it tries.
 
 ## What `get_permitted_methods()` actually gives us
@@ -117,12 +137,20 @@ failed fetch (`undefined`/no value at all) is the only case that means
 "fail open, show everything as if unchecked." Don't conflate "we asked and
 got told no" with "we never got an answer" — they need opposite defaults.
 
-## Open questions
+## Open questions — resolved 2026-09-07
 
-- Method-name collision across interfaces on one module (see above) — needs an
-  answer before implementation, not assumed either way here.
-- Whether to surface "restricted but currently in log mode, would be denied
-  under enforce" as a visual distinction (e.g. a warning icon instead of full
-  grey-out) — `get_permitted_methods()` alone can't tell this apart from
-  "genuinely unrestricted," so this would need either accepting that
-  limitation or finding another signal (none identified so far).
+- **Method-name collision across interfaces on one module: not actually possible, confirmed
+  against `../pyobs-core/pyobs/modules/module.py`'s `_get_interfaces_and_methods()`.** It builds
+  `self._methods` as a single flat `dict[str, ...]`, assigning `self._methods[method_name] = ...`
+  once per method name while looping over every interface the module implements — a same-named
+  method declared on two interfaces collapses to one dispatch entry (last interface processed
+  wins), not two. `execute()` itself dispatches purely off `self._methods[method]`, so there is
+  never more than one live handler per method name per module regardless of how many interfaces
+  mention it — a flat name-based permitted-methods list is unambiguous by construction, no
+  "at least one interface" special-casing needed. `src/utils/acl.ts` documents this inline.
+- **Log-mode visual distinction: not pursued, accepting the limitation as originally framed.**
+  Confirmed no wire-level signal exists for it — `Module.open()`'s published `ModuleCapabilities`
+  (`../pyobs-core/pyobs/modules/module.py:356-361`) carries only `version`/`label`/`location`,
+  `_acl_mode` is never published anywhere. `get_permitted_methods()` remains the only signal,
+  ambiguous between "genuinely unrestricted" and "log mode" exactly as this doc already described
+  — both render as fully enabled, matching what would actually happen if clicked.
