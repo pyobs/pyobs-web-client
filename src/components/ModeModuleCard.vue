@@ -2,11 +2,14 @@
 import { ref, computed, onUnmounted, type DeepReadonly } from 'vue'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
+import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import ModuleStateCard from '@/components/ModuleStateCard.vue'
 
 const props = defineProps<{ mod: DeepReadonly<PyobsModule> }>()
 
 const { executeMethod, subscribeState } = useXmpp()
+
+const setModePermitted = computed(() => isMethodPermitted(props.mod.permittedMethods, 'set_mode'))
 
 const iface = props.mod.interfaces['IMode']
 const { value: stateValue, unsubscribe } = subscribeState(props.mod.jid, 'IMode', iface!.version)
@@ -75,7 +78,8 @@ async function setMode(group: string, mode: string) {
             class="form-select form-select-sm"
             style="max-width:200px"
             :value="currentMode(String(group))"
-            :disabled="settingGroup[String(group)]"
+            :disabled="settingGroup[String(group)] || !setModePermitted"
+            :title="setModePermitted ? undefined : NOT_PERMITTED_TITLE"
             @change="setMode(String(group), ($event.target as HTMLSelectElement).value)"
           >
             <option v-for="mode in modes" :key="mode" :value="mode">{{ mode }}</option>

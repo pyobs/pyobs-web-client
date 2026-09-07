@@ -2,6 +2,8 @@
 # specs/steering/testing-against-live-backend.md for the transformation.
 # Requires an ejabberd account "guiding" on domain "localhost". Run with:
 #   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/guiding.yaml
+#
+# Needs a current pyobs-core, see specs/steering/open-items.md's fixture-staleness note.
 class: pyobs.modules.MultiModule
 
 location:
@@ -12,7 +14,7 @@ location:
 modules:
   guiding:
     class: pyobs.modules.pointing.DummyAutoGuiding
-    name: guiding
+    label: guiding
     comm:
       class: pyobs.comm.xmpp.XmppComm
       domain: localhost

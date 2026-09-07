@@ -19,6 +19,7 @@
 import { ref, computed, watch, type DeepReadonly } from 'vue'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import { useVfsConfig } from '@/composables/useVfsConfig'
+import { allMethodsPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import {
   defaultParamValue,
   enumOptions,
@@ -118,6 +119,19 @@ watch(
 
 const hasUnsupportedSettingsField = computed(() => settingsGroups.value.some((g) => hasUnsupportedField(g.fields)))
 
+// Expose fires every configured settings-group command plus grab_data as one
+// batch (see expose() below) — gated on the whole batch being permitted, not
+// grab_data alone, so a partial batch never fires and fails partway through
+// on one forbidden call (per acl-aware-shell-forms.md's pyobs-polaris
+// precedent).
+const exposeBatchMethods = computed(() => [
+  ...settingsGroups.value.flatMap((g) => g.schemas.map((s) => s.name)),
+  'grab_data',
+])
+const exposePermitted = computed(() =>
+  allMethodsPermitted(currentModule.value?.permittedMethods, exposeBatchMethods.value),
+)
+
 const exposing = ref<Record<string, boolean>>({}) // jid -> exposure in flight
 const errors = ref<Record<string, string>>({}) // jid -> last error, if any
 const images = ref<Record<string, Uint8Array>>({}) // jid -> last grabbed FITS bytes
@@ -214,7 +228,8 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
       <button
         type="button"
         class="btn btn-outline-secondary btn-sm"
-        :disabled="!!exposing[currentModule.jid] || hasUnsupportedSettingsField"
+        :disabled="!!exposing[currentModule.jid] || hasUnsupportedSettingsField || !exposePermitted"
+        :title="exposePermitted ? undefined : NOT_PERMITTED_TITLE"
         @click="expose(currentModule)"
       >
         <span v-if="exposing[currentModule.jid]" class="spinner-border spinner-border-sm me-1" role="status"></span>

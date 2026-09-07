@@ -5,6 +5,8 @@
 # not a LocalFile path — a browser client, unlike pyobs-gui, can't reach
 # LocalFile at all, only HttpFile). Run both, then:
 #   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/camera.yaml
+#
+# Needs a current pyobs-core, see specs/steering/open-items.md's fixture-staleness note.
 class: pyobs.modules.MultiModule
 
 location:
@@ -23,7 +25,7 @@ vfs: &vfs
 modules:
   camera:
     class: pyobs.modules.camera.DummyCamera
-    name: camera
+    label: camera
     vfs: *vfs
     comm:
       class: pyobs.comm.xmpp.XmppComm

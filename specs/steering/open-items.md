@@ -15,12 +15,6 @@ config, the expandable Dashboard, the Roof page, the `IMode`/`IWeather`/
 Camera page, the Telescope page) aren't re-listed here — see that index
 instead of this list for the completed-feature catalog.
 
-- **ACL-aware Shell forms, remaining views** — plan at
-  `specs/plans/2026-08-03-acl-aware-shell-forms.md` (status: in progress, both open
-  questions resolved). Infrastructure done and live-verified; applied to `RoofView.vue` and
-  `TelescopeView.vue`. `CameraView.vue` (batched), `ModeView.vue`, `AutoFocusView.vue`,
-  `AutoGuidingView.vue`, `AcquisitionView.vue` still need the same `permitted()`-per-button
-  wiring. `ShellView.vue` itself deliberately stays ungated, per the plan's own resolution.
 - **`IDataSequence`** — plan at `specs/plans/2026-08-03-idatasequence.md`. Depends on
   the Camera page plan (shipped), open question there on how the client
   learns a new image is ready per-grab.
@@ -43,7 +37,7 @@ Smaller/technical items:
 - **pyobs-core 2.0 ACLs — implemented upstream** (`0d1c9929`, "Implement access control (ACLs)
   for module RPC calls"). Reactive handling (what happens when a denied call is actually
   attempted) needs no client change — see `specs/design/acl-reactive-error-handling.md`. The
-  proactive half (greying out denied methods before they're tried) is unblocked — plan at
+  proactive half (greying out denied methods before they're tried) is **done** — see
   `specs/plans/2026-08-03-acl-aware-shell-forms.md`.
 - **Exception-handling rewrite upstream — no client change needed today, but
   `findRpcFault` is reading a richer wire format than it uses** — plan at
@@ -53,11 +47,12 @@ Smaller/technical items:
   nothing consumes it yet.
 - **`testing/pyobs-gui-configs/xmpp/*.yaml` fixtures are stale against current `pyobs-core`** —
   `Module.__init__`'s `name` kwarg was renamed to `label` upstream at some point after
-  `testing/.venv`'s pinned `2.0.0.dev53`; every fixture still uses `name:`, so all of them fail to
-  start against a current `pyobs-core` (confirmed running one against an editable install of
-  `../pyobs-core` at `2.8.1`). Fixed so far: `telescope_acl.yaml`, `telescope_acl_denied.yaml`,
-  `roof.yaml` (needed live-verifying `specs/plans/2026-08-03-acl-aware-shell-forms.md`); the
-  other ~8 configs still have the stale key. Same root cause as, and probably worth doing
+  `testing/.venv`'s pinned `2.0.0.dev53`; every fixture still using `name:` fails to start against
+  a current `pyobs-core` (confirmed running against an editable install of `../pyobs-core` at
+  `2.8.1`, needed to live-verify `specs/plans/2026-08-03-acl-aware-shell-forms.md`). Fixed so far:
+  `roof.yaml`, `telescope_acl.yaml`, `telescope_acl_denied.yaml`, `mode.yaml`, `autofocus.yaml`,
+  `camera.yaml`, `guiding.yaml`, `acquisition.yaml`; still stale: `full.yaml`, `spectrograph.yaml`,
+  `telescope.yaml`, `video.yaml`, `weather.yaml`. Same root cause as, and probably worth doing
   together with, `specs/plans/2026-08-04-vfs-token-auth.md`'s already-tracked "bump the
   `testing/.venv` pin" remaining action.
 

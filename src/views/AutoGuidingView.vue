@@ -2,6 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
+import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import ModuleStateCard from '@/components/ModuleStateCard.vue'
 import OffsetMagnitudeChart from '@/components/OffsetMagnitudeChart.vue'
 import OffsetScatterChart from '@/components/OffsetScatterChart.vue'
@@ -24,6 +25,10 @@ const props = defineProps<{ jid: string }>()
 const { modules, executeMethod, subscribeState } = useXmpp()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
+
+function permitted(method: string): boolean {
+  return isMethodPermitted(currentModule.value?.permittedMethods, method)
+}
 
 const runningStateValue = ref<RunningState | undefined>(undefined)
 const exposureTimeStateValue = ref<ExposureTimeState | undefined>(undefined)
@@ -189,7 +194,8 @@ async function setExposureTime() {
       <button
         type="button"
         class="btn btn-outline-secondary btn-sm"
-        :disabled="!!runningStateValue?.running"
+        :disabled="!!runningStateValue?.running || !permitted('start')"
+        :title="permitted('start') ? undefined : NOT_PERMITTED_TITLE"
         @click="start"
       >
         Start
@@ -197,7 +203,8 @@ async function setExposureTime() {
       <button
         type="button"
         class="btn btn-outline-danger btn-sm"
-        :disabled="!runningStateValue?.running"
+        :disabled="!runningStateValue?.running || !permitted('stop')"
+        :title="permitted('stop') ? undefined : NOT_PERMITTED_TITLE"
         @click="stop"
       >
         Stop
@@ -213,7 +220,15 @@ async function setExposureTime() {
             class="form-control form-control-sm"
             style="width:100px"
           />
-          <button type="button" class="btn btn-outline-secondary btn-sm" @click="setExposureTime">Set</button>
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            :disabled="!permitted('set_exposure_time')"
+            :title="permitted('set_exposure_time') ? undefined : NOT_PERMITTED_TITLE"
+            @click="setExposureTime"
+          >
+            Set
+          </button>
         </div>
       </div>
 

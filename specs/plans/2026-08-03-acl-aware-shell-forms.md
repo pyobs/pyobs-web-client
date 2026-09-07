@@ -1,18 +1,26 @@
 # Plan: ACL-aware Shell forms
 
-Status: in progress. Both open questions below resolved. Infrastructure (`PyobsModule.permittedMethods`,
-`fetchModuleInfo`'s `get_permitted_methods()` fetch, `src/utils/acl.ts`) is in and applied to
-`RoofView.vue` and `TelescopeView.vue`, per the "gate every RPC-triggering control project-wide"
-resolution below — **not** Shell itself, which stays the one deliberate exception. Live-verified
-against `testing/pyobs-gui-configs/xmpp/telescope_acl.yaml` (partial allow-list: `init`/`move_radec`
-stayed enabled, `park`/`stop_motion`/Alt-Az controls/tracking controls correctly disabled with a
-"Not permitted for this connection" tooltip) and `telescope_acl_denied.yaml` (empty allow-list:
-every control disabled, module still renders normally on Dashboard and its own page — confirms
-"grey out, not hide" holds at the module-list level too, not just per-button) and `roof.yaml` (no
-ACL configured: everything enabled, a real `init()` call still round-trips correctly end-to-end).
-Remaining: `CameraView.vue` (as one batched unit per the "Resolved by pyobs-polaris" section),
-`ModeView.vue`, `AutoFocusView.vue`, `AutoGuidingView.vue`, `AcquisitionView.vue` — same
-`permitted()`-per-button pattern, not yet applied.
+Status: done. Both open questions below resolved. Infrastructure (`PyobsModule.permittedMethods`,
+`fetchModuleInfo`'s `get_permitted_methods()` fetch, `src/utils/acl.ts`) is in and applied to every
+control this plan scoped, per the "gate every RPC-triggering control project-wide" resolution below
+— **not** Shell itself, which stays the one deliberate exception: `RoofView.vue` (Init/Park/Stop),
+`TelescopeView.vue` (Init/Park/Stop, move/offset/tracking commands), `ModeModuleCard.vue` (per-group
+mode select), `AutoFocusView.vue`/`AcquisitionView.vue` (Run-or-equivalent/Abort),
+`AutoGuidingView.vue` (Start/Stop/Set exposure time), and `CameraView.vue`'s Expose button, gated on
+the *whole batch* of settings + `grab_data` RPCs it fires as one unit (per the "Resolved by
+pyobs-polaris" section) — permitted only if every method in the batch is.
+
+Live-verified against real ejabberd + `pyobs-core`, three scenarios: `telescope_acl.yaml`'s partial
+allow-list (`init`/`move_radec` stayed enabled, `park`/`stop_motion`/Alt-Az/tracking controls
+correctly disabled with a "Not permitted for this connection" tooltip); `telescope_acl_denied.yaml`'s
+empty allow-list (every control disabled, module still renders normally on Dashboard and its own
+page — confirms "grey out, not hide" holds at the module-list level too, not just per-button); and
+no ACL configured at all across `roof.yaml`/`mode.yaml`/`autofocus.yaml`/`guiding.yaml`/
+`acquisition.yaml`/`camera.yaml` (everything enabled; a real `init()` call on Roof round-tripped
+end-to-end via live PubSub). The batch-gating logic specifically was proven with a scratch ACL
+config permitting every command `CameraView`'s Expose fires *except* `set_window` — Expose correctly
+disabled (with the same tooltip) even though `grab_data` itself and every other settings command
+were permitted, confirming a partial-batch denial gates the whole action, not just the denied piece.
 
 Repos: pyobs-web-client (all implementation here); depends on
 `IModule.get_permitted_methods()` in `../pyobs-core` (already implemented,

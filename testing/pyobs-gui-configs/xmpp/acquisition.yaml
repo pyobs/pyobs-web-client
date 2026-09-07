@@ -6,6 +6,8 @@
 # Requires an ejabberd account "acquisition" on domain "localhost" — see the
 # steering doc for how to register one. Run with:
 #   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/acquisition.yaml
+#
+# Needs a current pyobs-core, see specs/steering/open-items.md's fixture-staleness note.
 class: pyobs.modules.MultiModule
 
 location:
@@ -16,7 +18,7 @@ location:
 modules:
   acquisition:
     class: pyobs.modules.pointing.DummyAcquisition
-    name: acquisition
+    label: acquisition
     comm:
       class: pyobs.comm.xmpp.XmppComm
       domain: localhost

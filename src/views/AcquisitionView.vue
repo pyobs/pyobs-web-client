@@ -2,6 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
+import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import ModuleStateCard from '@/components/ModuleStateCard.vue'
 import DistanceChart from '@/components/DistanceChart.vue'
 import OffsetScatterChart from '@/components/OffsetScatterChart.vue'
@@ -33,6 +34,10 @@ const props = defineProps<{ jid: string }>()
 const { modules, executeMethod, subscribeState } = useXmpp()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
+
+function permitted(method: string): boolean {
+  return isMethodPermitted(currentModule.value?.permittedMethods, method)
+}
 
 const running = ref(false) // this page's own run() call in flight
 const error = ref('')
@@ -169,7 +174,8 @@ async function abort() {
       <button
         type="button"
         class="btn btn-outline-secondary btn-sm"
-        :disabled="running"
+        :disabled="running || !permitted('acquire_target')"
+        :title="permitted('acquire_target') ? undefined : NOT_PERMITTED_TITLE"
         @click="run"
       >
         <span v-if="running" class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -178,7 +184,8 @@ async function abort() {
       <button
         type="button"
         class="btn btn-outline-danger btn-sm"
-        :disabled="!runningStateValue?.running"
+        :disabled="!runningStateValue?.running || !permitted('abort')"
+        :title="permitted('abort') ? undefined : NOT_PERMITTED_TITLE"
         @click="abort"
       >
         Abort
