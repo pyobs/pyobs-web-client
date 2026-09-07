@@ -2,9 +2,9 @@
 
 Status: in progress. Goals 1 (icon/splash/no browser chrome), 2 (XMPP password only — VFS
 credentials not yet migrated, see Credential storage), and 4 (offline saved-connections screen,
-built further than described below) are done. Goal 3 (push) in progress — web-side plumbing and
-crash-safety verified on a real device, real FCM delivery still blocked on a Firebase project (see
-"Push notifications" below). Forward evolution of the
+built further than described below) are done. Goal 3 (push) is **done**: end-to-end delivery
+confirmed on a real device against a real Firebase project (see "Push notifications" below).
+Forward evolution of the
 UI built here — the compact shell, Dashboard, and the Connections/Add/Edit split — is tracked in
 `specs/plans/2026-09-06-mobile-first-redesign.md`, not this doc.
 
@@ -142,9 +142,8 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
    turned out to sign debug builds differently on this dev machine.
 2. ⚠️ Secure-storage plugin swap — **XMPP password only**. VFS token/credentials not migrated;
    see Credential storage above.
-3. ⚠️ Push notification spike — web-side plumbing done and **verified crash-safe on a real device**
-   (Motorola Edge 50 Neo, Android 16) without Firebase configured yet; real FCM registration still
-   blocked on a Firebase project. `@capacitor/push-notifications` installed,
+3. ✅ Push notification spike — **done, end-to-end delivery confirmed** on a real device (Motorola
+   Edge 50 Neo, Android 16) against a real Firebase project (`pyobs-51a29`). `@capacitor/push-notifications` installed,
    `src/composables/usePushNotifications.ts` (permission request + `register()` + listeners,
    native-only, no-op on web), wired from `App.vue` on mount, a diagnostic panel in
    `SettingsView.vue` (token/error/last-received). `npx cap sync android` already added the
@@ -163,10 +162,15 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
    prompt included, since it unlocks nothing yet — until that's `true`. Rebuilt, reinstalled, and
    relaunched on the same device: no crash, diagnostic panel shows "not configured" as expected.
 
-   **Still blocked on manual setup only this doc's author can do**: create a Firebase project,
-   register the Android app (id `org.pyobs.app`, from `capacitor.config.ts`), download
-   `google-services.json` into `android/app/`. Once that file exists, the build-time flag flips
-   automatically — no code change needed — and `register()` should return a real FCM token.
+   **Firebase project created and end-to-end delivery confirmed.** `google-services.json` for
+   project `pyobs-51a29` (app id `org.pyobs.app`) dropped into `android/app/`; rebuilt, reinstalled
+   — `FirebaseApp initialization successful`, `register()` returned a real FCM token, no crash.
+   A Firebase Console campaign (Messaging → Kampagnen; note "Neue Kampagne" evaluates an audience
+   and can take a couple of minutes to actually send, unlike the instant single-device "Neuer
+   Test" — a campaign showing "Gesendet: 0" right after creating it is normal, not stuck) delivered
+   a real notification to the device; tapping it fired `pushNotificationActionPerformed` with a
+   real `RemoteMessage` payload, confirmed via `adb logcat`. `android/app/google-services.json` is
+   currently untracked in git (not yet decided whether to commit it or gitignore it per-developer).
 
    **Local build-environment notes, in case another machine hits the same wall**: this needs a
    *complete* Android SDK platform (a partial/corrupted auto-download of "Android SDK Platform 36"
