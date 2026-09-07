@@ -15,10 +15,12 @@ pass" below).
 
 Repos: pyobs-web-client (all implementation here)
 
-Supersedes DEVELOPMENT.md's "Proposed: Telescope page" section (kept there as
-historical record) — this plan is the current source of truth for scope and
-open questions going forward, and additionally folds in non-sidereal tracking
-(see below), which postdates that original write-up.
+Supersedes the repo-root `DEVELOPMENT.md`'s "Proposed: Telescope page" section — this plan is the
+current source of truth for scope and open questions going forward, and additionally folds in
+non-sidereal tracking (see below), which postdates that original write-up. `DEVELOPMENT.md` itself
+has since been deleted (its remaining content folded into `specs/`, see `specs/index.md`); that
+original section is preserved in git history, not duplicated here — see
+`git log -p -- DEVELOPMENT.md`.
 
 ## Reference: pyobs-gui's `TelescopeWidget`
 

@@ -2,6 +2,9 @@
 
 Status: done. Implemented (`WeatherView.vue`, `TimeSeriesChart.vue`) and
 verified live against `pyobs.modules.weather.MockWeather`.
+Routing since changed: no longer a standalone page/sidebar entry — registered in
+`moduleWidgets.ts` and rendered as a tab on `ModulePageView.vue`, per
+`specs/plans/2026-09-06-module-page-rework.md`. Widget content/behavior below unaffected.
 
 Repos: pyobs-web-client (all implementation here)
 

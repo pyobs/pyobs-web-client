@@ -11,7 +11,8 @@ import {
 } from '../pyobs-codec'
 
 // Fixtures below are trimmed from real disco#info responses captured against a
-// live pyobs-core 2.0 module (see DEVELOPMENT.md) — not hand-invented shapes.
+// live pyobs-core 2.0 module (see specs/design/pyobs-2-0-wire-protocol-client.md) — not
+// hand-invented shapes.
 
 function el(xml: string): Element {
   const doc = new DOMParser().parseFromString(xml, 'application/xml')

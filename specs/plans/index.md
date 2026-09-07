@@ -27,6 +27,7 @@ Implementation plans, checklist-style.
   params. **blocked on upstream**
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** (Phase 1 done;
-  Dashboard + Connections/Login migrated)
+  Dashboard + Connections/Login + the ModulePage drill-down migrated; per-widget compact visual
+  passes still outstanding)
 - [2026-08-04-vfs-token-auth.md](2026-08-04-vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token).
   **proposed**

@@ -6,7 +6,8 @@ Repos: pyobs-web-client (all implementation here); depends on
 `IModule.get_permitted_methods()` in `../pyobs-core` (already implemented,
 `pyobs/modules/module.py:871`)
 
-Supersedes the "ACL-aware Shell forms" Todo item in `DEVELOPMENT.md`.
+Supersedes the "ACL-aware Shell forms" item originally in the (since-deleted) repo-root
+`DEVELOPMENT.md`; see `specs/steering/open-items.md`.
 
 ## Problem statement
 
@@ -14,10 +15,9 @@ Supersedes the "ACL-aware Shell forms" Todo item in `DEVELOPMENT.md`.
 command schema) let an operator pick any method any connected module exposes,
 including ones ACLs (`acl:` config block, `../pyobs-core` 2.0) deny them from
 actually calling. Today the only feedback is reactive: submit the call, get a
-`ForbiddenError` back after the fact (see "Reactive handling" note in
-`DEVELOPMENT.md`'s ACL entry for the exact mechanics — it arrives via
-`executeMethod`'s generic XMPP-level error branch, `useXmpp.ts:314-323`, not
-`findRpcFault`). This plan is the proactive half: grey out or hide methods the
+`ForbiddenError` back after the fact (see `specs/design/acl-reactive-error-handling.md` for the
+exact mechanics — it arrives via `executeMethod`'s generic XMPP-level error branch,
+`useXmpp.ts:460-468`, not `findRpcFault`). This plan is the proactive half: grey out or hide methods the
 connected identity can't call, before it tries.
 
 ## What `get_permitted_methods()` actually gives us

@@ -17,7 +17,7 @@ condition, **not** routed through `fault_to_xml` like every other exception.
 
 On the wire this is indistinguishable from any other XMPP-level IQ error (`item-not-found`, etc.)
 and is caught by `executeMethod`'s generic `try`/`catch` around `sendIQ`
-(`src/composables/useXmpp.ts:314-323`, the `// XMPP-level error (item-not-found, forbidden, …)`
+(`src/composables/useXmpp.ts:460-468`, the `// XMPP-level error (item-not-found, forbidden, …)`
 branch) — **not** `findRpcFault`. It never reaches `findRpcFault`, so no `errorClass` is set on
 this path; the caller just gets a plain error message.
 

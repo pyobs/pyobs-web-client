@@ -1,7 +1,12 @@
 # Interface nav sections with per-module routes (Camera, Mode, Roof, ...)
 
-Status: implemented (Roof migrated onto the pattern; `ICamera`/`IMode` will
-land on it once those views exist).
+Status: superseded. Implemented as described below (Roof migrated onto the pattern), then fully
+replaced by `specs/plans/2026-09-06-module-page-rework.md`'s one-route-per-module model
+(`/module/:jid/:tab?`, `ModulePageView.vue`, sidebar grouped one entry per module via
+`moduleWidgets.ts`) — the per-interface routes (`/cameras/:jid?` etc.) this doc designed no longer
+exist, only redirect stubs to the new route do. Kept as historical record of the intermediate
+design and the pyobs-gui grounding research, which module-page-rework.md built on rather than
+re-deriving.
 
 ## The problem
 

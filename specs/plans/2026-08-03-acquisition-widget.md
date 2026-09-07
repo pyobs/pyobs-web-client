@@ -4,6 +4,9 @@ Status: done. See `AcquisitionView.vue`, new `DistanceChart.vue` canvas
 component, reused `OffsetScatterChart.vue`. Charts stack vertically (same
 choice as `AutoGuidingView.vue`), sidestepping the side-by-side layout risk
 flagged below rather than fighting it.
+Routing since changed: no longer a standalone page/sidebar entry — registered in
+`moduleWidgets.ts` and rendered as a tab on `ModulePageView.vue`, per
+`specs/plans/2026-09-06-module-page-rework.md`. Widget content/behavior below unaffected.
 
 Repos: pyobs-web-client (all implementation here)
 

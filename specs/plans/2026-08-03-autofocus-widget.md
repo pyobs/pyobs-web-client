@@ -3,6 +3,9 @@
 Status: **done**. Implemented as `AutoFocusView.vue`/`FocusCurveChart.vue`,
 type-checks, builds, existing unit tests pass, and live-verified against
 `pyobs-core`'s `DummyAutoFocus` (`pyobs/modules/focus/dummyautofocus.py`).
+Routing since changed: no longer a standalone page/sidebar entry — registered in
+`moduleWidgets.ts` and rendered as a tab on `ModulePageView.vue`, per
+`specs/plans/2026-09-06-module-page-rework.md`. Widget content/behavior below unaffected.
 
 Repos: pyobs-web-client (all implementation here)
 
