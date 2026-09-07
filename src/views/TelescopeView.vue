@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect, type DeepReadonly } from 'vue'
+import { ref, computed, watch, watchEffect, onUnmounted, type DeepReadonly } from 'vue'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
 import { defaultParamValue, paramValueFromString } from '@/pyobs-codec'
-import { raDecToAltAz, altAzToRaDec, type GeoLocation } from '@/utils/astroCoords'
+import {
+  raDecToAltAz,
+  altAzToRaDec,
+  formatRaSexagesimal,
+  formatDecSexagesimal,
+  type GeoLocation,
+} from '@/utils/astroCoords'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
+import StatusRow from '@/components/StatusRow.vue'
 import ModuleStateCard from '@/components/ModuleStateCard.vue'
 import ParamForm from '@/components/ParamForm.vue'
 
@@ -13,9 +20,87 @@ import ParamForm from '@/components/ParamForm.vue'
 // be online (ModulePageView's own guard) by the time this renders. See
 // specs/plans/2026-09-06-module-page-rework.md.
 const props = defineProps<{ jid: string }>()
-const { modules, executeMethod } = useXmpp()
+const { modules, executeMethod, subscribeState } = useXmpp()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
+
+// ── Curated status — IMotion's `status`, plus the active section's own
+// position (RA/Dec or Alt/Az, formatted sexagesimal/degrees per the mockup),
+// replacing the raw ModuleStateCard dumps that used to cover each interface's
+// full state object. See specs/plans/2026-09-07-widget-visual-redesign.md.
+
+type MotionState = { status: string }
+type RaDecState = { ra: number; dec: number }
+type AltAzState = { alt: number; az: number }
+
+const motionStateValue = ref<MotionState | undefined>(undefined)
+const raDecStateValue = ref<RaDecState | undefined>(undefined)
+const altAzStateValue = ref<AltAzState | undefined>(undefined)
+let stopStatusSubscription: (() => void) | undefined
+
+watch(
+  currentModule,
+  (mod) => {
+    stopStatusSubscription?.()
+    stopStatusSubscription = undefined
+    motionStateValue.value = undefined
+    raDecStateValue.value = undefined
+    altAzStateValue.value = undefined
+
+    if (!mod) return
+    const stops: (() => void)[] = []
+
+    const motionVersion = mod.interfaces['IMotion']?.version
+    if (motionVersion !== undefined) {
+      const { value, unsubscribe } = subscribeState(mod.jid, 'IMotion', motionVersion)
+      stops.push(unsubscribe)
+      stops.push(watch(value, (v) => (motionStateValue.value = v as MotionState | undefined), { immediate: true }))
+    }
+
+    const raDecVersion = mod.interfaces['IPointingRaDec']?.version
+    if (raDecVersion !== undefined) {
+      const { value, unsubscribe } = subscribeState(mod.jid, 'IPointingRaDec', raDecVersion)
+      stops.push(unsubscribe)
+      stops.push(watch(value, (v) => (raDecStateValue.value = v as RaDecState | undefined), { immediate: true }))
+    }
+
+    const altAzVersion = mod.interfaces['IPointingAltAz']?.version
+    if (altAzVersion !== undefined) {
+      const { value, unsubscribe } = subscribeState(mod.jid, 'IPointingAltAz', altAzVersion)
+      stops.push(unsubscribe)
+      stops.push(watch(value, (v) => (altAzStateValue.value = v as AltAzState | undefined), { immediate: true }))
+    }
+
+    stopStatusSubscription = () => stops.forEach((stop) => stop())
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => stopStatusSubscription?.())
+
+const motionStatusFields = computed(() => {
+  const status = motionStateValue.value?.status
+  if (!status) return []
+  return [{ label: 'Status', value: status.charAt(0).toUpperCase() + status.slice(1) }]
+})
+
+const raDecPositionFields = computed(() => {
+  const state = raDecStateValue.value
+  if (!state) return []
+  return [
+    { label: 'RA', value: formatRaSexagesimal(state.ra) },
+    { label: 'Dec', value: formatDecSexagesimal(state.dec) },
+  ]
+})
+
+const altAzPositionFields = computed(() => {
+  const state = altAzStateValue.value
+  if (!state) return []
+  return [
+    { label: 'Alt', value: `${state.alt.toFixed(1)}°` },
+    { label: 'Az', value: `${state.az.toFixed(1)}°` },
+  ]
+})
 
 // ── ACL gating: every fixed-method button below is disabled (not hidden —
 // see acl-aware-shell-forms.md's "grey out, not hide") when the connected
@@ -240,12 +325,7 @@ const trackBodySchema = computed(
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <ModuleStateCard
-      :jid="currentModule.jid"
-      interface-name="IMotion"
-      :version="currentModule.interfaces['IMotion']!.version"
-      title="Status"
-    />
+    <StatusRow v-if="motionStatusFields.length > 0" :fields="motionStatusFields" />
 
     <div class="d-flex flex-wrap gap-2 mt-2">
       <button
@@ -284,7 +364,7 @@ const trackBodySchema = computed(
       {{ motionErrors[currentModule.jid] }}
     </div>
 
-    <div v-if="applicableSections.length > 0" class="rounded-3 p-3 pyobs-panel mt-2">
+    <div v-if="applicableSections.length > 0" class="pyobs-card mt-2">
       <div v-if="applicableSections.length > 1" class="d-flex flex-wrap gap-2 mb-3">
         <button
           v-for="section in applicableSections"
@@ -300,14 +380,7 @@ const trackBodySchema = computed(
 
       <!-- RA/Dec -->
       <template v-if="activeSection === 'radec'">
-        <div v-if="currentModule.interfaces['IPointingRaDec']?.state">
-          <ModuleStateCard
-            :jid="currentModule.jid"
-            interface-name="IPointingRaDec"
-            :version="currentModule.interfaces['IPointingRaDec']!.version"
-            title="Position"
-          />
-        </div>
+        <StatusRow v-if="raDecPositionFields.length > 0" :fields="raDecPositionFields" class="mb-2" />
         <ParamForm v-model="paramValues.move_radec" :fields="moveRaDecSchema!.params" :enums="{}" />
         <div v-if="paramValues.move_radec?.ra && paramValues.move_radec?.dec" class="text-muted mb-2" style="font-size:0.8rem">
           <template v-if="raDecPreview">→ Alt {{ raDecPreview.altDeg.toFixed(1) }}°, Az {{ raDecPreview.azDeg.toFixed(1) }}°</template>
@@ -356,14 +429,7 @@ const trackBodySchema = computed(
 
       <!-- Alt/Az -->
       <template v-else-if="activeSection === 'altaz'">
-        <div v-if="currentModule.interfaces['IPointingAltAz']?.state">
-          <ModuleStateCard
-            :jid="currentModule.jid"
-            interface-name="IPointingAltAz"
-            :version="currentModule.interfaces['IPointingAltAz']!.version"
-            title="Position"
-          />
-        </div>
+        <StatusRow v-if="altAzPositionFields.length > 0" :fields="altAzPositionFields" class="mb-2" />
         <ParamForm v-model="paramValues.move_altaz" :fields="moveAltAzSchema!.params" :enums="{}" />
         <div v-if="paramValues.move_altaz?.alt && paramValues.move_altaz?.az" class="text-muted mb-2" style="font-size:0.8rem">
           <template v-if="altAzPreview">→ RA {{ altAzPreview.raDeg.toFixed(1) }}°, Dec {{ altAzPreview.decDeg.toFixed(1) }}°</template>

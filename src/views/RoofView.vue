@@ -1,18 +1,54 @@
 <script setup lang="ts">
-import { ref, computed, type DeepReadonly } from 'vue'
+import { ref, computed, watch, onUnmounted, type DeepReadonly } from 'vue'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
-import ModuleStateCard from '@/components/ModuleStateCard.vue'
+import StatusRow from '@/components/StatusRow.vue'
 
 // One tab on ModulePageView.vue now, not its own routed page — jid is already
 // resolved and guaranteed to implement IRoof (see moduleWidgets.ts) and be
 // online (ModulePageView's own guard) by the time this renders. See
 // specs/plans/module-page-rework.md.
 const props = defineProps<{ jid: string }>()
-const { modules, executeMethod } = useXmpp()
+const { modules, executeMethod, subscribeState } = useXmpp()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
+
+// ── Curated status — IMotion's `status` only (not the raw `devices`/`time`
+// dump), matching pyobs-gui's roofwidget.py labelStatus. ──────────────────
+
+type MotionState = { status: string }
+
+const motionStateValue = ref<MotionState | undefined>(undefined)
+let stopMotionSubscription: (() => void) | undefined
+
+watch(
+  currentModule,
+  (mod) => {
+    stopMotionSubscription?.()
+    stopMotionSubscription = undefined
+    motionStateValue.value = undefined
+
+    const version = mod?.interfaces['IMotion']?.version
+    if (!mod || version === undefined) return
+
+    const { value, unsubscribe } = subscribeState(mod.jid, 'IMotion', version)
+    const stopWatch = watch(value, (v) => (motionStateValue.value = v as MotionState | undefined), { immediate: true })
+    stopMotionSubscription = () => {
+      stopWatch()
+      unsubscribe()
+    }
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => stopMotionSubscription?.())
+
+const statusFields = computed(() => {
+  const status = motionStateValue.value?.status
+  if (!status) return []
+  return [{ label: 'Status', value: status.charAt(0).toUpperCase() + status.slice(1) }]
+})
 
 type Action = 'init' | 'park' | 'stop_motion'
 
@@ -52,13 +88,7 @@ async function run(mod: DeepReadonly<PyobsModule>, action: Action) {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <ModuleStateCard
-      v-if="currentModule.interfaces['IMotion']"
-      :jid="currentModule.jid"
-      interface-name="IMotion"
-      :version="currentModule.interfaces['IMotion'].version"
-      title="Status"
-    />
+    <StatusRow v-if="statusFields.length > 0" :fields="statusFields" />
 
     <div class="d-flex flex-wrap gap-2 mt-2">
       <button

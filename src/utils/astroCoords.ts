@@ -162,3 +162,29 @@ export function altAzToRaDec(altAz: AltAz, location: GeoLocation, date: Date): R
   const j2000Vec = matMulVec(transpose(precessionMatrix(jd)), raDecToVec(raOfDate, decOfDate))
   return vecToRaDec(j2000Vec)
 }
+
+// ── Sexagesimal display formatting — for curated status rows (mockup's
+// "RA / Dec: 05h 35m 17s / -05° 23'"), not used by any of the transform math
+// above. RA in hours (0-24h wrap), Dec in signed degrees/arcminutes.
+
+export function formatRaSexagesimal(raDeg: number): string {
+  // Round to the nearest second first, in total seconds, then decompose —
+  // avoids a rounded 59.6s displaying as "60s" instead of carrying into the
+  // next minute (and a rounded 59m59.6s carrying into the next hour, wrapping
+  // 24h back to 0h).
+  const totalSeconds = Math.round((norm360(raDeg) / 15) * 3600) % 86400
+  const h = Math.floor(totalSeconds / 3600)
+  const m = Math.floor((totalSeconds % 3600) / 60)
+  const s = totalSeconds % 60
+  return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`
+}
+
+export function formatDecSexagesimal(decDeg: number): string {
+  const sign = decDeg < 0 ? '-' : '+'
+  // Round to the nearest arcminute first, in total arcminutes, so 59.6' on a
+  // degree carries correctly instead of displaying "60'".
+  const totalMinutes = Math.round(Math.abs(decDeg) * 60)
+  const d = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  return `${sign}${String(d).padStart(2, '0')}° ${String(m).padStart(2, '0')}'`
+}

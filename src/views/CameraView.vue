@@ -16,7 +16,7 @@
 //
 // One tab on ModulePageView.vue now, not its own routed page — see
 // specs/plans/module-page-rework.md.
-import { ref, computed, watch, type DeepReadonly } from 'vue'
+import { ref, computed, watch, onUnmounted, type DeepReadonly } from 'vue'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import { useVfsConfig } from '@/composables/useVfsConfig'
 import { allMethodsPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
@@ -29,15 +29,49 @@ import {
   type CommandSchema,
   type FieldSchema,
 } from '@/pyobs-codec'
-import ModuleStateCard from '@/components/ModuleStateCard.vue'
 import FitsCanvas from '@/components/FitsCanvas.vue'
 import ParamForm from '@/components/ParamForm.vue'
 
 const props = defineProps<{ jid: string }>()
-const { modules, executeMethod } = useXmpp()
+const { modules, executeMethod, subscribeState } = useXmpp()
 const { resolveVfsEndpoint } = useVfsConfig()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
+
+// ── Curated status — IExposure's status/progress/exposure_time_left, not the
+// raw state dump. See specs/plans/2026-09-07-widget-visual-redesign.md.
+
+type ExposureState = { status: string; progress: number; exposure_time_left: number }
+
+const exposureStateValue = ref<ExposureState | undefined>(undefined)
+let stopExposureSubscription: (() => void) | undefined
+
+watch(
+  currentModule,
+  (mod) => {
+    stopExposureSubscription?.()
+    stopExposureSubscription = undefined
+    exposureStateValue.value = undefined
+
+    const version = mod?.interfaces['IExposure']?.version
+    if (!mod || version === undefined) return
+
+    const { value, unsubscribe } = subscribeState(mod.jid, 'IExposure', version)
+    const stopWatch = watch(value, (v) => (exposureStateValue.value = v as ExposureState | undefined), { immediate: true })
+    stopExposureSubscription = () => {
+      stopWatch()
+      unsubscribe()
+    }
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => stopExposureSubscription?.())
+
+const exposureStatusLabel = computed(() => {
+  const status = exposureStateValue.value?.status
+  return status ? status.charAt(0).toUpperCase() + status.slice(1) : undefined
+})
 
 // ── Phase 3: per-interface settings, staged in one form and applied
 // immediately before each Expose ──────────────────────────────────────────
@@ -198,13 +232,27 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <ModuleStateCard
-      v-if="currentModule.interfaces['IExposure']"
-      :jid="currentModule.jid"
-      interface-name="IExposure"
-      :version="currentModule.interfaces['IExposure'].version"
-      title="Exposure"
-    />
+    <div v-if="exposureStateValue" class="pyobs-card">
+      <div class="d-flex justify-content-between gap-2" style="font-size:0.85rem">
+        <span class="text-secondary">Status</span>
+        <span class="text-light">{{ exposureStatusLabel }}</span>
+      </div>
+      <div v-if="exposureStateValue.status === 'exposing' || exposureStateValue.status === 'readout'" class="mt-2">
+        <div class="progress" style="height:6px">
+          <div
+            class="progress-bar"
+            role="progressbar"
+            :style="{ width: `${exposureStateValue.progress}%` }"
+            :aria-valuenow="exposureStateValue.progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          ></div>
+        </div>
+        <div v-if="exposureStateValue.exposure_time_left > 0" class="text-muted mt-1" style="font-size:0.75rem">
+          {{ exposureStateValue.exposure_time_left.toFixed(1) }}s left
+        </div>
+      </div>
+    </div>
 
     <div v-if="settingsGroups.length > 0" class="mt-2">
       <button
@@ -216,7 +264,7 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
         Settings
       </button>
 
-      <div v-if="showSettings" class="mt-2 rounded-3 p-3" style="background-color:#16181b; border:1px solid #2d3035">
+      <div v-if="showSettings" class="pyobs-card mt-2">
         <div v-for="group in settingsGroups" :key="group.key" class="mb-2">
           <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ group.title }}</div>
           <ParamForm v-model="settingsParams" :fields="group.fields" :enums="group.enums" :testid="`camera-settings-${group.key}`" />
@@ -227,7 +275,7 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
     <div class="d-flex flex-wrap gap-2 mt-2">
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-primary btn-sm"
         :disabled="!!exposing[currentModule.jid] || hasUnsupportedSettingsField || !exposePermitted"
         :title="exposePermitted ? undefined : NOT_PERMITTED_TITLE"
         @click="expose(currentModule)"

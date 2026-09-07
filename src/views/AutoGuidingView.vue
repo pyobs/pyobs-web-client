@@ -3,7 +3,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
-import ModuleStateCard from '@/components/ModuleStateCard.vue'
+import StatusRow from '@/components/StatusRow.vue'
 import OffsetMagnitudeChart from '@/components/OffsetMagnitudeChart.vue'
 import OffsetScatterChart from '@/components/OffsetScatterChart.vue'
 
@@ -130,6 +130,11 @@ watch(
 
 onUnmounted(() => stopSubscription?.())
 
+const runningStatusFields = computed(() => {
+  if (runningStateValue.value === undefined) return []
+  return [{ label: 'Running', value: runningStateValue.value.running ? 'Yes' : 'No' }]
+})
+
 const loopStateLabel = computed(() => {
   if (!runningStateValue.value?.running) return 'Stopped'
   return guidingStateValue.value?.loop_closed ? 'Closed loop' : 'Open loop'
@@ -182,18 +187,12 @@ async function setExposureTime() {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <ModuleStateCard
-      v-if="currentModule.interfaces['IRunning']"
-      :jid="currentModule.jid"
-      interface-name="IRunning"
-      :version="currentModule.interfaces['IRunning'].version"
-      title="Status"
-    />
+    <StatusRow v-if="runningStatusFields.length > 0" :fields="runningStatusFields" />
 
     <div class="d-flex flex-wrap align-items-end gap-2 mt-2">
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-primary btn-sm"
         :disabled="!!runningStateValue?.running || !permitted('start')"
         :title="permitted('start') ? undefined : NOT_PERMITTED_TITLE"
         @click="start"
@@ -242,10 +241,10 @@ async function setExposureTime() {
     </div>
 
     <div v-if="offsetHistory.length > 0" class="d-flex flex-column gap-2 mt-2">
-      <div class="rounded-3 p-2" style="background-color:#15181c; border:1px solid #2d3035">
+      <div class="pyobs-card">
         <OffsetMagnitudeChart :values="magnitudeHistory" />
       </div>
-      <div class="rounded-3 p-2" style="background-color:#15181c; border:1px solid #2d3035; max-width:340px">
+      <div class="pyobs-card" style="max-width:340px">
         <OffsetScatterChart :points="scatterPoints" :x-label="scatterAxisLabels.x" :y-label="scatterAxisLabels.y" />
       </div>
     </div>

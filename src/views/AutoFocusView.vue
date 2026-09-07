@@ -3,7 +3,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
-import ModuleStateCard from '@/components/ModuleStateCard.vue'
+import StatusRow from '@/components/StatusRow.vue'
 import FocusCurveChart from '@/components/FocusCurveChart.vue'
 
 type RunningState = { running: boolean; time: string }
@@ -68,6 +68,11 @@ watch(
 
 onUnmounted(() => stopSubscription?.())
 
+const runningStatusFields = computed(() => {
+  if (runningStateValue.value === undefined) return []
+  return [{ label: 'Running', value: runningStateValue.value.running ? 'Yes' : 'No' }]
+})
+
 const exposureTimeUnit = computed(() => {
   const schema = currentModule.value?.interfaces['IAutoFocus']?.commands['auto_focus'] as CommandSchema | undefined
   return schema?.params.find((p) => p.name === 'exposure_time')?.unit
@@ -115,13 +120,7 @@ async function abort() {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <ModuleStateCard
-      v-if="currentModule.interfaces['IRunning']"
-      :jid="currentModule.jid"
-      interface-name="IRunning"
-      :version="currentModule.interfaces['IRunning'].version"
-      title="Status"
-    />
+    <StatusRow v-if="runningStatusFields.length > 0" :fields="runningStatusFields" />
 
     <div class="d-flex flex-wrap align-items-end gap-2 mt-2">
       <div>
@@ -140,7 +139,7 @@ async function abort() {
       </div>
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-primary btn-sm"
         :disabled="running || !permitted('auto_focus')"
         :title="permitted('auto_focus') ? undefined : NOT_PERMITTED_TITLE"
         @click="run"
@@ -167,7 +166,7 @@ async function abort() {
       Focus: {{ result.focus.toFixed(3) }} ± {{ result.focus_err.toFixed(3) }}
     </div>
 
-    <div v-if="(autoFocusStateValue?.points.length ?? 0) > 0" class="rounded-3 p-2 mt-2" style="background-color:#15181c; border:1px solid #2d3035">
+    <div v-if="(autoFocusStateValue?.points.length ?? 0) > 0" class="pyobs-card mt-2">
       <FocusCurveChart
         :points="autoFocusStateValue!.points"
         :result="result ? { focus: result.focus, focusErr: result.focus_err } : undefined"
