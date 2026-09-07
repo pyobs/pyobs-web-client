@@ -3,7 +3,7 @@
 Status: implemented, closed. **Partially stale**: the VFS endpoint
 auth model below (`username`/`password`, HTTP Basic Auth) no longer matches
 `pyobs-core`'s `HttpFile`/`HttpFileCache` as of commit `9bb4314b`, which
-replaced it with a Bearer `token` — see `specs/plans/vfs-token-auth.md`.
+replaced it with a Bearer `token` — see `specs/plans/2026-08-04-vfs-token-auth.md`.
 
 Two related but distinct asks: (1) let the user pick a previously-used JID at
 login instead of retyping it, and (2) a place to store settings specific to a
@@ -13,7 +13,7 @@ value, or `IVideo`'s `VideoCapabilities.video`, per `pyobs-core`'s
 `pyobs/vfs/`) into real fetchable URLs, which is the prerequisite for ever
 displaying an image in this client. Actually rendering an image from a
 resolved URL is explicitly **not** part of this doc — see "Not in scope"
-below (that became `specs/plans/camera-page.md`).
+below (that became `specs/plans/2026-08-03-camera-page.md`).
 
 ## Outcome
 
@@ -109,7 +109,7 @@ per-account in the browser instead of a config file.
   notably, FITS files (the common case for `IData.grab_data()`) aren't
   natively browser-renderable and would need either server-side conversion or
   a JS FITS-to-canvas decoder, which `IVideo`'s browser-friendly
-  preview-image case doesn't need. See `specs/plans/camera-page.md`.
+  preview-image case doesn't need. See `specs/plans/2026-08-03-camera-page.md`.
 - **VFS write access** (`HttpFile`'s `upload` side) — nothing in the app
   performs uploads today; only read/`download` matters for the display use
   case that motivated this.

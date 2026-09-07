@@ -26,5 +26,5 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   installable Android/iOS shell via Capacitor (icon, secure credential storage, push, offline
   saved-connections screen), replacing the earlier React Native + shared-core plan. *in progress*
   — icon/credential-storage/saved-connections done (VFS credentials still unmigrated), push not
-  started; forward UI evolution tracked in `specs/plans/mobile-first-redesign.md` (issue #884;
+  started; forward UI evolution tracked in `specs/plans/2026-09-06-mobile-first-redesign.md` (issue #884;
   Repos: pyobs-core (superseded ADRs 0016–0018 + design doc), pyobs-web-client)

@@ -5,7 +5,7 @@ date: 2026-08-25
 
 ## Context and Problem Statement
 
-`CameraView.vue` (`specs/plans/camera-page.md`, Phase 1) needs to decode and rasterize FITS images
+`CameraView.vue` (`specs/plans/2026-08-03-camera-page.md`, Phase 1) needs to decode and rasterize FITS images
 client-side — `grab_data()` returns a raw, often gzip-compressed FITS file with no server-side
 preview/thumbnail conversion available anywhere in `pyobs-core`. The original plan assumed an
 existing JS FITS library rather than a hand-rolled parser; which library (or whether to hand-roll
@@ -45,7 +45,7 @@ own — no way to get real unit-test coverage of the decode path with it in plac
 - Client-side gzip decompression (`DecompressionStream('gzip')`) is this project's own
   responsibility rather than a library concern either way — `.fits.gz` handling lives in
   `packages/pyobs-fits/src/gzip.ts`, independent of this decision.
-- `specs/plans/camera-page.md`'s "Cross-check against `pyobs-polaris`" section notes that sibling
+- `specs/plans/2026-08-03-camera-page.md`'s "Cross-check against `pyobs-polaris`" section notes that sibling
   client took the opposite path for its own `ICamera` display (`fits::FitsImage` via the
   established C library `cfitsio`, not a hand-rolled parser) — a different, also-reasonable
   answer given C++ has a mature FITS library and the browser doesn't; not evidence for or against

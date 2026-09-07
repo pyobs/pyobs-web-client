@@ -23,7 +23,7 @@ tab. This plan is that model, translated to this app's routing.
 
 On the compact shell specifically, the absence of this shows up as Dashboard cards that only
 expand inline (nothing to navigate to) and `MoreView.vue` listing per-interface routes directly.
-Both were called out as deliberate, scoped-out gaps while building `specs/plans/mobile-first-redesign.md` —
+Both were called out as deliberate, scoped-out gaps while building `specs/plans/2026-09-06-mobile-first-redesign.md` —
 this doc is the scoping that was deferred.
 
 ## Goal
@@ -34,7 +34,7 @@ dedicated widget stay reachable via `ShellView`, untouched by any of this.
 
 ## Not a compact-only change
 
-Worth being explicit, since `mobile-first-redesign.md`'s Non-goals said "no changes to the
+Worth being explicit, since `2026-09-06-mobile-first-redesign.md`'s Non-goals said "no changes to the
 wide-screen/desktop layout": grouping nav *by module* instead of *by interface* fixes the same
 double-listing problem on desktop too, not just compact. The sidebar's visual chrome doesn't need
 to change — still a sidebar — but what it lists does: one entry per module, not one section per
@@ -52,7 +52,7 @@ there too.
   computed filtering `modules` for the interface, `routeJid` from `route.params.jid`,
   `currentModule` lookup, and a `watchEffect` redirecting to the first available module when the
   route has no `:jid` — a one-click nav hit stays one click for the single-instance case.
-- `ITelescope` has no view yet (`specs/plans/telescope-page.md`, still proposed) — not built here,
+- `ITelescope` has no view yet (`specs/plans/2026-08-03-telescope-page.md`, still proposed) — not built here,
   but the registry/mechanism below should accommodate it landing later without a second rework.
 - pyobs-gui's "sidebar" interfaces (`IFilters`, `IFocuser`, `ITemperatures`, `ICooling`) have no
   web-client widgets at all today — the shared-section mechanism should exist, but will likely
@@ -187,6 +187,6 @@ Ordered steps:
 
 - `../pyobs-gui/specs/2026-08-28-gui-main-vs-sidebar-widgets.md` — the model this mirrors
   (`MainWidgetEntry` registry, `collect_main_widgets`, `ModulePage` container).
-- `specs/plans/mobile-first-redesign.md` — where this was deferred from (Phase 2).
+- `specs/plans/2026-09-06-mobile-first-redesign.md` — where this was deferred from (Phase 2).
 - `src/composables/useModuleNavSections.ts`, `src/views/RoofView.vue`, `src/views/CameraView.vue` —
   current interface-grouped nav and the per-view pattern being replaced.

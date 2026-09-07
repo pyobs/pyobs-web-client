@@ -2,7 +2,7 @@
 
 Zero-dependency FITS header/image parsing and canvas rendering, for the
 browser. No native FITS library dependency (see
-`pyobs-web-client`'s `specs/plans/camera-page.md` for why: the available
+`pyobs-web-client`'s `specs/plans/2026-08-03-camera-page.md` for why: the available
 npm FITS libraries were either Node-only, undocumented, or relied on a
 Web Worker + Blob-URL decode path that can't be unit-tested).
 

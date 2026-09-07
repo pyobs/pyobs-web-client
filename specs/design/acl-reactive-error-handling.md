@@ -6,7 +6,7 @@ pyobs-core 2.0 ACLs (`acl:` config block) are enforced server-side today
 (`0d1c9929`, "Implement access control (ACLs) for module RPC calls"). This doc records what that
 means for this client's *reactive* path — what happens when a denied call is actually attempted —
 as distinct from the *proactive* half (greying out methods before they're tried), which is
-`specs/plans/acl-aware-shell-forms.md`.
+`specs/plans/2026-08-03-acl-aware-shell-forms.md`.
 
 ## Finding
 

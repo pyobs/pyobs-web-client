@@ -4,7 +4,7 @@ Status: in progress. Goals 1 (icon/splash/no browser chrome), 2 (XMPP password o
 credentials not yet migrated, see Credential storage), and 4 (offline saved-connections screen,
 built further than described below) are done. Goal 3 (push) not started. Forward evolution of the
 UI built here — the compact shell, Dashboard, and the Connections/Add/Edit split — is tracked in
-`specs/plans/mobile-first-redesign.md`, not this doc.
+`specs/plans/2026-09-06-mobile-first-redesign.md`, not this doc.
 
 Discussion thread: pyobs/pyobs-core issue #884 — the mobile-app conversation started there and
 that history is worth reading, but the decision below is scoped entirely to this repo now; see
@@ -81,7 +81,7 @@ Current state (`specs/design/login-memory-and-vfs-config.md`): the XMPP password
 password in `localStorage` was called out there as "a real security regression, not just a style
 choice"), while VFS endpoint credentials *are* persisted in `localStorage`, flagged in that same
 doc as a named tradeoff. That doc is marked partially stale for a different reason (a Bearer-token
-migration plan, `specs/plans/vfs-token-auth.md`) — but that plan is still `status: proposed`,
+migration plan, `specs/plans/2026-08-04-vfs-token-auth.md`) — but that plan is still `status: proposed`,
 unexecuted; VFS endpoints are still plain Basic Auth username/password today. An earlier revision
 of this doc incorrectly stated the token migration had already happened — corrected here.
 
@@ -104,7 +104,7 @@ flow. The three previously-separate stores this section originally described
 turned out to mean "one screen drives all three," not one merged data store — plus the password
 itself, settable directly from Add or Edit (stored unverified, no live connect attempt, since
 requiring network just to save a profile would defeat the offline-usability point). See
-`specs/plans/mobile-first-redesign.md` for how this continued to evolve (the Connections/Login
+`specs/plans/2026-09-06-mobile-first-redesign.md` for how this continued to evolve (the Connections/Login
 flow section there).
 
 **Never done: checking `pyobs-polaris`'s equivalent first**, as this section originally called
@@ -136,7 +136,7 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
 
 1. ✅ Capacitor wrap + Android build pipeline (internal distribution) — a real device runs the
    app; also needed a project-relative debug keystore fix (see
-   `specs/plans/mobile-first-redesign.md`'s "Incidental fixes") once Android Studio and the CLI
+   `specs/plans/2026-09-06-mobile-first-redesign.md`'s "Incidental fixes") once Android Studio and the CLI
    turned out to sign debug builds differently on this dev machine.
 2. ⚠️ Secure-storage plugin swap — **XMPP password only**. VFS token/credentials not migrated;
    see Credential storage above.
@@ -146,7 +146,7 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
 5. iOS build + TestFlight distribution — not started, blocked on Mac access.
 6. Revisit native-widget feel only after real use of the above — not decided either way yet;
    real use since has included a first-hand dev-workflow comparison with RN (liked its live-reload
-   loop) without deciding to switch — see `specs/plans/mobile-first-redesign.md`'s history for
+   loop) without deciding to switch — see `specs/plans/2026-09-06-mobile-first-redesign.md`'s history for
    that discussion.
 
 ## Open questions
@@ -162,10 +162,10 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
 
 ## References
 
-- `specs/plans/mobile-first-redesign.md` — where the UI built here (compact shell, Dashboard,
+- `specs/plans/2026-09-06-mobile-first-redesign.md` — where the UI built here (compact shell, Dashboard,
   Connections/Add/Edit) continues to evolve; the current source of truth for that, not this doc.
 - `specs/design/login-memory-and-vfs-config.md` — current credential storage this doc changes.
-- `specs/plans/vfs-token-auth.md` — proposed Basic Auth → Bearer token migration for VFS auth;
+- `specs/plans/2026-08-04-vfs-token-auth.md` — proposed Basic Auth → Bearer token migration for VFS auth;
   still `status: proposed`, not executed — VFS auth is still username/password today.
 - `pyobs-core/specs/design/mobile-app-and-shared-ts-client-core.md` and
   `pyobs-core/specs/adrs/0016`–`0018` (all superseded) — the earlier RN/shared-core plan and why

@@ -2,30 +2,30 @@
 
 Implementation plans, checklist-style.
 
-- [acquisition-widget.md](acquisition-widget.md) — `IAcquisition` widget. **done**
-- [autofocus-widget.md](autofocus-widget.md) — `IAutoFocus` widget. **done**
-- [autoguiding-widget.md](autoguiding-widget.md) — `IAutoGuiding` widget. **implemented**
-- [camera-page.md](camera-page.md) — camera page, grab & display images from `ICamera` modules.
+- [2026-08-03-acquisition-widget.md](2026-08-03-acquisition-widget.md) — `IAcquisition` widget. **done**
+- [2026-08-03-autofocus-widget.md](2026-08-03-autofocus-widget.md) — `IAutoFocus` widget. **done**
+- [2026-08-03-autoguiding-widget.md](2026-08-03-autoguiding-widget.md) — `IAutoGuiding` widget. **implemented**
+- [2026-08-03-camera-page.md](2026-08-03-camera-page.md) — camera page, grab & display images from `ICamera` modules.
   **done**
-- [events-page-send-tool.md](events-page-send-tool.md) — send event tool. **done**
-- [mode-widget.md](mode-widget.md) — `IMode` widget. **done**
-- [weather-widget.md](weather-widget.md) — `IWeather` widget. **done**
+- [2026-08-03-events-page-send-tool.md](2026-08-03-events-page-send-tool.md) — send event tool. **done**
+- [2026-08-03-mode-widget.md](2026-08-03-mode-widget.md) — `IMode` widget. **done**
+- [2026-08-03-weather-widget.md](2026-08-03-weather-widget.md) — `IWeather` widget. **done**
 
 ## Not finished
 
-- [acl-aware-shell-forms.md](acl-aware-shell-forms.md) — ACL-aware Shell forms. **proposed**
-- [auxiliary-interface-widgets.md](auxiliary-interface-widgets.md) — auxiliary interface widgets
+- [2026-08-03-acl-aware-shell-forms.md](2026-08-03-acl-aware-shell-forms.md) — ACL-aware Shell forms. **proposed**
+- [2026-08-04-auxiliary-interface-widgets.md](2026-08-04-auxiliary-interface-widgets.md) — auxiliary interface widgets
   (attach-or-standalone). **proposed**
-- [idatasequence.md](idatasequence.md) — `IDataSequence` support ("grab N images"). **proposed**
-- [rpc-fault-call-id.md](rpc-fault-call-id.md) — surface `call_id` on RPC faults. **proposed**
-- [struct-typed-command-params.md](struct-typed-command-params.md) — `struct<Name>`-typed command
+- [2026-08-03-idatasequence.md](2026-08-03-idatasequence.md) — `IDataSequence` support ("grab N images"). **proposed**
+- [2026-08-03-rpc-fault-call-id.md](2026-08-03-rpc-fault-call-id.md) — surface `call_id` on RPC faults. **proposed**
+- [2026-08-03-struct-typed-command-params.md](2026-08-03-struct-typed-command-params.md) — `struct<Name>`-typed command
   params. **blocked on upstream**
-- [mobile-first-redesign.md](mobile-first-redesign.md) — mobile-first app shell + per-view
+- [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** (Phase 1 done;
   Dashboard + Connections/Login migrated)
-- [module-page-rework.md](module-page-rework.md) — one nav destination per module (tabs per
+- [2026-09-06-module-page-rework.md](2026-09-06-module-page-rework.md) — one nav destination per module (tabs per
   interface, shared section across tabs), mirroring pyobs-gui's own `ModulePage` redesign; replaces
   today's 7 separate per-interface routes. **proposed, scoping only**
-- [telescope-page.md](telescope-page.md) — telescope page for `ITelescope` modules. **proposed**
-- [vfs-token-auth.md](vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token).
+- [2026-08-03-telescope-page.md](2026-08-03-telescope-page.md) — telescope page for `ITelescope` modules. **proposed**
+- [2026-08-04-vfs-token-auth.md](2026-08-04-vfs-token-auth.md) — VFS endpoint auth (Basic Auth → Bearer token).
   **proposed**

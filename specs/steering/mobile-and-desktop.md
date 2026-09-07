@@ -9,7 +9,7 @@ lists instead of letting them push other controls off-screen, stacked (not
 side-by-side) inputs on narrow viewports, verified with an actual
 mobile-viewport (390×844) screenshot pass, not just desktop.
 
-`specs/plans/camera-page.md` (image sizing) and `specs/plans/telescope-page.md`
+`specs/plans/2026-08-03-camera-page.md` (image sizing) and `specs/plans/2026-08-03-telescope-page.md`
 (coordinate-form stacking) are the two currently-open plans with real
 mobile-layout risk, annotated inline in each. Apply the same bar to any new
 plan added after this note too — call out the specific mobile risk in the

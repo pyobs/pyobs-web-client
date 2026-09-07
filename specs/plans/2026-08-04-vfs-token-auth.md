@@ -11,7 +11,7 @@ client's VFS endpoint config — `useVfsConfig.ts`, `SettingsView.vue` — aroun
 `pyobs.vfs.HttpFile`'s HTTP Basic Auth shape (`username`/`password`), the
 only auth `HttpFile` supported at the time.
 
-While fixing the CORS gap that blocked `specs/plans/camera-page.md` phase 2
+While fixing the CORS gap that blocked `specs/plans/2026-08-03-camera-page.md` phase 2
 ([pyobs/pyobs-core#725](https://github.com/pyobs/pyobs-core/issues/725)), it
 surfaced that `pyobs.modules.utils.HttpFileCache` never actually checked the
 Basic Auth credentials `HttpFile` was sending — no auth was enforced at all.
@@ -27,13 +27,13 @@ harmless for the no-auth case (nothing to send either way), but any real
 deployment that turns auth on can't be reached from this client at all —
 there's no way to enter a token today.
 
-## Why not folded into camera-page.md
+## Why not folded into 2026-08-03-camera-page.md
 
 Orthogonal to that plan's actual scope ("grab an image and see it") — VFS
 endpoint config is shared infrastructure any `IData`/`IVideo`-shaped path
 resolution depends on, not Camera-specific. Was blocked on an actual
 `pyobs-core` release (at the time the fix only existed in an unpublished commit
-— see camera-page.md's phase 2 notes on the editable-install workaround used
+— see 2026-08-03-camera-page.md's phase 2 notes on the editable-install workaround used
 to verify against it); that release has since shipped, so this is no longer
 blocked, just not yet implemented on the client.
 

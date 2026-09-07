@@ -26,7 +26,7 @@ interfaces don't fit that without becoming either:
   itself never does this (cooling only ever appears inside `CameraWidget`'s
   sidebar).
 - **Manually wired per host page, one at a time**: what
-  `specs/plans/camera-page.md`'s phase 3 did for `ICamera` specifically
+  `specs/plans/2026-08-03-camera-page.md`'s phase 3 did for `ICamera` specifically
   (`IWindow`/`IBinning`/`IGain`/etc., hardcoded directly into
   `CameraView.vue`) — doesn't generalize to Telescope, or to a standalone
   module with no host page at all.
@@ -71,7 +71,7 @@ defaults). Four to start, each with a direct `pyobs-gui` reference:
   `pyobs_gui/temperatureswidget.py`. Read-only, multiple named sensor
   readings + history — reuse `WeatherView.vue`'s already-built per-sensor
   tile + bounded-history-array pattern and its `TimeSeriesChart.vue`
-  (per `camera-page.md`'s dropped phase 4 note — this plan supersedes
+  (per `2026-08-03-camera-page.md`'s dropped phase 4 note — this plan supersedes
   that note; `ITemperatures` is scoped here now, not as a Camera-specific
   follow-up).
 - **`FocuserWidget.vue`** (`IFocuser` — confirmed against `pyobs-core`;
@@ -115,7 +115,7 @@ header + sub-links) can be reused rather than duplicated.
   implement this interface," so it renders wherever it's dropped in,
   independently, with no shared/global state to duplicate.
 - Whether `IWindow`/`IBinning`/`IGain`/`IImageFormat`/`IImageType`
-  (`camera-page.md` phase 3's settings, currently hardcoded directly in
+  (`2026-08-03-camera-page.md` phase 3's settings, currently hardcoded directly in
   `CameraView.vue`, not using this mechanism) should be retrofitted onto
   it for consistency. Arguably yes, but they're tightly
   exposure/camera-specific and less obviously "their own reusable widget"

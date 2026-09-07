@@ -74,7 +74,7 @@ redesign pass later:
 - `IPointingOrbitalElements` — `track_orbital_elements(elements)` for a body
   given as classical orbital elements directly. Struct-typed param — blocked
   on the same `struct<Name>`-can't-be-form-built-from-schema-alone limitation
-  as `specs/plans/struct-typed-command-params.md`. **Not buildable as a form
+  as `specs/plans/2026-08-03-struct-typed-command-params.md`. **Not buildable as a form
   until that upstream gap closes**; if a real module needs this before then,
   the fallback is a raw-JSON textarea param (bypassing schema-driven form
   generation entirely for this one param) rather than blocking the whole

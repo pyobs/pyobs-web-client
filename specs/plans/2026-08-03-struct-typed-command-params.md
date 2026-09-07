@@ -29,7 +29,7 @@ per-interface knowledge — see `DEVELOPMENT.md`'s intro).
 Confirmed (as of the last check) no real command across any interface in
 `../pyobs-core` takes a `struct`/`list`/`dict`-typed param — this is a
 theoretical gap, not one blocking a real feature today. It's tracked here
-because `specs/plans/telescope-page.md`'s `IPointingOrbitalElements` entry
+because `specs/plans/2026-08-03-telescope-page.md`'s `IPointingOrbitalElements` entry
 would hit it directly if implemented (`track_orbital_elements(elements)` takes
 a struct-shaped param), which is the first concretely-identified interface
 that would need this.
