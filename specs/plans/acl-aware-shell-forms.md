@@ -6,7 +6,9 @@ Repos: pyobs-web-client (all implementation here); depends on
 `IModule.get_permitted_methods()` in `../pyobs-core` (already implemented,
 `pyobs/modules/module.py:871`)
 
-Supersedes the "ACL-aware Shell forms" Todo item in `DEVELOPMENT.md`.
+Supersedes the "ACL-aware Shell forms" Todo item that used to live in this
+repo's root `DEVELOPMENT.md` (folded into `specs/` and deleted; see
+`git log -p -- DEVELOPMENT.md`).
 
 ## Problem statement
 
@@ -14,8 +16,9 @@ Supersedes the "ACL-aware Shell forms" Todo item in `DEVELOPMENT.md`.
 command schema) let an operator pick any method any connected module exposes,
 including ones ACLs (`acl:` config block, `../pyobs-core` 2.0) deny them from
 actually calling. Today the only feedback is reactive: submit the call, get a
-`ForbiddenError` back after the fact (see "Reactive handling" note in
-`DEVELOPMENT.md`'s ACL entry for the exact mechanics — it arrives via
+`ForbiddenError` back after the fact (see
+`specs/design/acl-reactive-error-handling.md` for the exact mechanics — it
+arrives via
 `executeMethod`'s generic XMPP-level error branch, `useXmpp.ts:314-323`, not
 `findRpcFault`). This plan is the proactive half: grey out or hide methods the
 connected identity can't call, before it tries.
@@ -82,8 +85,10 @@ Key points that shape the design:
 
 `pyobs-polaris` (a sibling client built on the identical wire-protocol/
 generic-rendering architecture as this one) implemented the equivalent of
-this exact plan (`DEVELOPMENT.md`'s "ACL / permitted-methods gating"
-section) and answers what was previously an open question here directly:
+this exact plan (tracked at the time in this repo's root `DEVELOPMENT.md`'s
+"ACL / permitted-methods gating" section, since folded into this plan and
+deleted; see `git log -p -- DEVELOPMENT.md`) and answers what was previously
+an open question here directly:
 **gate every RPC-triggering control project-wide, not only Shell's generic
 form builder.** It fetches `get_permitted_methods()` once per module right
 after discovery (piggybacked on the same module-info fetch this client's

@@ -8,8 +8,9 @@ client-side design work to do yet.
 Repos: pyobs-web-client (consumer); `../pyobs-core` (wire-format change this
 actually depends on, not yet proposed or implemented there)
 
-Supersedes the "`struct<Name>`-typed command params" Todo item in
-`DEVELOPMENT.md`.
+Supersedes the "`struct<Name>`-typed command params" Todo item that used to
+live in this repo's root `DEVELOPMENT.md` (folded into `specs/` and deleted;
+see `git log -p -- DEVELOPMENT.md`).
 
 ## Problem statement
 
@@ -22,7 +23,8 @@ in disco#info today. A client encountering a `struct<Name>` param has no way
 to build an input form for it from schema alone; it would need out-of-band
 knowledge of that specific struct's shape, defeating the whole point of this
 client's live-schema-driven approach (no generated files, no hardcoded
-per-interface knowledge — see `DEVELOPMENT.md`'s intro).
+per-interface knowledge — see `specs/design/pyobs-2-0-wire-protocol-client.md`'s
+intro).
 
 ## Current status: not actually blocking anything
 

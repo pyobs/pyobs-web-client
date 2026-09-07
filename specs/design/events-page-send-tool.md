@@ -12,8 +12,9 @@ params, publish it. This client can't copy that approach directly —
 import of `pyobs.events.__dict__` (pyobs-core's whole module namespace),
 which is exactly the kind of hardcoded, globally-enumerated interface
 knowledge this client's live-schema-discovery design avoids everywhere else
-(see `DEVELOPMENT.md`'s intro — "no build-time codegen — everything is
-discovered live from each module's own disco#info response"). There is no
+(see `specs/design/pyobs-2-0-wire-protocol-client.md`'s intro — "no
+build-time codegen — everything is discovered live from each module's own
+disco#info response"). There is no
 equivalent "list every event type that exists anywhere in pyobs-core" call
 on the wire, and there shouldn't need to be one — every connected module's
 disco#info response already advertises the event types *that module* is

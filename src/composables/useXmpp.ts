@@ -313,7 +313,8 @@ async function fetchCurrentEventItem(bareJid: string, moduleName: string, node: 
 // (handlePresence, below) — it has no way to find out about a module that was
 // already online before this session existed, unless the server auto-probes
 // roster contacts on our behalf (not guaranteed across every ejabberd setup,
-// see DEVELOPMENT.md). Fix: explicitly probe every roster contact ourselves
+// see specs/design/pyobs-2-0-wire-protocol-client.md). Fix: explicitly probe
+// every roster contact ourselves
 // right after connecting. Responses come back as ordinary presence stanzas
 // and are handled by the same handlePresence path as any live push.
 async function probeRosterPresence(): Promise<void> {

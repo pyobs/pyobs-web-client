@@ -1,7 +1,6 @@
 # Plan: `IMode` widget
 
-Status: **done**. Implemented as `ModeView.vue` (see DEVELOPMENT.md's Todo
-entry and PR #10).
+Status: **done**. Implemented as `ModeView.vue` (see PR #10).
 
 Repos: pyobs-web-client (all implementation here)
 

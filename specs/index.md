@@ -20,10 +20,14 @@ a full structure of its own rather than being a footnote in `pyobs-core`'s.
   design must work on mobile and desktop"), once a real recurring convention
   warrants its own doc.
 
-`DEVELOPMENT.md` (repo root) stays the condensed, current-state overview — what
-the client does today, what's tested, what's still open. New proposals/plans
-going forward belong here in `specs/`, linked from `DEVELOPMENT.md`'s Todo
-section rather than written inline there.
+This repo has no root-level status doc — `design/index.md` is the
+completed-feature catalog and `plans/index.md` tracks what's still open,
+matching `pyobs-core`'s own layout (no equivalent doc there either). A root
+`DEVELOPMENT.md` served this purpose until 2026-09-07, when its content was
+folded into this tree (mostly already duplicated here as one-line pointers)
+and the file deleted; its pre-`specs/` narrative history (codegen-vs-live-schema
+decision, the pause for upstream changes, bug hunts) is preserved in git
+history, not duplicated here — see `git log -p -- DEVELOPMENT.md`.
 
 ## Cross-repo docs
 
@@ -36,7 +40,7 @@ link to them instead:
 - `pyobs-core/specs/design/pyobs_2_0_wire_protocol.md` — the wire protocol this
   client's `useXmpp.ts`/`pyobs-codec.ts` implement.
 - `pyobs-core/specs/plans/pyobs_2_0_work_plan.md` — the 2.0 migration plan this
-  client's own `DEVELOPMENT.md` history responds to.
+  client's own pre-`specs/` history (see the note above) responds to.
 - `pyobs-core/specs/steering/pyobs-project-tiers.md`,
   `connected-projects-version-policy.md`, `fleet-tooling-consistency.md` —
   fleet-wide conventions this repo falls under.

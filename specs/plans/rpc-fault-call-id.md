@@ -5,8 +5,9 @@ because nothing currently consumes it.
 
 Repos: pyobs-web-client (all implementation here)
 
-Supersedes the exception-registry/`call_id` note added to
-`DEVELOPMENT.md`'s ACL Todo entry.
+Supersedes the exception-registry/`call_id` note that used to be added to
+this repo's root `DEVELOPMENT.md`'s ACL Todo entry (folded into `specs/` and
+deleted; see `git log -p -- DEVELOPMENT.md`).
 
 ## Background
 

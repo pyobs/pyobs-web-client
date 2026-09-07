@@ -4,8 +4,10 @@ Status: proposed, not yet implemented — two open questions below unresolved.
 
 Repos: pyobs-web-client (all implementation here)
 
-Supersedes DEVELOPMENT.md's "Proposed: Telescope page" section (kept there as
-historical record) — this plan is the current source of truth for scope and
+Supersedes this repo's root `DEVELOPMENT.md`'s "Proposed: Telescope page"
+section (that file has since been folded into `specs/` and deleted; the
+original write-up is preserved via `git log -p -- DEVELOPMENT.md`) — this
+plan is the current source of truth for scope and
 open questions going forward, and additionally folds in non-sidereal tracking
 (see below), which postdates that original write-up.
 

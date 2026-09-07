@@ -8,8 +8,10 @@ its own thing, not because it's unwanted.
 
 Repos: pyobs-web-client (all implementation here)
 
-Supersedes DEVELOPMENT.md's "Proposed: Camera page" section (kept there as
-historical record, not deleted) — this plan is the current source of truth for
+Supersedes this repo's root `DEVELOPMENT.md`'s "Proposed: Camera page"
+section (that file has since been folded into `specs/` and deleted; the
+original write-up is preserved via `git log -p -- DEVELOPMENT.md`) — this
+plan is the current source of truth for
 scope and open questions going forward.
 
 **Phasing.** Originally scoped as one v1 pass; split into phases to
