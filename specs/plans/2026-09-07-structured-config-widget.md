@@ -1,10 +1,24 @@
 # Plan: Structured config widget (`IStructuredConfig`)
 
-Status: Phase 1 built (`ConfigView.vue`), not yet live-verified — 2026-09-08. Phases 2/3 (nested
-fields, basic/expert toggle) remain deferred, per this plan. `set_config`'s dict-typed param needed
-a codec extension not anticipated by this plan — `structValueToXml` (`src/pyobs-codec.ts`) and
+Status: All three phases built and live-verified — 2026-09-08. Phase 1 (flat fields) directly in
+`ConfigView.vue`; Phase 2 (nested `object` fields) and Phase 3 (basic/expert `AccessLevel` toggle,
+per-field descriptions) via the new recursive `src/components/StructConfigForm.vue`, which
+`ConfigView.vue` now drives for the whole schema tree. Verified against a newly-ported fixture,
+`testing/pyobs-gui-configs/xmpp/structuredconfig.yaml` (adapted from `pyobs-gui/test/`, running
+`pyobs.modules.utils.dummystructuredconfig.DummyStructuredConfig`, which already exercises every
+`ConfigFieldSchema` type including one nested field) — edited a nested field (`nested.threshold`)
+and a flat field (`verbose`) together, applied, reloaded, and confirmed both round-tripped through
+`set_config`/`ConfigAppliedState` correctly. `set_config`'s dict-typed param needed a codec
+extension not anticipated by this plan — `structValueToXml` (`src/pyobs-codec.ts`) and
 `executeMethodRaw` (`src/composables/useXmpp.ts`), see their own comments for why `valueToXml`/
 `executeMethod` couldn't be reused as-is.
+
+**Bug found and fixed during live verification**: `apply()`'s deep clone of the current applied
+config used `structuredClone()`, which throws `DataCloneError` on a Vue-reactive object (the config
+comes from a `ref`, so `configAppliedStateValue.value?.config` is a reactive Proxy, not a plain
+object) — every Apply failed until this was caught live. Fixed with a `JSON.parse(JSON.stringify(...))`
+round-trip instead, which both unwraps the proxy and clones in one step (safe here since every
+`ConfigAppliedState` value is plain JSON-safe data by construction).
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -64,22 +78,27 @@ behavior, don't demote it.
 
 ## Out of scope (this pass)
 
-- Nested-object editing (Phase 2 above) and basic/expert toggling (Phase 3) — explicitly deferred,
-  not forgotten; revisit once a real fixture exists to verify the nested case against.
+Nothing deferred — all three phases landed. `IFilters`-style per-field opaque passthrough (an
+`object` field with no `nested` schema, i.e. a pydantic freeform dict) is still not editable, same
+as pyobs-gui's own placeholder — flagged in the UI ("Not yet editable here: ...") rather than
+silently dropped, but genuinely can't be built without a schema to render from.
 
 ## Open questions
 
-- No `IStructuredConfig` test fixture exists in `testing/pyobs-gui-configs/xmpp/` — worth porting
-  one from `pyobs-gui`'s own `test/*.yaml` (per `specs/steering/testing-against-live-backend.md`'s
-  established adaptation process) before or alongside implementation, so Phase 1 has something real
-  to verify against rather than a hand-invented schema.
+None outstanding. (Resolved: a fixture now exists —
+`testing/pyobs-gui-configs/xmpp/structuredconfig.yaml` — ported from `pyobs-gui/test/`.)
 
 ## References
 
 - `pyobs-gui/pyobs_gui/structuredconfigwidget.py` — the widget this adapts (scoped down, see above).
 - `pyobs-core/pyobs/interfaces/IStructuredConfig.py` — `ConfigSchema`/`ConfigFieldSchema`/
   `ConfigAppliedState`, the wire shapes involved.
+- `pyobs-core/pyobs/utils/config_schema.py` — `ConfigFieldSchema`'s `level`/`description` fields and
+  the dataclass/pydantic → schema derivation.
+- `pyobs-core/pyobs/modules/utils/dummystructuredconfig.py` — the fixture module verification used,
+  exercising every field type including one nested field.
 - `specs/design/pyobs-gui-widget-parity.md` — registry row 18.
 - `specs/plans/2026-08-03-struct-typed-command-params.md` — the *different*, still-blocked
   command-param problem; don't conflate the two.
-- `src/components/ParamForm.vue` — the existing flat-field-form renderer Phase 1 reuses.
+- `src/components/ParamForm.vue` — the flat-field-form renderer Phase 1 reuses; `StructConfigForm.vue`
+  (Phases 2/3) is a separate recursive renderer, not built on top of `ParamForm.vue`.

@@ -446,3 +446,26 @@ export function parseEventSchema(el: Element): EventSchema {
 
   return { name, version, role, enums, fields: parseFields(el, 'field') }
 }
+
+// ── IStructuredConfig's ConfigSchema/ConfigFieldSchema (capabilities) ──────
+// Decoded generically by xmlToValue (a dataclass root, not the disco#info
+// <interface> schema above) — these types just document the shape ConfigView
+// .vue/StructConfigForm.vue expect from it. `level` mirrors pyobs-core's
+// AccessLevel IntEnum (0 BASIC, 1 EXPERT, 2 HIDDEN — serialized as a plain
+// <int>, since IntEnum instances satisfy Python's `isinstance(value, int)`
+// before any enum-specific case runs); see ../pyobs-core's
+// specs/steering/gui-field-access-levels.md.
+export const ACCESS_LEVEL_HIDDEN = 2
+export const ACCESS_LEVEL_EXPERT = 1
+
+export type ConfigFieldSchemaWire = {
+  type: 'str' | 'int' | 'float' | 'bool' | 'enum' | 'object'
+  unit: string | null
+  options: string[] | null
+  default: unknown
+  nested: Record<string, ConfigFieldSchemaWire> | null
+  level: number
+  description: string | null
+}
+export type ConfigSchemaWire = { fields: Record<string, ConfigFieldSchemaWire> }
+export type ConfigAppliedStateWire = { config: Record<string, unknown> }

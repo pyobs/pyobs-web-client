@@ -30,12 +30,13 @@ instead of this list for the completed-feature catalog.
   questions" section still lists real unresolved technical gaps independent of that pass (e.g.
   `IVideo`'s bearer-token auth has no token-protected fixture to verify against; `IRobotic`/
   `IRoboticScheduler` have no test fixture at all yet).
-- **`IStructuredConfig`** (`specs/plans/2026-09-07-structured-config-widget.md`) — **not** in the
-  built-and-verifying group above: only Phase 1 (flat fields) is built. Phases 2 (nested `object`
-  fields) and 3 (basic/expert toggle) are explicitly deferred, and there's no test fixture in
-  `testing/pyobs-gui-configs/xmpp/` at all yet — needed before Phase 2 can be built against a real
-  shape rather than a guessed one. This is genuine remaining implementation work, not just
-  verification. Full registry + what's built vs. not: `specs/design/pyobs-gui-widget-parity.md`.
+- **`IStructuredConfig` — done, all three phases, 2026-09-08.** Plan at
+  `specs/plans/2026-09-07-structured-config-widget.md`. Nested `object` fields and the basic/expert
+  toggle (Phases 2/3, previously deferred for lack of a fixture) landed via a new recursive
+  `StructConfigForm.vue`, verified against a newly-ported fixture
+  (`testing/pyobs-gui-configs/xmpp/structuredconfig.yaml`) — caught and fixed a real bug live
+  (`structuredClone()` throwing on a Vue-reactive object; see the plan's Status line). Full registry
+  + what's built vs. not: `specs/design/pyobs-gui-widget-parity.md`.
 - **`IDataSequence`** — plan at `specs/plans/2026-08-03-idatasequence.md`. Depends on
   the Camera page plan (shipped), open question there on how the client
   learns a new image is ready per-grab.
