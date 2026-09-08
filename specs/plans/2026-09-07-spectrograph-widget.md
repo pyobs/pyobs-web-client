@@ -1,6 +1,6 @@
 # Plan: Spectrograph widget (`ISpectrograph`)
 
-Status: proposed
+Status: built (`SpectrographView.vue`), not yet live-verified — 2026-09-08.
 
 Repos: pyobs-web-client (all implementation here)
 

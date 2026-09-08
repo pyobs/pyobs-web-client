@@ -70,16 +70,16 @@ implemented `v2.3.0`). The parts that matter for adapting this to a mobile clien
 | 6 | `IAcquisition` | `AcquisitionWidget` | Acquisition | — | **done** `AcquisitionView.vue` (status label needs correction) |
 | 7 | `IAutoGuiding` | `AutoGuidingWidget` | Auto guiding | — | **done** `AutoGuidingView.vue` |
 | 8 | `IWeather` | `WeatherWidget` | Weather | — | **done** `WeatherView.vue` |
-| 9 | `IVideo` | `VideoWidget` | Live View | — | not started — `specs/plans/2026-09-07-video-widget.md` |
-| 10 | `IVideo` | `VideoGrabWidget` | FITS Image | — | not started — same plan as #9 |
-| 11 | `ISpectrograph` | `SpectrographWidget` | Spectrograph | — | not started — `specs/plans/2026-09-07-spectrograph-widget.md` |
+| 9 | `IVideo` | `VideoWidget` | Live View | — | built, not yet live-verified — `VideoView.vue`, `specs/plans/2026-09-07-video-widget.md` |
+| 10 | `IVideo` | `VideoGrabWidget` | FITS Image | — | built, not yet live-verified — `VideoGrabView.vue`, same plan as #9 |
+| 11 | `ISpectrograph` | `SpectrographWidget` | Spectrograph | — | built, not yet live-verified — `SpectrographView.vue`, `specs/plans/2026-09-07-spectrograph-widget.md` |
 | 12 | `IFilters` | `FilterWidget` | Filter wheel | yes | built, not yet live-verified — `FiltersView.vue`, `2026-08-04-auxiliary-interface-widgets.md` |
 | 13 | `ITemperatures` | `TemperaturesWidget` | Temperatures | yes | built, not yet live-verified — `TemperaturesView.vue`, `2026-08-04-auxiliary-interface-widgets.md` |
 | 14 | `ICooling` | `CoolingWidget` | Cooling | yes | **done** `CoolingView.vue`, live-verified — `2026-08-04-auxiliary-interface-widgets.md` |
 | 15 | `IMode` | `ModeWidget` | Mode | — | **done** `ModeView.vue`/`ModeModuleCard.vue` |
-| 16 | `IRobotic` | `RoboticWidget` | Robotic | — | not started — `specs/plans/2026-09-07-robotic-widgets.md` |
-| 17 | `IRoboticScheduler` | `ScheduleWidget` | Scheduler | — | not started — same plan as #16 |
-| 18 | `IStructuredConfig` | `StructuredConfigWidget` | Config | — | not started — `specs/plans/2026-09-07-structured-config-widget.md` |
+| 16 | `IRobotic` | `RoboticWidget` | Robotic | — | built, not yet live-verified — `RoboticView.vue`, `specs/plans/2026-09-07-robotic-widgets.md` |
+| 17 | `IRoboticScheduler` | `ScheduleWidget` | Scheduler | — | built, not yet live-verified — `ScheduleView.vue`, same plan as #16 |
+| 18 | `IStructuredConfig` | `StructuredConfigWidget` | Config | — | built (Phase 1: flat fields only), not yet live-verified — `ConfigView.vue`, `specs/plans/2026-09-07-structured-config-widget.md` |
 
 `ALWAYS_SIDEBAR_WIDGETS = (FitsHeadersWidget,)` — see "FITS headers" below, not planned yet (open
 question, not a committed gap).

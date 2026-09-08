@@ -1,6 +1,10 @@
 # Plan: Structured config widget (`IStructuredConfig`)
 
-Status: proposed
+Status: Phase 1 built (`ConfigView.vue`), not yet live-verified — 2026-09-08. Phases 2/3 (nested
+fields, basic/expert toggle) remain deferred, per this plan. `set_config`'s dict-typed param needed
+a codec extension not anticipated by this plan — `structValueToXml` (`src/pyobs-codec.ts`) and
+`executeMethodRaw` (`src/composables/useXmpp.ts`), see their own comments for why `valueToXml`/
+`executeMethod` couldn't be reused as-is.
 
 Repos: pyobs-web-client (all implementation here)
 
