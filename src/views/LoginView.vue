@@ -156,6 +156,7 @@ async function handleLogin() {
         v-else-if="screen === 'edit'"
         :jid="editingJid"
         @back="screen = 'connections'"
+        @save-and-connect="onConnectFromConnections"
       />
 
       <template v-else>
@@ -191,14 +192,15 @@ async function handleLogin() {
             <label class="form-label text-muted" style="font-size:0.8rem">Recent logins</label>
             <div class="d-flex flex-wrap gap-2">
               <button
-                v-for="recentJid in recentLogins"
-                :key="recentJid"
+                v-for="entry in recentLogins"
+                :key="entry.jid"
                 type="button"
-                class="btn btn-outline-secondary btn-sm"
+                class="btn btn-outline-secondary btn-sm lh-sm"
                 :disabled="loading"
-                @click="pickRecentLogin(recentJid)"
+                @click="pickRecentLogin(entry.jid)"
               >
-                {{ recentJid }}
+                <span>{{ entry.label || entry.jid }}</span>
+                <span v-if="entry.label" class="d-block text-secondary" style="font-size:0.7rem">{{ entry.jid }}</span>
               </button>
             </div>
           </div>
