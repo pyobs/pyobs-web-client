@@ -65,7 +65,7 @@ implemented `v2.3.0`). The parts that matter for adapting this to a mobile clien
 | 1 | `ICamera` | `CameraWidget` | Camera | — | **done** `CameraView.vue` |
 | 2 | `ITelescope` | `TelescopeWidget` | Telescope | — | **done** `TelescopeView.vue` |
 | 3 | `IRoof` | `RoofWidget` | Roof | — | **done** `RoofView.vue` (Azimuth row missing — see corrections below) |
-| 4 | `IFocuser` | `FocusWidget` | Focuser | yes | proposed, `specs/plans/2026-08-04-auxiliary-interface-widgets.md` |
+| 4 | `IFocuser` | `FocusWidget` | Focuser | yes | built, not yet live-verified — `FocuserView.vue`, `specs/plans/2026-08-04-auxiliary-interface-widgets.md` |
 | 5 | `IAutoFocus` | `AutoFocusWidget` | Auto focus | — | **done** `AutoFocusView.vue` (status label needs correction) |
 | 6 | `IAcquisition` | `AcquisitionWidget` | Acquisition | — | **done** `AcquisitionView.vue` (status label needs correction) |
 | 7 | `IAutoGuiding` | `AutoGuidingWidget` | Auto guiding | — | **done** `AutoGuidingView.vue` |
@@ -73,9 +73,9 @@ implemented `v2.3.0`). The parts that matter for adapting this to a mobile clien
 | 9 | `IVideo` | `VideoWidget` | Live View | — | not started — `specs/plans/2026-09-07-video-widget.md` |
 | 10 | `IVideo` | `VideoGrabWidget` | FITS Image | — | not started — same plan as #9 |
 | 11 | `ISpectrograph` | `SpectrographWidget` | Spectrograph | — | not started — `specs/plans/2026-09-07-spectrograph-widget.md` |
-| 12 | `IFilters` | `FilterWidget` | Filter wheel | yes | proposed, `2026-08-04-auxiliary-interface-widgets.md` |
-| 13 | `ITemperatures` | `TemperaturesWidget` | Temperatures | yes | proposed, `2026-08-04-auxiliary-interface-widgets.md` |
-| 14 | `ICooling` | `CoolingWidget` | Cooling | yes | proposed, `2026-08-04-auxiliary-interface-widgets.md` |
+| 12 | `IFilters` | `FilterWidget` | Filter wheel | yes | built, not yet live-verified — `FiltersView.vue`, `2026-08-04-auxiliary-interface-widgets.md` |
+| 13 | `ITemperatures` | `TemperaturesWidget` | Temperatures | yes | built, not yet live-verified — `TemperaturesView.vue`, `2026-08-04-auxiliary-interface-widgets.md` |
+| 14 | `ICooling` | `CoolingWidget` | Cooling | yes | **done** `CoolingView.vue`, live-verified — `2026-08-04-auxiliary-interface-widgets.md` |
 | 15 | `IMode` | `ModeWidget` | Mode | — | **done** `ModeView.vue`/`ModeModuleCard.vue` |
 | 16 | `IRobotic` | `RoboticWidget` | Robotic | — | not started — `specs/plans/2026-09-07-robotic-widgets.md` |
 | 17 | `IRoboticScheduler` | `ScheduleWidget` | Scheduler | — | not started — same plan as #16 |

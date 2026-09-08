@@ -10,6 +10,9 @@ import AcquisitionView from '@/views/AcquisitionView.vue'
 import CameraView from '@/views/CameraView.vue'
 import TelescopeView from '@/views/TelescopeView.vue'
 import CoolingView from '@/views/CoolingView.vue'
+import FocuserView from '@/views/FocuserView.vue'
+import FiltersView from '@/views/FiltersView.vue'
+import TemperaturesView from '@/views/TemperaturesView.vue'
 
 // The module-grouped drill-down's registry — see
 // specs/plans/2026-09-06-module-page-rework.md. Resolves which widget component(s) a given
@@ -45,6 +48,30 @@ export const MODULE_WIDGETS: ModuleWidgetEntry[] = [
     label: interfaceLabel('ICooling'),
     icon: 'bi-snow',
     component: CoolingView,
+    sidebarPreferred: true,
+  },
+  {
+    interfaceName: 'IFocuser',
+    routeName: 'focuser',
+    label: interfaceLabel('IFocuser'),
+    icon: 'bi-record-circle',
+    component: FocuserView,
+    sidebarPreferred: true,
+  },
+  {
+    interfaceName: 'IFilters',
+    routeName: 'filters',
+    label: interfaceLabel('IFilters'),
+    icon: 'bi-filter',
+    component: FiltersView,
+    sidebarPreferred: true,
+  },
+  {
+    interfaceName: 'ITemperatures',
+    routeName: 'temperatures',
+    label: interfaceLabel('ITemperatures'),
+    icon: 'bi-thermometer-half',
+    component: TemperaturesView,
     sidebarPreferred: true,
   },
 ]

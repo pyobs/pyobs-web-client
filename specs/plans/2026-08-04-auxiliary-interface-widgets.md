@@ -159,9 +159,15 @@ promotion exists). This is strictly simpler than what this section originally pr
 
 - [x] `CoolingView.vue` (named to match this app's `*View.vue` convention, not the plan's original
       `CoolingWidget.vue`) — 2026-09-08.
-- [ ] `FiltersView.vue`, `TemperaturesView.vue`, `FocuserView.vue`.
+- [x] `FocuserView.vue`, `FiltersView.vue`, `TemperaturesView.vue` — 2026-09-08. Not yet live-verified
+      (see checklist item below) — built against `pyobs-gui`'s `focuswidget.py`/`filterwidget.py`/
+      `temperatureswidget.py` and `pyobs-core`'s `IFocuser`/`IFilters`/`ITemperatures` interfaces.
+      `TemperaturesView.vue` reuses `WeatherView.vue`'s tile/history/`TimeSeriesChart.vue` pattern per
+      this plan's own note; `FocuserView.vue`/`FiltersView.vue` gate their one/two actions on
+      `IMotion` status exactly like `CoolingView.vue`'s ACL gating, matching each widget's own
+      `initialized` check (`MotionStatus` in slewing/tracking/idle/positioned).
 - [x] `ModuleWidgetEntry` gains `sidebarPreferred?: boolean` (`src/moduleWidgets.ts`) — 2026-09-08.
-      `ICooling` registered with it set; register the remaining three the same way once built.
+      All four auxiliary interfaces now registered with it set.
 - [x] `widgetsForModule`'s promotion logic — 2026-09-08: split matches into non-preferred/preferred,
       return non-preferred if non-empty else every preferred match, per `collect_main_widgets`
       (`pyobs-gui/pyobs_gui/mainwindow.py`). A new `sidebarWidgetsForModule` returns the demoted half.
@@ -173,6 +179,10 @@ promotion exists). This is strictly simpler than what this section originally pr
       shared-section case confirmed (`ICamera` + `ICooling`, one "Camera" tab, no separate "Cooling"
       tab, `CoolingView` renders in the shared section); `set_cooling` RPC confirmed working
       end-to-end, live state update observed (setpoint/power changed after Apply).
+- [ ] Manual verification of `FocuserView.vue`/`FiltersView.vue`/`TemperaturesView.vue` against a
+      live fixture still outstanding — `testing/pyobs-gui-configs/xmpp/telescope.yaml`
+      (`DummyAltAzTelescope`) implements `IFocuser` and can exercise the demoted case for Focuser;
+      no local fixture yet for Filters/Temperatures.
 - [ ] Still needed: a module implementing only an auxiliary interface with no camera/telescope, to
       exercise the promoted-to-main (standalone) case — no such fixture exists yet.
 

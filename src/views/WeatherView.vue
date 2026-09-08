@@ -79,12 +79,11 @@ onUnmounted(() => stopSubscription?.())
         Weather {{ stateValue.good ? 'OK' : 'BAD' }}
       </div>
 
-      <div class="d-flex flex-wrap gap-2 mb-1">
+      <div class="mb-1" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(90px, 1fr)); gap:0.5rem">
         <div
           v-for="reading in stateValue.readings"
           :key="reading.sensor"
           class="pyobs-card"
-          style="min-width:110px"
         >
           <div class="text-muted mb-1" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.03em">
             {{ weatherSensorLabel(reading.sensor) }}
