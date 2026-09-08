@@ -6,9 +6,19 @@ function entries(val: unknown): Array<[string, unknown]> {
   return [['value', val]]
 }
 
+// A generic dump of arbitrary-scale values (degrees, arcsec, pixels, ...) —
+// a fixed decimal count would either truncate small values or show raw
+// float noise on large ones, so round to a reasonable number of significant
+// digits instead. Integers pass through unrounded (see #34).
+function formatNumber(n: number): string {
+  if (!Number.isFinite(n) || Number.isInteger(n)) return String(n)
+  return String(Number(n.toPrecision(6)))
+}
+
 function formatEntry(val: unknown): string {
   if (val === null || val === undefined) return '—'
   if (typeof val === 'boolean') return val ? 'true' : 'false'
+  if (typeof val === 'number') return formatNumber(val)
   if (typeof val === 'object') {
     const inline = JSON.stringify(val)
     return inline.length <= 60 ? inline : JSON.stringify(val, null, 2)
