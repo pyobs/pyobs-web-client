@@ -79,12 +79,11 @@ onUnmounted(() => stopSubscription?.())
         Weather {{ stateValue.good ? 'OK' : 'BAD' }}
       </div>
 
-      <div class="d-flex flex-wrap gap-2 mb-1">
+      <div class="mb-1" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(90px, 1fr)); gap:0.5rem">
         <div
           v-for="reading in stateValue.readings"
           :key="reading.sensor"
-          class="rounded-3 p-2"
-          style="background-color:#15181c; border:1px solid #2d3035; min-width:110px"
+          class="pyobs-card"
         >
           <div class="text-muted mb-1" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.03em">
             {{ weatherSensorLabel(reading.sensor) }}
@@ -100,12 +99,10 @@ onUnmounted(() => stopSubscription?.())
         <div
           v-for="reading in stateValue.readings"
           :key="reading.sensor"
-          class="rounded-3 p-2"
-          style="background-color:#15181c; border:1px solid #2d3035"
+          class="pyobs-card"
         >
           <TimeSeriesChart
-            v-if="(history[reading.sensor]?.length ?? 0) > 1"
-            :points="history[reading.sensor]!"
+            :points="history[reading.sensor] ?? []"
             :label="weatherSensorLabel(reading.sensor)"
             :unit="reading.unit"
           />

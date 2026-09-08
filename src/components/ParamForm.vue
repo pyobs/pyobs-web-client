@@ -6,14 +6,18 @@ defineProps<{
   fields: FieldSchema[]
   enums: Record<string, string[]>
   testid?: string
+  // Two-fields-per-row grid instead of one full-width field per row — for
+  // groups of short fields (binning/gain/image-format dropdowns) where a
+  // stacked layout wastes mobile vertical space. See issue #33.
+  compact?: boolean
 }>()
 
 const paramValues = defineModel<Record<string, string>>({ required: true })
 </script>
 
 <template>
-  <div v-if="fields.length" class="mb-2" :data-testid="testid">
-    <div v-for="param in fields" :key="param.name" class="mb-2">
+  <div v-if="fields.length" class="mb-2" :class="{ 'param-form-grid': compact }" :data-testid="testid">
+    <div v-for="param in fields" :key="param.name" :class="compact ? '' : 'mb-2'">
       <div class="d-flex align-items-baseline gap-2 mb-1">
         <label class="form-label mb-0 text-muted" style="font-size:0.8rem">
           {{ param.name }}
@@ -51,3 +55,11 @@ const paramValues = defineModel<Record<string, string>>({ required: true })
   </div>
   <p v-else class="text-muted mb-2" style="font-size:0.85rem">No parameters.</p>
 </template>
+
+<style scoped>
+.param-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 0.75rem;
+}
+</style>

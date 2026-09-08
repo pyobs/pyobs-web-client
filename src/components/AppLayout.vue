@@ -23,11 +23,34 @@ const moduleNavEntries = computed(() =>
 
 function handleLogout() {
   disconnect()
-  router.push({ name: 'login' })
+  // replace, not push — same reasoning as LoginView.vue's post-login
+  // navigation: nothing authenticated should be a real back-target from
+  // Login once signed out (the router guard would just bounce back to it
+  // anyway), so it must become the new root, not sit behind Dashboard/etc.
+  router.replace({ name: 'login' })
 }
 
 function navigate(to: string) {
   router.push(to)
+}
+
+// The three bottom-nav tabs are the compact shell's "root" pages — everywhere
+// else (Shell, Settings, Events, a module page/tab, ...) gets a back button
+// instead of the logo. See #32.
+const ROOT_ROUTE_NAMES = new Set(['dashboard', 'logging', 'more'])
+const isRootRoute = computed(() => typeof route.name === 'string' && ROOT_ROUTE_NAMES.has(route.name))
+
+// router.back() alone can walk the user straight out of the app if this page
+// was opened with no prior in-app history (a deep link, or a reload) — same
+// failure mode 05f0bd6 fixed for the Android back gesture. `history.state.back`
+// (set by vue-router's HTML5 history) is non-null only when there's a real
+// previous entry to return to; fall back to Dashboard otherwise.
+function goBack() {
+  if (window.history.state?.back) {
+    router.back()
+  } else {
+    router.push({ name: 'dashboard' })
+  }
 }
 
 const appVersion = __APP_VERSION__
@@ -45,6 +68,16 @@ const appVersion = __APP_VERSION__
       class="d-flex align-items-center px-3 flex-shrink-0"
       style="height:56px; border-bottom:1px solid #2d3035"
     >
+      <button
+        v-if="!isRootRoute"
+        type="button"
+        class="btn p-0 d-flex align-items-center justify-content-center flex-shrink-0 me-2"
+        style="width:40px; height:40px; margin-left:-8px; color:#adb5bd"
+        aria-label="Back"
+        @click="goBack"
+      >
+        <i class="bi bi-arrow-left" style="font-size:1.3rem"></i>
+      </button>
       <img src="/pyobs-logo-dark.gif" alt="pyobs" style="height:22px" />
       <button
         type="button"

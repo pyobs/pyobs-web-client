@@ -162,3 +162,68 @@ export function altAzToRaDec(altAz: AltAz, location: GeoLocation, date: Date): R
   const j2000Vec = matMulVec(transpose(precessionMatrix(jd)), raDecToVec(raOfDate, decOfDate))
   return vecToRaDec(j2000Vec)
 }
+
+// ── Sexagesimal display formatting — for curated status rows (mockup's
+// "RA / Dec: 05h 35m 17s / -05° 23'"), not used by any of the transform math
+// above. RA in hours (0-24h wrap), Dec in signed degrees/arcminutes.
+
+export function formatRaSexagesimal(raDeg: number): string {
+  // Round to the nearest second first, in total seconds, then decompose —
+  // avoids a rounded 59.6s displaying as "60s" instead of carrying into the
+  // next minute (and a rounded 59m59.6s carrying into the next hour, wrapping
+  // 24h back to 0h).
+  const totalSeconds = Math.round((norm360(raDeg) / 15) * 3600) % 86400
+  const h = Math.floor(totalSeconds / 3600)
+  const m = Math.floor((totalSeconds % 3600) / 60)
+  const s = totalSeconds % 60
+  return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`
+}
+
+export function formatDecSexagesimal(decDeg: number): string {
+  const sign = decDeg < 0 ? '-' : '+'
+  // Round to the nearest arcminute first, in total arcminutes, so 59.6' on a
+  // degree carries correctly instead of displaying "60'".
+  const totalMinutes = Math.round(Math.abs(decDeg) * 60)
+  const d = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  return `${sign}${String(d).padStart(2, '0')}° ${String(m).padStart(2, '0')}'`
+}
+
+// ── Sexagesimal input parsing — the inverse direction, for the RA/Dec move
+// fields (see #36). Permissive on purpose (':' or whitespace as the field
+// separator, optional h/m/s or °/'/" suffixes stripped, not required) —
+// matches how people actually type coordinates, not a strict mirror of the
+// format functions' own display punctuation.
+function parseSexagesimalParts(text: string): number[] | null {
+  const cleaned = text.trim().replace(/[hms°'"]/gi, ' ')
+  const parts = cleaned.split(/[\s:]+/).filter((p) => p.length > 0)
+  if (parts.length === 0) return null
+  const nums = parts.map(Number)
+  return nums.some((n) => !Number.isFinite(n)) ? null : nums
+}
+
+// A single bare number is ambiguous between "hours" (RA's own customary unit)
+// and "decimal degrees" (this app's move_radec wire unit, and what #35's
+// Simbad lookup fills in) — treated as already-degrees, matching this field's
+// pre-existing plain-number behavior; only an actual multi-part sexagesimal
+// value (h:m:s) is treated as hours and converted to degrees.
+export function parseRaSexagesimal(text: string): number | null {
+  const parts = parseSexagesimalParts(text)
+  if (!parts) return null
+  if (parts.length === 1) return norm360(parts[0]!)
+  const [h, m = 0, s = 0] = parts
+  const magnitude = Math.abs(h!) + m! / 60 + s! / 3600
+  return norm360((h! < 0 ? -magnitude : magnitude) * 15)
+}
+
+export function parseDecSexagesimal(text: string): number | null {
+  const parts = parseSexagesimalParts(text)
+  if (!parts) return null
+  if (parts.length === 1) return parts[0]!
+  const [d, m = 0, s = 0] = parts
+  const magnitude = Math.abs(d!) + m! / 60 + s! / 3600
+  // Distinguishes -0 from 0 so "-00:30:00" (a valid, common near-equator Dec
+  // typo-adjacent case) still parses as negative — Math.abs/sign alone would
+  // otherwise lose the sign entirely once d is 0.
+  return Object.is(d, -0) || d! < 0 ? -magnitude : magnitude
+}

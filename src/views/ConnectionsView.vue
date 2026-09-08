@@ -25,7 +25,7 @@ const jidsWithSavedPassword = ref<Set<string>>(new Set())
 
 async function refreshPasswordFlags() {
   const flags = await Promise.all(
-    recentLogins.value.map(async (j) => [j, (await getPassword(bareJidOf(j))) !== null] as const),
+    recentLogins.value.map(async (entry) => [entry.jid, (await getPassword(bareJidOf(entry.jid))) !== null] as const),
   )
   jidsWithSavedPassword.value = new Set(flags.filter(([, has]) => has).map(([j]) => j))
 }
@@ -50,10 +50,12 @@ function removeConnection(jid: string) {
 
 const showAddSheet = ref(false)
 const newJid = ref('')
+const newLabel = ref('')
 const newPassword = ref('')
 
 function openAddSheet() {
   newJid.value = ''
+  newLabel.value = ''
   newPassword.value = ''
   showAddSheet.value = true
 }
@@ -61,7 +63,7 @@ function openAddSheet() {
 async function confirmAdd() {
   const j = newJid.value.trim()
   if (!j) return
-  rememberLogin(j)
+  rememberLogin(j, newLabel.value.trim() || undefined)
   if (newPassword.value) {
     await setPassword(bareJidOf(j), newPassword.value)
     await refreshPasswordFlags()
@@ -89,17 +91,18 @@ async function confirmAdd() {
     </p>
 
     <div
-      v-for="loginJid in recentLogins"
-      :key="loginJid"
+      v-for="entry in recentLogins"
+      :key="entry.jid"
       class="rounded-3 mb-2"
       style="background-color:#1a1d21; border:1px solid #2d3035"
     >
-      <div class="d-flex align-items-center gap-2" style="min-height:64px; padding:14px 8px 14px 16px; cursor:pointer" @click="connectTo(loginJid)">
+      <div class="d-flex align-items-center gap-2" style="min-height:64px; padding:14px 8px 14px 16px; cursor:pointer" @click="connectTo(entry.jid)">
         <div class="flex-grow-1 text-break" style="min-width:0">
-          <div class="text-light fw-semibold text-truncate" style="font-size:0.98rem">{{ loginJid }}</div>
-          <div class="d-flex align-items-center gap-1" style="font-size:0.78rem" :class="jidsWithSavedPassword.has(loginJid) ? 'text-info' : 'text-muted'">
-            <i v-if="jidsWithSavedPassword.has(loginJid)" class="bi bi-lock-fill"></i>
-            {{ jidsWithSavedPassword.has(loginJid) ? 'Password saved' : 'No saved password' }}
+          <div class="text-light fw-semibold text-truncate" style="font-size:0.98rem">{{ entry.label || entry.jid }}</div>
+          <div v-if="entry.label" class="text-muted text-truncate" style="font-size:0.78rem">{{ entry.jid }}</div>
+          <div class="d-flex align-items-center gap-1" style="font-size:0.78rem" :class="jidsWithSavedPassword.has(entry.jid) ? 'text-info' : 'text-muted'">
+            <i v-if="jidsWithSavedPassword.has(entry.jid)" class="bi bi-lock-fill"></i>
+            {{ jidsWithSavedPassword.has(entry.jid) ? 'Password saved' : 'No saved password' }}
           </div>
         </div>
         <button
@@ -107,7 +110,7 @@ async function confirmAdd() {
           class="btn p-0 d-flex align-items-center justify-content-center flex-shrink-0"
           style="width:40px; height:40px; color:#8b929a"
           title="Edit connection"
-          @click.stop="editConnection(loginJid)"
+          @click.stop="editConnection(entry.jid)"
         >
           <i class="bi bi-three-dots"></i>
         </button>
@@ -149,6 +152,13 @@ async function confirmAdd() {
           type="text"
           class="form-control bg-dark border-secondary text-light mb-2"
           placeholder="user@xmpp.example.com"
+        />
+        <label class="form-label text-muted" style="font-size:0.78rem">Label <span class="text-secondary">(optional)</span></label>
+        <input
+          v-model="newLabel"
+          type="text"
+          class="form-control bg-dark border-secondary text-light mb-2"
+          placeholder="e.g. MONET SAAO"
         />
         <label class="form-label text-muted" style="font-size:0.78rem">Password <span class="text-secondary">(optional)</span></label>
         <input

@@ -9,6 +9,16 @@ import AutoGuidingView from '@/views/AutoGuidingView.vue'
 import AcquisitionView from '@/views/AcquisitionView.vue'
 import CameraView from '@/views/CameraView.vue'
 import TelescopeView from '@/views/TelescopeView.vue'
+import CoolingView from '@/views/CoolingView.vue'
+import FocuserView from '@/views/FocuserView.vue'
+import FiltersView from '@/views/FiltersView.vue'
+import TemperaturesView from '@/views/TemperaturesView.vue'
+import SpectrographView from '@/views/SpectrographView.vue'
+import VideoView from '@/views/VideoView.vue'
+import VideoGrabView from '@/views/VideoGrabView.vue'
+import RoboticView from '@/views/RoboticView.vue'
+import ScheduleView from '@/views/ScheduleView.vue'
+import ConfigView from '@/views/ConfigView.vue'
 
 // The module-grouped drill-down's registry — see
 // specs/plans/2026-09-06-module-page-rework.md. Resolves which widget component(s) a given
@@ -21,6 +31,12 @@ export type ModuleWidgetEntry = {
   label: string
   icon: string
   component: Component
+  // Mirrors pyobs-gui's MainWidgetEntry.sidebar_preferred (mainwindow.py) — see
+  // specs/design/pyobs-gui-widget-parity.md. An entry marked true is demoted into
+  // ModulePageView.vue's shared section whenever the module has at least one non-preferred
+  // match (e.g. a camera that's also a filter wheel); promoted back to a normal tab only when
+  // it's the module's *only* kind of match (a standalone filter-wheel-only module).
+  sidebarPreferred?: boolean
 }
 
 export const MODULE_WIDGETS: ModuleWidgetEntry[] = [
@@ -32,10 +48,79 @@ export const MODULE_WIDGETS: ModuleWidgetEntry[] = [
   { interfaceName: 'IAutoGuiding', routeName: 'autoguiding', label: interfaceLabel('IAutoGuiding'), icon: 'bi-compass', component: AutoGuidingView },
   { interfaceName: 'IAcquisition', routeName: 'acquisition', label: interfaceLabel('IAcquisition'), icon: 'bi-crosshair', component: AcquisitionView },
   { interfaceName: 'ITelescope', routeName: 'telescope', label: interfaceLabel('ITelescope'), icon: 'bi-stars', component: TelescopeView },
+  {
+    interfaceName: 'ICooling',
+    routeName: 'cooling',
+    label: interfaceLabel('ICooling'),
+    icon: 'bi-snow',
+    component: CoolingView,
+    sidebarPreferred: true,
+  },
+  {
+    interfaceName: 'IFocuser',
+    routeName: 'focuser',
+    label: interfaceLabel('IFocuser'),
+    icon: 'bi-record-circle',
+    component: FocuserView,
+    sidebarPreferred: true,
+  },
+  {
+    interfaceName: 'IFilters',
+    routeName: 'filters',
+    label: interfaceLabel('IFilters'),
+    icon: 'bi-filter',
+    component: FiltersView,
+    sidebarPreferred: true,
+  },
+  {
+    interfaceName: 'ITemperatures',
+    routeName: 'temperatures',
+    label: interfaceLabel('ITemperatures'),
+    icon: 'bi-thermometer-half',
+    component: TemperaturesView,
+    sidebarPreferred: true,
+  },
+  {
+    interfaceName: 'ISpectrograph',
+    routeName: 'spectrograph',
+    label: interfaceLabel('ISpectrograph'),
+    icon: 'bi-graph-up',
+    component: SpectrographView,
+  },
+  { interfaceName: 'IVideo', routeName: 'video-live', label: 'Live View', icon: 'bi-camera-video', component: VideoView },
+  { interfaceName: 'IVideo', routeName: 'video-grab', label: 'FITS Image', icon: 'bi-image', component: VideoGrabView },
+  { interfaceName: 'IRobotic', routeName: 'robotic', label: interfaceLabel('IRobotic'), icon: 'bi-robot', component: RoboticView },
+  {
+    interfaceName: 'IRoboticScheduler',
+    routeName: 'scheduler',
+    label: interfaceLabel('IRoboticScheduler'),
+    icon: 'bi-calendar-week',
+    component: ScheduleView,
+  },
+  { interfaceName: 'IStructuredConfig', routeName: 'config', label: interfaceLabel('IStructuredConfig'), icon: 'bi-gear', component: ConfigView },
 ]
 
-// Matches in registry order — order is tab order on ModulePageView, and the first match's icon
-// is what a module's single desktop-sidebar nav entry shows.
-export function widgetsForModule(mod: DeepReadonly<Pick<PyobsModule, 'interfaces'>>): ModuleWidgetEntry[] {
+function matchesForModule(mod: DeepReadonly<Pick<PyobsModule, 'interfaces'>>): ModuleWidgetEntry[] {
   return MODULE_WIDGETS.filter((entry) => entry.interfaceName in mod.interfaces)
+}
+
+// Tab-bar matches, in registry order — order is tab order on ModulePageView, and the first
+// match's icon is what a module's single desktop-sidebar nav entry shows. Applies pyobs-gui's
+// promotion rule (collect_main_widgets, mainwindow.py): non-`sidebarPreferred` matches win when
+// any exist; only when there are none does every `sidebarPreferred` match get promoted into the
+// tab bar instead (a standalone cooling/filter/temperature/focuser-only module still needs its
+// own page).
+export function widgetsForModule(mod: DeepReadonly<Pick<PyobsModule, 'interfaces'>>): ModuleWidgetEntry[] {
+  const matches = matchesForModule(mod)
+  const main = matches.filter((entry) => !entry.sidebarPreferred)
+  return main.length > 0 ? main : matches.filter((entry) => entry.sidebarPreferred)
+}
+
+// The `sidebarPreferred` matches demoted out of the tab bar by the promotion rule above — rendered
+// in ModulePageView.vue's shared section, visible regardless of which tab is active. Empty
+// whenever every match was promoted into the tab bar instead (no demotion happened).
+export function sidebarWidgetsForModule(mod: DeepReadonly<Pick<PyobsModule, 'interfaces'>>): ModuleWidgetEntry[] {
+  const matches = matchesForModule(mod)
+  const main = matches.filter((entry) => !entry.sidebarPreferred)
+  return main.length > 0 ? matches.filter((entry) => entry.sidebarPreferred) : []
 }

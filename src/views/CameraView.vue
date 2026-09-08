@@ -5,18 +5,23 @@
 // NewImageEvent subscription) — see the plan's Phase 2 section for why.
 //
 // Phase 3: dedicated IWindow/IBinning/IGain/IImageFormat/IExposureTime/
-// IImageType controls, in a collapsible "Settings" panel — reverses the
-// plan's original call to leave these to Shell (see Phase 3's "Scope
-// reversal" note). Deliberately *not* one Set button per interface
-// (considered and rejected — six independent buttons is worse UX than one
-// combined form): settings are staged in one form and applied, one RPC per
-// configured interface, immediately before each grab_data() call, matching
-// pyobs-gui's camerawidget.py:271-330. IFilters deferred — no live module
-// implements it to verify against yet.
+// IImageType controls — reverses the plan's original call to leave these to
+// Shell (see Phase 3's "Scope reversal" note). Deliberately *not* one Set
+// button per interface (considered and rejected — six independent buttons is
+// worse UX than one combined form): settings are staged in one form and
+// applied, one RPC per configured interface, immediately before each
+// grab_data() call, matching pyobs-gui's camerawidget.py:271-330. IFilters
+// deferred — no live module implements it to verify against yet.
+//
+// Settings groups show/hide individually by capability, same as pyobs-gui's
+// camerawidget.py open() (setVisible per QGroupBox) — no single hide-everything
+// toggle (see issue #33). Split display-only into two spots around FitsCanvas:
+// exposure time + image type above it (set before every Expose), the rest
+// (window, binning, image format, gain) below it (touched far less often).
 //
 // One tab on ModulePageView.vue now, not its own routed page — see
 // specs/plans/module-page-rework.md.
-import { ref, computed, watch, type DeepReadonly } from 'vue'
+import { ref, computed, watch, onUnmounted, type DeepReadonly } from 'vue'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import { useVfsConfig } from '@/composables/useVfsConfig'
 import { allMethodsPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
@@ -29,15 +34,49 @@ import {
   type CommandSchema,
   type FieldSchema,
 } from '@/pyobs-codec'
-import ModuleStateCard from '@/components/ModuleStateCard.vue'
 import FitsCanvas from '@/components/FitsCanvas.vue'
 import ParamForm from '@/components/ParamForm.vue'
 
 const props = defineProps<{ jid: string }>()
-const { modules, executeMethod } = useXmpp()
+const { modules, executeMethod, subscribeState } = useXmpp()
 const { resolveVfsEndpoint } = useVfsConfig()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
+
+// ── Curated status — IExposure's status/progress/exposure_time_left, not the
+// raw state dump. See specs/plans/2026-09-07-widget-visual-redesign.md.
+
+type ExposureState = { status: string; progress: number; exposure_time_left: number }
+
+const exposureStateValue = ref<ExposureState | undefined>(undefined)
+let stopExposureSubscription: (() => void) | undefined
+
+watch(
+  currentModule,
+  (mod) => {
+    stopExposureSubscription?.()
+    stopExposureSubscription = undefined
+    exposureStateValue.value = undefined
+
+    const version = mod?.interfaces['IExposure']?.version
+    if (!mod || version === undefined) return
+
+    const { value, unsubscribe } = subscribeState(mod.jid, 'IExposure', version)
+    const stopWatch = watch(value, (v) => (exposureStateValue.value = v as ExposureState | undefined), { immediate: true })
+    stopExposureSubscription = () => {
+      stopWatch()
+      unsubscribe()
+    }
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => stopExposureSubscription?.())
+
+const exposureStatusLabel = computed(() => {
+  const status = exposureStateValue.value?.status
+  return status ? status.charAt(0).toUpperCase() + status.slice(1) : undefined
+})
 
 // ── Phase 3: per-interface settings, staged in one form and applied
 // immediately before each Expose ──────────────────────────────────────────
@@ -81,7 +120,12 @@ const settingsGroups = computed<SettingsGroup[]>(() => {
   })
 })
 
-const showSettings = ref(false)
+// Above-FitsCanvas groups: set before every Expose. Everything else (window,
+// binning, image format, gain) renders below — touched far less often.
+const TOP_GROUP_KEYS = ['exposureTime', 'imageType']
+const topSettingsGroups = computed(() => settingsGroups.value.filter((g) => TOP_GROUP_KEYS.includes(g.key)))
+const bottomSettingsGroups = computed(() => settingsGroups.value.filter((g) => !TOP_GROUP_KEYS.includes(g.key)))
+
 const settingsParams = ref<Record<string, string>>({})
 
 // defaultParamValue() leaves required enum fields blank ('—' in the
@@ -198,36 +242,39 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <ModuleStateCard
-      v-if="currentModule.interfaces['IExposure']"
-      :jid="currentModule.jid"
-      interface-name="IExposure"
-      :version="currentModule.interfaces['IExposure'].version"
-      title="Exposure"
-    />
-
-    <div v-if="settingsGroups.length > 0" class="mt-2">
-      <button
-        type="button"
-        class="btn btn-outline-secondary btn-sm"
-        @click="showSettings = !showSettings"
-      >
-        <i class="bi" :class="showSettings ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
-        Settings
-      </button>
-
-      <div v-if="showSettings" class="mt-2 rounded-3 p-3" style="background-color:#16181b; border:1px solid #2d3035">
-        <div v-for="group in settingsGroups" :key="group.key" class="mb-2">
-          <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ group.title }}</div>
-          <ParamForm v-model="settingsParams" :fields="group.fields" :enums="group.enums" :testid="`camera-settings-${group.key}`" />
+    <div v-if="exposureStateValue" class="pyobs-card">
+      <div class="d-flex justify-content-between gap-2" style="font-size:0.85rem">
+        <span class="text-secondary">Status</span>
+        <span class="text-light">{{ exposureStatusLabel }}</span>
+      </div>
+      <div v-if="exposureStateValue.status === 'exposing' || exposureStateValue.status === 'readout'" class="mt-2">
+        <div class="progress" style="height:6px">
+          <div
+            class="progress-bar"
+            role="progressbar"
+            :style="{ width: `${exposureStateValue.progress}%` }"
+            :aria-valuenow="exposureStateValue.progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          ></div>
+        </div>
+        <div v-if="exposureStateValue.exposure_time_left > 0" class="text-muted mt-1" style="font-size:0.75rem">
+          {{ exposureStateValue.exposure_time_left.toFixed(1) }}s left
         </div>
       </div>
     </div>
 
-    <div class="d-flex flex-wrap gap-2 mt-2">
+    <div v-if="topSettingsGroups.length > 0" class="pyobs-card">
+      <div v-for="group in topSettingsGroups" :key="group.key" class="mb-2">
+        <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ group.title }}</div>
+        <ParamForm v-model="settingsParams" :fields="group.fields" :enums="group.enums" :testid="`camera-settings-${group.key}`" />
+      </div>
+    </div>
+
+    <div class="d-flex gap-2">
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-primary btn-sm flex-fill"
         :disabled="!!exposing[currentModule.jid] || hasUnsupportedSettingsField || !exposePermitted"
         :title="exposePermitted ? undefined : NOT_PERMITTED_TITLE"
         @click="expose(currentModule)"
@@ -237,10 +284,19 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
       </button>
     </div>
 
-    <div v-if="errors[currentModule.jid]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
+    <div v-if="errors[currentModule.jid]" class="alert alert-danger py-1 px-2 mb-0" style="font-size:0.8rem">
       {{ errors[currentModule.jid] }}
     </div>
 
-    <FitsCanvas v-if="images[currentModule.jid]" class="mt-2" :data="images[currentModule.jid]!" />
+    <div class="pyobs-card">
+      <FitsCanvas :data="images[currentModule.jid] ?? null" />
+    </div>
+
+    <div v-if="bottomSettingsGroups.length > 0" class="pyobs-card">
+      <div v-for="group in bottomSettingsGroups" :key="group.key" class="mb-2">
+        <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ group.title }}</div>
+        <ParamForm v-model="settingsParams" :fields="group.fields" :enums="group.enums" compact :testid="`camera-settings-${group.key}`" />
+      </div>
+    </div>
   </div>
 </template>

@@ -5,16 +5,37 @@ import { useXmpp } from '@/composables/useXmpp'
 import { useServerConfig } from '@/composables/useServerConfig'
 import { useVfsConfig, type VfsEndpoint } from '@/composables/useVfsConfig'
 import { useCredentialStore } from '@/composables/useCredentialStore'
+import { useConfirmArm } from '@/composables/useConfirmArm'
 
 const props = defineProps<{ jid: string }>()
-const emit = defineEmits<{ back: [] }>()
+const emit = defineEmits<{ back: []; 'save-and-connect': [jid: string] }>()
 
-const { forgetLogin } = useXmpp()
+const { recentLogins, setLoginLabel, forgetLogin } = useXmpp()
 const { getForceSecure, setForceSecure, getPort, setPort } = useServerConfig()
 const { getPassword, setPassword, removePassword } = useCredentialStore()
 
 const domain = computed(() => Strophe.getDomainFromJid(props.jid) ?? '')
 const bareJid = computed(() => Strophe.getBareJidFromJid(props.jid) ?? props.jid)
+
+// Local until Save/Save and connect commits it — Cancel just discards it
+// (no blur-save: this screen has real "leave without saving" semantics now).
+const labelInput = ref('')
+watch(
+  () => props.jid,
+  (jid) => (labelInput.value = recentLogins.value.find((entry) => entry.jid === jid)?.label ?? ''),
+  { immediate: true },
+)
+function commitLabel() {
+  setLoginLabel(props.jid, labelInput.value.trim() || undefined)
+}
+function saveAndClose() {
+  commitLabel()
+  emit('back')
+}
+function saveAndConnect() {
+  commitLabel()
+  emit('save-and-connect', props.jid)
+}
 
 // Password field: never round-trips the actual stored secret back into the
 // input (blank means "leave unchanged" while editing an existing one, not
@@ -106,6 +127,9 @@ async function save() {
   editingIndex.value = null
 }
 
+// Tap-to-arm confirmation — see #38.
+const confirmArm = useConfirmArm()
+
 function removeConnection() {
   forgetLogin(props.jid)
   removePassword(bareJid.value)
@@ -115,11 +139,22 @@ function removeConnection() {
 
 <template>
   <div>
-    <div class="d-flex align-items-center gap-2 mb-4">
-      <button type="button" class="btn p-0 d-flex align-items-center justify-content-center" style="width:40px; height:40px; color:#adb5bd" @click="emit('back')">
-        <i class="bi bi-arrow-left" style="font-size:1.1rem"></i>
-      </button>
-      <span class="text-light fw-semibold text-truncate" style="font-size:1rem">{{ jid }}</span>
+    <div class="mb-4">
+      <div class="text-light fw-semibold text-truncate" style="font-size:1rem">{{ labelInput || jid }}</div>
+      <div v-if="labelInput" class="text-muted text-truncate" style="font-size:0.78rem">{{ jid }}</div>
+    </div>
+
+    <div class="mb-4">
+      <div class="text-muted mb-2" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em">Label</div>
+      <div class="rounded-3 p-3" style="background-color:#1a1d21; border:1px solid #2d3035">
+        <input
+          v-model="labelInput"
+          type="text"
+          class="form-control form-control-sm bg-dark border-secondary text-light mb-2"
+          placeholder="e.g. MONET SAAO"
+        />
+        <div class="text-muted" style="font-size:0.75rem">Shown instead of the JID in the connections list and recent logins.</div>
+      </div>
     </div>
 
     <div class="mb-4">
@@ -219,14 +254,24 @@ function removeConnection() {
       </div>
     </div>
 
+    <div class="d-flex gap-2 mb-2">
+      <button type="button" class="btn btn-outline-secondary flex-fill" @click="saveAndClose">Save</button>
+      <button type="button" class="btn btn-primary flex-fill" @click="saveAndConnect">Save and connect</button>
+    </div>
+    <button type="button" class="btn btn-link w-100 text-muted mb-4" @click="emit('back')">Cancel</button>
+
     <button
       type="button"
       class="btn w-100 d-flex align-items-center justify-content-center gap-2"
-      style="height:48px; border-radius:12px; border:1px solid #dc354540; color:#ff8f8f"
-      @click="removeConnection"
+      :style="
+        confirmArm.isArmed('remove')
+          ? 'height:48px; border-radius:12px; border:1px solid #dc3545; background:#dc354520; color:#ff8f8f'
+          : 'height:48px; border-radius:12px; border:1px solid #dc354540; color:#ff8f8f'
+      "
+      @click="confirmArm.confirm('remove') && removeConnection()"
     >
       <i class="bi bi-trash"></i>
-      Remove connection
+      {{ confirmArm.isArmed('remove') ? 'Confirm remove?' : 'Remove connection' }}
     </button>
   </div>
 </template>

@@ -3,7 +3,8 @@
 // No charting library dependency — see specs/plans/weather-widget.md and the
 // sibling AutoFocus/Acquisition/AutoGuiding plans, which share this shape
 // (bounded time-series, x-axis time-formatted, small multiples).
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
+import { useResponsiveCanvas } from '@/composables/useResponsiveCanvas'
 
 const props = defineProps<{
   points: { time: number; value: number }[] // time in ms since epoch
@@ -13,7 +14,6 @@ const props = defineProps<{
 
 const canvasRef = ref<HTMLCanvasElement>()
 
-const WIDTH = 600
 const HEIGHT = 140
 const PADDING = { top: 10, right: 10, bottom: 20, left: 10 }
 
@@ -23,6 +23,7 @@ function draw() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
+  const WIDTH = canvasWidth.value
   const dpr = window.devicePixelRatio || 1
   canvas.width = WIDTH * dpr
   canvas.height = HEIGHT * dpr
@@ -92,10 +93,10 @@ function draw() {
   ctx.fillText(`${last.value.toFixed(2)}${props.unit ? ` ${props.unit}` : ''}`, plotRight, plotTop + 8)
 }
 
+const canvasWidth = useResponsiveCanvas(canvasRef, draw)
 watch(() => props.points, draw, { deep: true })
-onMounted(draw)
 </script>
 
 <template>
-  <canvas ref="canvasRef" :width="WIDTH" :height="HEIGHT" style="max-width:100%; height:auto; width:100%"></canvas>
+  <canvas ref="canvasRef" :width="600" :height="HEIGHT" style="max-width:100%; height:auto; width:100%"></canvas>
 </template>

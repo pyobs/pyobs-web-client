@@ -3,7 +3,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
-import ModuleStateCard from '@/components/ModuleStateCard.vue'
+import StatusRow from '@/components/StatusRow.vue'
 import DistanceChart from '@/components/DistanceChart.vue'
 import OffsetScatterChart from '@/components/OffsetScatterChart.vue'
 
@@ -81,6 +81,18 @@ watch(
 )
 
 onUnmounted(() => stopSubscription?.())
+
+// Semantic status, matching pyobs-gui's acquisitionwidget.py labelStatus exactly (not a generic
+// running/idle boolean) — see specs/plans/2026-09-07-widget-visual-redesign.md's corrections.
+const statusFields = computed(() => {
+  if (runningStateValue.value === undefined) return []
+  const value = runningStateValue.value.running
+    ? 'Acquiring...'
+    : acquisitionStateValue.value?.result
+      ? 'Acquired.'
+      : 'Idle'
+  return [{ label: 'Status', value }]
+})
 
 const distancePoints = computed(
   () => acquisitionStateValue.value?.attempts.map((a) => ({ attempt: a.attempt, distance: a.distance })) ?? [],
@@ -162,18 +174,12 @@ async function abort() {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <ModuleStateCard
-      v-if="currentModule.interfaces['IRunning']"
-      :jid="currentModule.jid"
-      interface-name="IRunning"
-      :version="currentModule.interfaces['IRunning'].version"
-      title="Status"
-    />
+    <StatusRow v-if="statusFields.length > 0" :fields="statusFields" />
 
-    <div class="d-flex flex-wrap align-items-end gap-2 mt-2">
+    <div class="d-flex gap-2 mt-2">
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-primary btn-sm flex-fill"
         :disabled="running || !permitted('acquire_target')"
         :title="permitted('acquire_target') ? undefined : NOT_PERMITTED_TITLE"
         @click="run"
@@ -183,7 +189,7 @@ async function abort() {
       </button>
       <button
         type="button"
-        class="btn btn-outline-danger btn-sm"
+        class="btn btn-outline-danger btn-sm flex-fill"
         :disabled="!runningStateValue?.running || !permitted('abort')"
         :title="permitted('abort') ? undefined : NOT_PERMITTED_TITLE"
         @click="abort"
@@ -209,15 +215,11 @@ async function abort() {
       <div v-if="resultOffsetLabel">{{ resultOffsetLabel }}</div>
     </div>
 
-    <div v-if="distancePoints.length > 0" class="d-flex flex-column gap-2 mt-2">
-      <div class="rounded-3 p-2" style="background-color:#15181c; border:1px solid #2d3035">
+    <div class="d-flex flex-column gap-2 mt-2">
+      <div class="pyobs-card">
         <DistanceChart :points="distancePoints" />
       </div>
-      <div
-        v-if="scatterPoints.length > 0"
-        class="rounded-3 p-2"
-        style="background-color:#15181c; border:1px solid #2d3035; max-width:340px"
-      >
+      <div class="pyobs-card">
         <OffsetScatterChart :points="scatterPoints" :x-label="scatterAxisLabels.x" :y-label="scatterAxisLabels.y" />
       </div>
     </div>

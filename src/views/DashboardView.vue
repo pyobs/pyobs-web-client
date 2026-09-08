@@ -102,7 +102,9 @@ onUnmounted(() => {
   subs.clear()
 })
 
-const IDLE_STATUSES = new Set(['IDLE', 'READY', 'UNKNOWN'])
+// PARKED/POSITIONED are settled MotionStatus values, same as IDLE — a parked
+// telescope or a positioned filter wheel isn't "doing something" (see #31).
+const IDLE_STATUSES = new Set(['IDLE', 'READY', 'UNKNOWN', 'PARKED', 'POSITIONED'])
 type Bucket = 'attention' | 'running' | 'idle'
 
 function triageFor(jid: string): { bucket: Bucket; subtitle: string | null } {

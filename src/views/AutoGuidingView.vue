@@ -3,7 +3,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
-import ModuleStateCard from '@/components/ModuleStateCard.vue'
+import StatusRow from '@/components/StatusRow.vue'
 import OffsetMagnitudeChart from '@/components/OffsetMagnitudeChart.vue'
 import OffsetScatterChart from '@/components/OffsetScatterChart.vue'
 
@@ -135,6 +135,11 @@ const loopStateLabel = computed(() => {
   return guidingStateValue.value?.loop_closed ? 'Closed loop' : 'Open loop'
 })
 
+const statusFields = computed(() => {
+  if (runningStateValue.value === undefined) return []
+  return [{ label: 'Loop', value: loopStateLabel.value }]
+})
+
 const magnitudeHistory = computed(() => offsetHistory.value.map((o) => Math.sqrt(o.lon ** 2 + o.lat ** 2)))
 const scatterPoints = computed(() => offsetHistory.value.map((o) => ({ x: o.lon, y: o.lat })))
 
@@ -182,18 +187,12 @@ async function setExposureTime() {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <ModuleStateCard
-      v-if="currentModule.interfaces['IRunning']"
-      :jid="currentModule.jid"
-      interface-name="IRunning"
-      :version="currentModule.interfaces['IRunning'].version"
-      title="Status"
-    />
+    <StatusRow v-if="statusFields.length > 0" :fields="statusFields" />
 
-    <div class="d-flex flex-wrap align-items-end gap-2 mt-2">
+    <div class="d-flex gap-2 mt-2">
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-primary btn-sm flex-fill"
         :disabled="!!runningStateValue?.running || !permitted('start')"
         :title="permitted('start') ? undefined : NOT_PERMITTED_TITLE"
         @click="start"
@@ -202,38 +201,34 @@ async function setExposureTime() {
       </button>
       <button
         type="button"
-        class="btn btn-outline-danger btn-sm"
+        class="btn btn-outline-danger btn-sm flex-fill"
         :disabled="!runningStateValue?.running || !permitted('stop')"
         :title="permitted('stop') ? undefined : NOT_PERMITTED_TITLE"
         @click="stop"
       >
         Stop
       </button>
+    </div>
 
-      <div>
-        <label class="text-muted d-block" style="font-size:0.7rem">Exposure time (s)</label>
-        <div class="d-flex gap-1">
-          <input
-            v-model.number="exposureTimeInput"
-            type="number"
-            step="any"
-            class="form-control form-control-sm"
-            style="width:100px"
-          />
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm"
-            :disabled="!permitted('set_exposure_time')"
-            :title="permitted('set_exposure_time') ? undefined : NOT_PERMITTED_TITLE"
-            @click="setExposureTime"
-          >
-            Set
-          </button>
-        </div>
-      </div>
-
-      <div class="rounded-2 px-2 py-1 fw-semibold" style="font-size:0.8rem">
-        {{ loopStateLabel }}
+    <div class="mt-2">
+      <label class="text-muted d-block" style="font-size:0.7rem">Exposure time (s)</label>
+      <div class="d-flex gap-1">
+        <input
+          v-model.number="exposureTimeInput"
+          type="number"
+          step="any"
+          class="form-control form-control-sm"
+          style="width:100px"
+        />
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm"
+          :disabled="!permitted('set_exposure_time')"
+          :title="permitted('set_exposure_time') ? undefined : NOT_PERMITTED_TITLE"
+          @click="setExposureTime"
+        >
+          Set
+        </button>
       </div>
     </div>
 
@@ -241,11 +236,11 @@ async function setExposureTime() {
       {{ error }}
     </div>
 
-    <div v-if="offsetHistory.length > 0" class="d-flex flex-column gap-2 mt-2">
-      <div class="rounded-3 p-2" style="background-color:#15181c; border:1px solid #2d3035">
+    <div class="d-flex flex-column gap-2 mt-2">
+      <div class="pyobs-card">
         <OffsetMagnitudeChart :values="magnitudeHistory" />
       </div>
-      <div class="rounded-3 p-2" style="background-color:#15181c; border:1px solid #2d3035; max-width:340px">
+      <div class="pyobs-card">
         <OffsetScatterChart :points="scatterPoints" :x-label="scatterAxisLabels.x" :y-label="scatterAxisLabels.y" />
       </div>
     </div>

@@ -1,6 +1,17 @@
 # Plan: auxiliary interface widgets (attach-or-standalone)
 
-Status: proposed, not yet implemented.
+Status: in progress. **Revised 2026-09-07**: this plan's "attach dynamically" design was derived
+independently before `specs/design/pyobs-gui-widget-parity.md` existed, and arrived at a mechanism
+close to but not identical with `pyobs-gui`'s actual one (`sidebar_preferred` + the promotion rule,
+`pyobs-gui/specs/2026-08-28-gui-main-vs-sidebar-widgets.md` D1). Read that doc first — the
+terminology and exact demotion/promotion condition below are now aligned to it; the four widget
+components and their `pyobs-gui` references are unchanged. **2026-09-08: `ICooling`/`CoolingView.vue`
+done and live-verified** (`camera@localhost`'s `DummyCamera`, which implements both `ICamera` and
+`ICooling` — confirms the demotion case: no separate "Cooling" tab appears, the widget renders in
+`ModulePageView.vue`'s shared section instead, in its own labelled box; `set_cooling` RPC verified
+working end-to-end, state updated live). `FiltersWidget.vue`/`TemperaturesWidget.vue`/
+`FocuserWidget.vue` and the promoted-to-main (standalone-module) case remain to be built/verified.
+
 Repos: pyobs-web-client (all implementation here)
 
 ## Problem statement
@@ -80,40 +91,55 @@ defaults). Four to start, each with a direct `pyobs-gui` reference:
   (`FocuserState.focus`, `.focus_offset`) + a "reset offset to 0" action
   alongside `set_focus`/`set_focus_offset`.
 
-### 2. Registry + auto-attach
+### 2. Registry + auto-attach — **revised 2026-09-07**
 
-A single `AUXILIARY_INTERFACES` config, same shape as `AppLayout.vue`'s
-existing `NAV_INTERFACES`, mapping interface name → `{ component, title,
-icon }`. A new shared `AuxiliaryWidgets.vue` component takes a module prop
-and internally loops `AUXILIARY_INTERFACES`, rendering whichever entries
-`interfaceName in module.interfaces` — dropped into every existing primary
-page (`RoofView`, `CameraView`, `ModeView`, `WeatherView`, `AutoFocusView`,
-`AutoGuidingView`, `AcquisitionView`) as one new line each, no per-page
-bespoke wiring.
+Originally proposed as a standalone `AUXILIARY_INTERFACES` config + `AuxiliaryWidgets.vue` dropped
+into each primary page's own template. Superseded by tying this directly to `ModulePageView.vue`'s
+already-existing (currently empty) shared-section slot instead — see
+`specs/plans/2026-09-06-module-page-rework.md`'s "Shared section" note, which was written
+anticipating exactly this: "the mobile-shell adaptation of pyobs-gui's shared sidebar column... no
+consumer exists yet." That slot, not a per-page manual drop-in, is where a demoted (`sidebarPreferred`,
+per the section 3 revision above) widget belongs — it renders once per module page regardless of
+which tab is active, matching `pyobs-gui`'s own "sidebar is a property of the page, not one tab"
+rule exactly. Concretely: `ModulePageView.vue`'s shared-section slot renders every currently-matched
+module widget entry whose `sidebarPreferred` is true and wasn't promoted to `main` this render —
+the same list `widgetsForModule`'s corrected promotion logic (section 3) already computes, just the
+demoted half of its output rather than a separate lookup.
 
-### 3. Standalone fallback page + nav
+### 3. Standalone fallback page + nav — **superseded 2026-09-07, see revision note**
 
-Extend `AppLayout.vue`'s nav computation: for each currently-online module,
-if it implements an auxiliary interface but *none* of the primary ones, it
-needs a nav entry + route pointing at a new generic `AuxiliaryView.vue`
-(parameterized by interface name + jid), internally reusing the same
-`AuxiliaryWidgets` rendering. Nav entry title/icon come from
-`AUXILIARY_INTERFACES`' own config — same shape `NAV_INTERFACES` already
-provides for primary interfaces, so the sidebar's existing
-single-instance/multi-instance rendering logic (one link vs. a section
-header + sub-links) can be reused rather than duplicated.
+This section predates both `specs/plans/2026-09-06-module-page-rework.md` (which deleted
+`AppLayout.vue`'s `NAV_INTERFACES`-driven nav computation entirely, replacing it with
+`src/moduleWidgets.ts`'s `MODULE_WIDGETS` registry + `widgetsForModule`) and the actual `pyobs-gui`
+promotion rule this doc originally guessed at. As written, "a nav entry + route... for each
+currently-online module, if it implements an auxiliary interface" would give a module implementing
+*both* `IFilters` and `ITemperatures` with no camera/telescope **two separate nav entries** — the
+exact per-interface nav fragmentation `module-page-rework.md` was written to eliminate, and not
+what `pyobs-gui` itself does (it promotes every `sidebar_preferred` match into `main` at once, so
+that module gets **one** page with two tabs, one nav entry).
+
+Corrected mechanism, in current-architecture terms: extend `MODULE_WIDGETS`'
+`ModuleWidgetEntry` with a `sidebarPreferred?: boolean` flag (mirrors `MainWidgetEntry.sidebar_preferred`
+exactly) on the `IFilters`/`IFocuser`/`ITemperatures`/`ICooling` entries once they're registered.
+`widgetsForModule` (`src/moduleWidgets.ts`) needs the actual promotion logic added — today it's a
+plain `filter` with no demotion/promotion at all (see `specs/design/pyobs-gui-widget-parity.md`'s
+note that this is already a latent bug waiting for these four widgets to land): split matches into
+non-preferred and preferred, return non-preferred if non-empty, else return every preferred match
+(so they become normal tabs on `ModulePageView.vue` — no separate `AuxiliaryView.vue`/nav-entry
+mechanism needed at all, the existing per-module page machinery already does the right thing once
+promotion exists). This is strictly simpler than what this section originally proposed.
 
 ## Not yet decided
 
 - Exact `AUXILIARY_INTERFACES` config shape, and where `AuxiliaryWidgets`
   sits in each primary page's layout (its own collapsible section, like
   `CameraView.vue`'s Settings panel? Or just concatenated inline?).
-- A module implementing an auxiliary interface *and multiple* primary
-  interfaces (hypothetical camera+telescope combo with `IFocuser`) — does
-  the widget render on both primary pages? Leaning yes, no extra work
-  needed: `AuxiliaryWidgets` only ever asks "does *this page's* module
-  implement this interface," so it renders wherever it's dropped in,
-  independently, with no shared/global state to duplicate.
+- ~~A module implementing an auxiliary interface *and multiple* primary
+  interfaces...~~ **Resolved by the section 2 revision**: a hypothetical camera+telescope+focuser
+  module gets one `ModulePageView.vue` with Camera and Telescope tabs (both real `main` matches,
+  `IFocuser` demoted either way since it's `sidebarPreferred`) and the Focuser widget in the shared
+  section, visible regardless of which tab is active — no duplication question, since there's only
+  ever one shared-section render per module page, not one per tab.
 - Whether `IWindow`/`IBinning`/`IGain`/`IImageFormat`/`IImageType`
   (`2026-08-03-camera-page.md` phase 3's settings, currently hardcoded directly in
   `CameraView.vue`, not using this mechanism) should be retrofitted onto
@@ -129,16 +155,44 @@ header + sub-links) can be reused rather than duplicated.
   page is deliberately generic, not a permanent ceiling on what an
   auxiliary interface's page can become later.
 
-## Implementation checklist
+## Implementation checklist (revised 2026-09-07 for the corrected mechanism)
 
-- [ ] `CoolingWidget.vue`, `FiltersWidget.vue`, `TemperaturesWidget.vue`,
-      `FocuserWidget.vue`.
-- [ ] `AUXILIARY_INTERFACES` config + `AuxiliaryWidgets.vue`.
-- [ ] Wire `AuxiliaryWidgets` into every existing primary page.
-- [ ] `AuxiliaryView.vue` fallback page + route + `AppLayout.vue` nav
-      extension for auxiliary-only modules.
-- [ ] Manual verification against `DummyCamera` (already implements
-      `ICooling`; a live test config could add `IFilters`/`IFocuser` to
-      exercise the attach case) *and* at least one module implementing
-      only an auxiliary interface, to exercise the standalone-fallback
-      case.
+- [x] `CoolingView.vue` (named to match this app's `*View.vue` convention, not the plan's original
+      `CoolingWidget.vue`) — 2026-09-08.
+- [x] `FocuserView.vue`, `FiltersView.vue`, `TemperaturesView.vue` — 2026-09-08. Not yet live-verified
+      (see checklist item below) — built against `pyobs-gui`'s `focuswidget.py`/`filterwidget.py`/
+      `temperatureswidget.py` and `pyobs-core`'s `IFocuser`/`IFilters`/`ITemperatures` interfaces.
+      `TemperaturesView.vue` reuses `WeatherView.vue`'s tile/history/`TimeSeriesChart.vue` pattern per
+      this plan's own note; `FocuserView.vue`/`FiltersView.vue` gate their one/two actions on
+      `IMotion` status exactly like `CoolingView.vue`'s ACL gating, matching each widget's own
+      `initialized` check (`MotionStatus` in slewing/tracking/idle/positioned).
+- [x] `ModuleWidgetEntry` gains `sidebarPreferred?: boolean` (`src/moduleWidgets.ts`) — 2026-09-08.
+      All four auxiliary interfaces now registered with it set.
+- [x] `widgetsForModule`'s promotion logic — 2026-09-08: split matches into non-preferred/preferred,
+      return non-preferred if non-empty else every preferred match, per `collect_main_widgets`
+      (`pyobs-gui/pyobs_gui/mainwindow.py`). A new `sidebarWidgetsForModule` returns the demoted half.
+- [x] `ModulePageView.vue`'s shared-section slot — 2026-09-08: renders the demoted matches, each in
+      its own labelled box (icon + uppercase interface label) so it's visually clear the content
+      belongs to a separate attached widget, not the active tab. No separate
+      `AuxiliaryWidgets.vue`/`AuxiliaryView.vue` needed, confirmed.
+- [x] Manual verification against `DummyCamera` (`camera@localhost`) — 2026-09-08: demoted-to-
+      shared-section case confirmed (`ICamera` + `ICooling`, one "Camera" tab, no separate "Cooling"
+      tab, `CoolingView` renders in the shared section); `set_cooling` RPC confirmed working
+      end-to-end, live state update observed (setpoint/power changed after Apply).
+- [ ] Manual verification of `FocuserView.vue`/`FiltersView.vue`/`TemperaturesView.vue` against a
+      live fixture still outstanding — `testing/pyobs-gui-configs/xmpp/telescope.yaml`
+      (`DummyAltAzTelescope`) implements `IFocuser` and can exercise the demoted case for Focuser;
+      no local fixture yet for Filters/Temperatures.
+- [ ] Still needed: a module implementing only an auxiliary interface with no camera/telescope, to
+      exercise the promoted-to-main (standalone) case — no such fixture exists yet.
+
+## References
+
+- `specs/design/pyobs-gui-widget-parity.md` — the `sidebar_preferred`/promotion-rule mechanism this
+  plan's 2026-09-07 revision aligns to; read it before implementing.
+- `pyobs-gui/specs/2026-08-28-gui-main-vs-sidebar-widgets.md` — D1 (the promotion rule itself), D2
+  (shared sidebar as a page property).
+- `pyobs-gui/pyobs_gui/coolingwidget.py`, `filterwidget.py`, `temperatureswidget.py`,
+  `focuswidget.py` — the four widgets themselves, unchanged by the 2026-09-07 revision.
+- `specs/plans/2026-09-06-module-page-rework.md` — `ModulePageView.vue`'s shared-section slot,
+  where the demoted widgets actually render.

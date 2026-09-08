@@ -73,32 +73,61 @@ const errorMessage = ref<string>('')
 const modules = ref<PyobsModule[]>([])
 const events = ref<PyobsEvent[]>([])
 
-// Remembered JIDs only — never passwords. Persisted in localStorage (survives
-// across browser sessions, unlike the sessionStorage-based active-session
-// credentials above) purely as a login-convenience autocomplete list.
-function loadRecentLogins(): string[] {
+// Remembered JIDs (plus an optional user-set label) only — never passwords.
+// Persisted in localStorage (survives across browser sessions, unlike the
+// sessionStorage-based active-session credentials above) purely as a
+// login-convenience autocomplete list.
+export type RecentLogin = { jid: string; label?: string }
+
+function loadRecentLogins(): RecentLogin[] {
   try {
     const raw = JSON.parse(localStorage.getItem(RECENT_LOGINS_KEY) ?? '[]')
-    return Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string') : []
+    if (!Array.isArray(raw)) return []
+    // Pre-label format stored a plain JID string per entry — migrate on read.
+    return raw
+      .map((v): RecentLogin | null => {
+        if (typeof v === 'string') return { jid: v }
+        if (v && typeof v === 'object' && typeof (v as RecentLogin).jid === 'string') {
+          const label = (v as RecentLogin).label
+          return { jid: (v as RecentLogin).jid, ...(typeof label === 'string' && label ? { label } : {}) }
+        }
+        return null
+      })
+      .filter((v): v is RecentLogin => v !== null)
   } catch {
     return []
   }
 }
-const recentLogins = ref<string[]>(loadRecentLogins())
+const recentLogins = ref<RecentLogin[]>(loadRecentLogins())
 
-function rememberLogin(userJid: string): void {
-  const next = [userJid, ...recentLogins.value.filter((j) => j !== userJid)].slice(0, MAX_RECENT_LOGINS)
+function persistRecentLogins(next: RecentLogin[]): void {
   recentLogins.value = next
   localStorage.setItem(RECENT_LOGINS_KEY, JSON.stringify(next))
 }
 
 // Also used to save a connection profile before ever logging in (the offline
 // "Connections" screen) — same list, same shape, just not gated on a
-// successful connect.
+// successful connect. Preserves an existing label when re-remembering a JID
+// already in the list (e.g. after a successful connect), unless a new one is
+// explicitly given.
+function rememberLogin(userJid: string, label?: string): void {
+  const existing = recentLogins.value.find((entry) => entry.jid === userJid)
+  const nextLabel = label ?? existing?.label
+  const entry: RecentLogin = { jid: userJid, ...(nextLabel ? { label: nextLabel } : {}) }
+  const next = [entry, ...recentLogins.value.filter((e) => e.jid !== userJid)].slice(0, MAX_RECENT_LOGINS)
+  persistRecentLogins(next)
+}
+
+function setLoginLabel(userJid: string, label: string | undefined): void {
+  const next = recentLogins.value.map((entry) =>
+    entry.jid === userJid ? { jid: entry.jid, ...(label ? { label } : {}) } : entry,
+  )
+  persistRecentLogins(next)
+}
+
 function forgetLogin(userJid: string): void {
-  const next = recentLogins.value.filter((j) => j !== userJid)
-  recentLogins.value = next
-  localStorage.setItem(RECENT_LOGINS_KEY, JSON.stringify(next))
+  const next = recentLogins.value.filter((entry) => entry.jid !== userJid)
+  persistRecentLogins(next)
 }
 
 // PubSub state: keyed by the real "pyobs:state:{module}:{Interface}:{version}"
@@ -505,6 +534,47 @@ async function executeMethod(fullJid: string, methodName: string, params: unknow
   return { success: true, value: parseRpcReturn(result) }
 }
 
+// Same IQ-building/send/parse shape as executeMethod, for the rare command whose param can't be
+// encoded from its wire schema alone (valueToXml has no case for struct/any — see its own comment)
+// but whose exact shape the *caller* does know from another source (e.g. IStructuredConfig's
+// set_config, whose ConfigFieldSchema tree — from capabilities, not the command schema — fully
+// describes every field). Callers build each param's content Element themselves instead of this
+// function calling valueToXml against the command schema's (here, useless) declared param type.
+async function executeMethodRaw(fullJid: string, methodName: string, paramContents: Element[]): Promise<RpcResult> {
+  if (!connection) throw new Error('Not connected')
+
+  const builder = $iq({ to: fullJid, type: 'set' })
+    .c('query', { xmlns: NS_RPC })
+    .c('methodCall')
+    .c('methodName')
+    .t(methodName)
+    .up()
+    .c('params')
+
+  paramContents.forEach((contentEl) => {
+    const pyobsValue = createNamespacedElement(NS_PYOBS_RPC, 'value')
+    pyobsValue.appendChild(contentEl)
+    builder.c('param').c('value').cnode(pyobsValue).up().up().up()
+  })
+
+  let result: Element
+  try {
+    result = await sendRpcIQ(builder.tree())
+  } catch (err: unknown) {
+    const msg = err instanceof Element
+      ? (err.getElementsByTagName('text')[0]?.textContent ?? 'XMPP error')
+      : String(err)
+    return { success: false, value: msg }
+  }
+
+  const fault = findRpcFault(result)
+  if (fault) {
+    return { success: false, value: fault.message, errorClass: fault.exception }
+  }
+
+  return { success: true, value: parseRpcReturn(result) }
+}
+
 // Publishes a fabricated event under this client's own JID (XEP-0163 PEP
 // self-publish — no `to` attribute — matching xmppcomm.py's own send_event(),
 // see specs/design/events-page-send-tool.md). `data` is plain JSON, not
@@ -731,10 +801,12 @@ export function useXmpp() {
     events: readonly(events),
     recentLogins: readonly(recentLogins),
     rememberLogin,
+    setLoginLabel,
     forgetLogin,
     connect,
     disconnect,
     executeMethod,
+    executeMethodRaw,
     publishEvent,
     subscribeState,
     clearEvents: () => { events.value = [] },

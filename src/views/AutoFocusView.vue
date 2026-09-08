@@ -3,7 +3,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
 import type { CommandSchema } from '@/pyobs-codec'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
-import ModuleStateCard from '@/components/ModuleStateCard.vue'
+import StatusRow from '@/components/StatusRow.vue'
 import FocusCurveChart from '@/components/FocusCurveChart.vue'
 
 type RunningState = { running: boolean; time: string }
@@ -68,9 +68,16 @@ watch(
 
 onUnmounted(() => stopSubscription?.())
 
-const exposureTimeUnit = computed(() => {
-  const schema = currentModule.value?.interfaces['IAutoFocus']?.commands['auto_focus'] as CommandSchema | undefined
-  return schema?.params.find((p) => p.name === 'exposure_time')?.unit
+// Semantic status, matching pyobs-gui's autofocuswidget.py labelStatus exactly (not a generic
+// running/idle boolean) — see specs/plans/2026-09-07-widget-visual-redesign.md's corrections.
+const statusFields = computed(() => {
+  if (runningStateValue.value === undefined) return []
+  const value = runningStateValue.value.running
+    ? 'Running...'
+    : result.value
+      ? `Focus: ${result.value.focus.toFixed(3)} ± ${result.value.focus_err.toFixed(3)} mm`
+      : 'Idle'
+  return [{ label: 'Status', value }]
 })
 
 async function run() {
@@ -115,32 +122,27 @@ async function abort() {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <ModuleStateCard
-      v-if="currentModule.interfaces['IRunning']"
-      :jid="currentModule.jid"
-      interface-name="IRunning"
-      :version="currentModule.interfaces['IRunning'].version"
-      title="Status"
-    />
+    <StatusRow v-if="statusFields.length > 0" :fields="statusFields" />
 
-    <div class="d-flex flex-wrap align-items-end gap-2 mt-2">
-      <div>
+    <div class="d-flex gap-2 mt-2">
+      <div class="flex-fill">
         <label class="text-muted d-block" style="font-size:0.7rem">Count</label>
-        <input v-model.number="count" type="number" class="form-control form-control-sm" style="width:90px" />
+        <input v-model.number="count" type="number" class="form-control form-control-sm" />
       </div>
-      <div>
+      <div class="flex-fill">
         <label class="text-muted d-block" style="font-size:0.7rem">Step</label>
-        <input v-model.number="step" type="number" step="any" class="form-control form-control-sm" style="width:90px" />
+        <input v-model.number="step" type="number" step="any" class="form-control form-control-sm" />
       </div>
-      <div>
-        <label class="text-muted d-block" style="font-size:0.7rem">
-          Exposure time{{ exposureTimeUnit ? ` (${exposureTimeUnit})` : '' }}
-        </label>
-        <input v-model.number="exposureTime" type="number" step="any" class="form-control form-control-sm" style="width:110px" />
+      <div class="flex-fill">
+        <label class="text-muted d-block text-truncate" style="font-size:0.7rem">Exposure (s)</label>
+        <input v-model.number="exposureTime" type="number" step="any" class="form-control form-control-sm" />
       </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-2">
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-primary btn-sm flex-fill"
         :disabled="running || !permitted('auto_focus')"
         :title="permitted('auto_focus') ? undefined : NOT_PERMITTED_TITLE"
         @click="run"
@@ -150,7 +152,7 @@ async function abort() {
       </button>
       <button
         type="button"
-        class="btn btn-outline-danger btn-sm"
+        class="btn btn-outline-danger btn-sm flex-fill"
         :disabled="!runningStateValue?.running || !permitted('abort')"
         :title="permitted('abort') ? undefined : NOT_PERMITTED_TITLE"
         @click="abort"
@@ -163,13 +165,9 @@ async function abort() {
       {{ error }}
     </div>
 
-    <div v-if="result" class="alert alert-success py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
-      Focus: {{ result.focus.toFixed(3) }} ± {{ result.focus_err.toFixed(3) }}
-    </div>
-
-    <div v-if="(autoFocusStateValue?.points.length ?? 0) > 0" class="rounded-3 p-2 mt-2" style="background-color:#15181c; border:1px solid #2d3035">
+    <div class="pyobs-card mt-2">
       <FocusCurveChart
-        :points="autoFocusStateValue!.points"
+        :points="autoFocusStateValue?.points ?? []"
         :result="result ? { focus: result.focus, focusErr: result.focus_err } : undefined"
       />
     </div>
