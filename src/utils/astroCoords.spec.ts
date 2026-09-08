@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { raDecToAltAz, altAzToRaDec, formatRaSexagesimal, formatDecSexagesimal, type GeoLocation } from './astroCoords'
+import {
+  raDecToAltAz,
+  altAzToRaDec,
+  formatRaSexagesimal,
+  formatDecSexagesimal,
+  parseRaSexagesimal,
+  parseDecSexagesimal,
+  type GeoLocation,
+} from './astroCoords'
 
 // Fixtures generated from astropy's own ICRS<->AltAz transform (SkyCoord +
 // AltAz frame, pressure=0 i.e. no refraction), run against pyobs-core's own
@@ -96,5 +104,56 @@ describe('formatDecSexagesimal', () => {
 
   it('carries arcminutes into degrees on rounding', () => {
     expect(formatDecSexagesimal(-5.993)).toBe("-06° 00'")
+  })
+})
+
+describe('parseRaSexagesimal', () => {
+  it('parses colon-separated h:m:s as hours, converted to degrees', () => {
+    expect(parseRaSexagesimal('05:35:17')).toBeCloseTo(83.8208, 3)
+  })
+
+  it('parses space-separated and h/m/s-suffixed forms the same way', () => {
+    expect(parseRaSexagesimal('05 35 17')).toBeCloseTo(83.8208, 3)
+    expect(parseRaSexagesimal('05h35m17s')).toBeCloseTo(83.8208, 3)
+  })
+
+  it('treats a single bare number as already-decimal degrees, not hours', () => {
+    // Matches this field's pre-existing plain-number behavior and what the
+    // Simbad lookup (#35) fills in — not hours, which would need *15.
+    expect(parseRaSexagesimal('83.8208')).toBe(83.8208)
+  })
+
+  it('wraps 24h to 0°', () => {
+    expect(parseRaSexagesimal('24:00:00')).toBe(0)
+  })
+
+  it('returns null for empty or unparseable input', () => {
+    expect(parseRaSexagesimal('')).toBeNull()
+    expect(parseRaSexagesimal('not a coordinate')).toBeNull()
+  })
+})
+
+describe('parseDecSexagesimal', () => {
+  it('parses colon-separated d:m:s as degrees', () => {
+    expect(parseDecSexagesimal('+60:30:00')).toBeCloseTo(60.5, 6)
+  })
+
+  it('parses a negative declination', () => {
+    expect(parseDecSexagesimal('-06:00:00')).toBeCloseTo(-6.0, 6)
+  })
+
+  it('keeps the sign for a negative-zero degree component', () => {
+    // "-00:30:00" is a real, common near-equator case — Math.sign/abs alone
+    // would lose the sign entirely once the degree part is 0.
+    expect(parseDecSexagesimal('-00:30:00')).toBeCloseTo(-0.5, 6)
+  })
+
+  it('treats a single bare number as already-decimal degrees', () => {
+    expect(parseDecSexagesimal('10.5')).toBe(10.5)
+  })
+
+  it('returns null for empty or unparseable input', () => {
+    expect(parseDecSexagesimal('')).toBeNull()
+    expect(parseDecSexagesimal('not a coordinate')).toBeNull()
   })
 })

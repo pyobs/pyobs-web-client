@@ -188,3 +188,42 @@ export function formatDecSexagesimal(decDeg: number): string {
   const m = totalMinutes % 60
   return `${sign}${String(d).padStart(2, '0')}° ${String(m).padStart(2, '0')}'`
 }
+
+// ── Sexagesimal input parsing — the inverse direction, for the RA/Dec move
+// fields (see #36). Permissive on purpose (':' or whitespace as the field
+// separator, optional h/m/s or °/'/" suffixes stripped, not required) —
+// matches how people actually type coordinates, not a strict mirror of the
+// format functions' own display punctuation.
+function parseSexagesimalParts(text: string): number[] | null {
+  const cleaned = text.trim().replace(/[hms°'"]/gi, ' ')
+  const parts = cleaned.split(/[\s:]+/).filter((p) => p.length > 0)
+  if (parts.length === 0) return null
+  const nums = parts.map(Number)
+  return nums.some((n) => !Number.isFinite(n)) ? null : nums
+}
+
+// A single bare number is ambiguous between "hours" (RA's own customary unit)
+// and "decimal degrees" (this app's move_radec wire unit, and what #35's
+// Simbad lookup fills in) — treated as already-degrees, matching this field's
+// pre-existing plain-number behavior; only an actual multi-part sexagesimal
+// value (h:m:s) is treated as hours and converted to degrees.
+export function parseRaSexagesimal(text: string): number | null {
+  const parts = parseSexagesimalParts(text)
+  if (!parts) return null
+  if (parts.length === 1) return norm360(parts[0]!)
+  const [h, m = 0, s = 0] = parts
+  const magnitude = Math.abs(h!) + m! / 60 + s! / 3600
+  return norm360((h! < 0 ? -magnitude : magnitude) * 15)
+}
+
+export function parseDecSexagesimal(text: string): number | null {
+  const parts = parseSexagesimalParts(text)
+  if (!parts) return null
+  if (parts.length === 1) return parts[0]!
+  const [d, m = 0, s = 0] = parts
+  const magnitude = Math.abs(d!) + m! / 60 + s! / 3600
+  // Distinguishes -0 from 0 so "-00:30:00" (a valid, common near-equator Dec
+  // typo-adjacent case) still parses as negative — Math.abs/sign alone would
+  // otherwise lose the sign entirely once d is 0.
+  return Object.is(d, -0) || d! < 0 ? -magnitude : magnitude
+}

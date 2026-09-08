@@ -8,11 +8,12 @@ import {
   altAzToRaDec,
   formatRaSexagesimal,
   formatDecSexagesimal,
+  parseRaSexagesimal,
+  parseDecSexagesimal,
   type GeoLocation,
 } from '@/utils/astroCoords'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import StatusRow from '@/components/StatusRow.vue'
-import ModuleStateCard from '@/components/ModuleStateCard.vue'
 import ParamForm from '@/components/ParamForm.vue'
 
 // One tab on ModulePageView.vue, not its own routed page — jid is already
@@ -32,10 +33,18 @@ const currentModule = computed(() => modules.value.find((m) => m.jid === props.j
 type MotionState = { status: string }
 type RaDecState = { ra: number; dec: number }
 type AltAzState = { alt: number; az: number }
+type RaDecOffsetState = { ra: number; dec: number }
+type AltAzOffsetState = { alt: number; az: number }
+type TrackingModeState = { mode: string }
+type TrackingRateState = { ra_rate: number; dec_rate: number }
 
 const motionStateValue = ref<MotionState | undefined>(undefined)
 const raDecStateValue = ref<RaDecState | undefined>(undefined)
 const altAzStateValue = ref<AltAzState | undefined>(undefined)
+const raDecOffsetStateValue = ref<RaDecOffsetState | undefined>(undefined)
+const altAzOffsetStateValue = ref<AltAzOffsetState | undefined>(undefined)
+const trackingModeStateValue = ref<TrackingModeState | undefined>(undefined)
+const trackingRateStateValue = ref<TrackingRateState | undefined>(undefined)
 let stopStatusSubscription: (() => void) | undefined
 
 watch(
@@ -46,6 +55,10 @@ watch(
     motionStateValue.value = undefined
     raDecStateValue.value = undefined
     altAzStateValue.value = undefined
+    raDecOffsetStateValue.value = undefined
+    altAzOffsetStateValue.value = undefined
+    trackingModeStateValue.value = undefined
+    trackingRateStateValue.value = undefined
 
     if (!mod) return
     const stops: (() => void)[] = []
@@ -69,6 +82,34 @@ watch(
       const { value, unsubscribe } = subscribeState(mod.jid, 'IPointingAltAz', altAzVersion)
       stops.push(unsubscribe)
       stops.push(watch(value, (v) => (altAzStateValue.value = v as AltAzState | undefined), { immediate: true }))
+    }
+
+    const raDecOffsetVersion = mod.interfaces['IOffsetsRaDec']?.version
+    if (raDecOffsetVersion !== undefined) {
+      const { value, unsubscribe } = subscribeState(mod.jid, 'IOffsetsRaDec', raDecOffsetVersion)
+      stops.push(unsubscribe)
+      stops.push(watch(value, (v) => (raDecOffsetStateValue.value = v as RaDecOffsetState | undefined), { immediate: true }))
+    }
+
+    const altAzOffsetVersion = mod.interfaces['IOffsetsAltAz']?.version
+    if (altAzOffsetVersion !== undefined) {
+      const { value, unsubscribe } = subscribeState(mod.jid, 'IOffsetsAltAz', altAzOffsetVersion)
+      stops.push(unsubscribe)
+      stops.push(watch(value, (v) => (altAzOffsetStateValue.value = v as AltAzOffsetState | undefined), { immediate: true }))
+    }
+
+    const trackingModeVersion = mod.interfaces['ITrackingMode']?.version
+    if (trackingModeVersion !== undefined) {
+      const { value, unsubscribe } = subscribeState(mod.jid, 'ITrackingMode', trackingModeVersion)
+      stops.push(unsubscribe)
+      stops.push(watch(value, (v) => (trackingModeStateValue.value = v as TrackingModeState | undefined), { immediate: true }))
+    }
+
+    const trackingRateVersion = mod.interfaces['ITrackingRate']?.version
+    if (trackingRateVersion !== undefined) {
+      const { value, unsubscribe } = subscribeState(mod.jid, 'ITrackingRate', trackingRateVersion)
+      stops.push(unsubscribe)
+      stops.push(watch(value, (v) => (trackingRateStateValue.value = v as TrackingRateState | undefined), { immediate: true }))
     }
 
     stopStatusSubscription = () => stops.forEach((stop) => stop())
@@ -99,6 +140,43 @@ const altAzPositionFields = computed(() => {
   return [
     { label: 'Alt', value: `${state.alt.toFixed(1)}°` },
     { label: 'Az', value: `${state.az.toFixed(1)}°` },
+  ]
+})
+
+// Offset/tracking curated fields — matches telescopewidget.py's own labeled
+// fields exactly (degrees converted to arcsec, per its own '%.2f"' format),
+// replacing the raw ModuleStateCard dumps that used to show lowercase wire
+// field names and an unhelpful `time` field here (see #37).
+const raDecOffsetFields = computed(() => {
+  const state = raDecOffsetStateValue.value
+  if (!state) return []
+  return [
+    { label: 'RA', value: `${(state.ra * 3600).toFixed(2)}"` },
+    { label: 'Dec', value: `${(state.dec * 3600).toFixed(2)}"` },
+  ]
+})
+
+const altAzOffsetFields = computed(() => {
+  const state = altAzOffsetStateValue.value
+  if (!state) return []
+  return [
+    { label: 'Alt', value: `${(state.alt * 3600).toFixed(2)}"` },
+    { label: 'Az', value: `${(state.az * 3600).toFixed(2)}"` },
+  ]
+})
+
+const trackingModeFields = computed(() => {
+  const state = trackingModeStateValue.value
+  if (!state) return []
+  return [{ label: 'Mode', value: state.mode.charAt(0).toUpperCase() + state.mode.slice(1) }]
+})
+
+const trackingRateFields = computed(() => {
+  const state = trackingRateStateValue.value
+  if (!state) return []
+  return [
+    { label: 'RA rate', value: `${state.ra_rate.toFixed(2)}"/s` },
+    { label: 'Dec rate', value: `${state.dec_rate.toFixed(2)}"/s` },
   ]
 })
 
@@ -181,6 +259,46 @@ const paramValues = ref<Record<CommandName, Record<string, string>>>(emptyParamV
 const commandRunning = ref<Record<string, boolean>>({}) // `${jid}:${command}` -> in flight
 const commandErrors = ref<Record<string, string>>({}) // `${jid}:${command}` -> last error, if any
 
+// ── Target name lookup (Simbad) — fills the RA/Dec move fields. See #35.
+// telescopewidget.py uses astroquery.simbad (Python-only); this uses SIMBAD's
+// own TAP sync HTTP endpoint directly (CORS-enabled, verified) instead.
+const simbadName = ref('')
+const simbadSearching = ref(false)
+const simbadError = ref('')
+
+async function searchSimbad() {
+  const name = simbadName.value.trim()
+  if (!name) return
+
+  simbadSearching.value = true
+  simbadError.value = ''
+  try {
+    // Single quotes doubled per standard ADQL/SQL string-literal escaping —
+    // the name is otherwise embedded verbatim in the query string.
+    const escaped = name.replace(/'/g, "''")
+    const query = `SELECT ra, dec, main_id FROM basic JOIN ident ON oid=oidref WHERE id='${escaped}'`
+    const url = `https://simbad.cds.unistra.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(query)}`
+    const response = await fetch(url)
+    if (!response.ok) {
+      simbadError.value = `Simbad query failed: HTTP ${response.status}`
+      return
+    }
+    const result = (await response.json()) as { data: [number, number, string][] }
+    const row = result.data[0]
+    if (!row) {
+      simbadError.value = `No Simbad result for "${name}".`
+      return
+    }
+    const [ra, dec] = row
+    paramValues.value.move_radec.ra = String(ra)
+    paramValues.value.move_radec.dec = String(dec)
+  } catch (e) {
+    simbadError.value = String(e)
+  } finally {
+    simbadSearching.value = false
+  }
+}
+
 // Reset every command's param values when the module changes (jid is a
 // static prop in practice, but defensive against a jid change all the
 // same), so a stale value never lingers into a module that doesn't even
@@ -226,6 +344,24 @@ async function runCommand(mod: DeepReadonly<PyobsModule>, iface: string, name: C
   }
 }
 
+// move_radec's RA/Dec fields accept sexagesimal text (see #36) — plain
+// ParamForm/paramValueFromString only knows how to turn a string straight
+// into a float64, which can't parse "12:34:56". Parse to decimal degrees
+// here (rewriting the fields to show the normalized value) before handing
+// off to the same generic runCommand every other command button uses.
+async function moveRaDec(mod: DeepReadonly<PyobsModule>) {
+  const key = `${mod.jid}:move_radec`
+  const raDeg = parseRaSexagesimal(paramValues.value.move_radec.ra ?? '')
+  const decDeg = parseDecSexagesimal(paramValues.value.move_radec.dec ?? '')
+  if (raDeg === null || decDeg === null) {
+    commandErrors.value = { ...commandErrors.value, [key]: 'Invalid RA/Dec.' }
+    return
+  }
+  paramValues.value.move_radec.ra = String(raDeg)
+  paramValues.value.move_radec.dec = String(decDeg)
+  await runCommand(mod, 'IPointingRaDec', 'move_radec')
+}
+
 // ── Sections: RA/Dec, Alt/Az, Tracking — only shown as tabs when a module
 // implements more than one; a module implementing exactly one renders it
 // directly with no tab bar. Deliberately a plain button toggle (not
@@ -269,9 +405,9 @@ const moduleLocation = computed((): GeoLocation | null => {
 
 const raDecPreview = computed(() => {
   if (!moduleLocation.value) return null
-  const ra = Number(paramValues.value.move_radec?.ra)
-  const dec = Number(paramValues.value.move_radec?.dec)
-  if (!Number.isFinite(ra) || !Number.isFinite(dec)) return null
+  const ra = parseRaSexagesimal(paramValues.value.move_radec?.ra ?? '')
+  const dec = parseDecSexagesimal(paramValues.value.move_radec?.dec ?? '')
+  if (ra === null || dec === null) return null
   return raDecToAltAz({ raDeg: ra, decDeg: dec }, moduleLocation.value, new Date())
 })
 
@@ -300,9 +436,6 @@ const trackingModeEnums = computed((): Record<string, string[]> => {
 // DeepReadonly (see RoofView.vue's same pattern), but ParamForm's `fields`
 // prop needs plain mutable FieldSchema[] — same cast ShellView.vue's own
 // `currentCommandSchema`/`currentEnums` computeds already do.
-const moveRaDecSchema = computed(
-  () => currentModule.value?.interfaces['IPointingRaDec']?.commands['move_radec'] as CommandSchema | undefined,
-)
 const offsetsRaDecSchema = computed(
   () => currentModule.value?.interfaces['IOffsetsRaDec']?.commands['set_offsets_radec'] as CommandSchema | undefined,
 )
@@ -381,7 +514,40 @@ const trackBodySchema = computed(
       <!-- RA/Dec -->
       <template v-if="activeSection === 'radec'">
         <StatusRow v-if="raDecPositionFields.length > 0" :fields="raDecPositionFields" class="mb-2" />
-        <ParamForm v-model="paramValues.move_radec" :fields="moveRaDecSchema!.params" :enums="{}" />
+
+        <div class="d-flex gap-2 align-items-end mb-2">
+          <div class="flex-fill">
+            <label class="text-muted d-block" style="font-size:0.7rem">Name</label>
+            <input
+              v-model="simbadName"
+              type="text"
+              class="form-control form-control-sm"
+              placeholder="e.g. M31"
+              @keydown.enter.prevent="searchSimbad"
+            />
+          </div>
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            :disabled="simbadSearching || !simbadName.trim()"
+            @click="searchSimbad"
+          >
+            <span v-if="simbadSearching" class="spinner-border spinner-border-sm me-1" role="status"></span>
+            Search Simbad
+          </button>
+        </div>
+        <div v-if="simbadError" class="alert alert-danger py-1 px-2 mb-2" style="font-size:0.8rem">{{ simbadError }}</div>
+
+        <div class="d-flex gap-2 mb-2">
+          <div class="flex-fill">
+            <label class="text-muted d-block" style="font-size:0.7rem">RA (hh:mm:ss or deg)</label>
+            <input v-model="paramValues.move_radec.ra" type="text" class="form-control form-control-sm" placeholder="12:34:56.7" />
+          </div>
+          <div class="flex-fill">
+            <label class="text-muted d-block" style="font-size:0.7rem">Dec (±dd:mm:ss or deg)</label>
+            <input v-model="paramValues.move_radec.dec" type="text" class="form-control form-control-sm" placeholder="+45:30:00" />
+          </div>
+        </div>
         <div v-if="paramValues.move_radec?.ra && paramValues.move_radec?.dec" class="text-muted mb-2" style="font-size:0.8rem">
           <template v-if="raDecPreview">→ Alt {{ raDecPreview.altDeg.toFixed(1) }}°, Az {{ raDecPreview.azDeg.toFixed(1) }}°</template>
           <template v-else-if="!moduleLocation">this telescope module did not report an observer location — preview unavailable</template>
@@ -391,7 +557,7 @@ const trackBodySchema = computed(
           class="btn btn-primary btn-sm w-100"
           :disabled="!!commandRunning[`${currentModule.jid}:move_radec`] || !permitted('move_radec')"
           :title="permitted('move_radec') ? undefined : NOT_PERMITTED_TITLE"
-          @click="runCommand(currentModule, 'IPointingRaDec', 'move_radec')"
+          @click="moveRaDec(currentModule)"
         >
           <span v-if="commandRunning[`${currentModule.jid}:move_radec`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
           Move
@@ -399,32 +565,6 @@ const trackBodySchema = computed(
         <div v-if="commandErrors[`${currentModule.jid}:move_radec`]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
           {{ commandErrors[`${currentModule.jid}:move_radec`] }}
         </div>
-
-        <template v-if="currentModule.interfaces['IOffsetsRaDec']">
-          <hr class="my-3" />
-          <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Offset</div>
-          <ModuleStateCard
-            v-if="currentModule.interfaces['IOffsetsRaDec']?.state"
-            :jid="currentModule.jid"
-            interface-name="IOffsetsRaDec"
-            :version="currentModule.interfaces['IOffsetsRaDec']!.version"
-            title="Current offset"
-          />
-          <ParamForm v-model="paramValues.set_offsets_radec" :fields="offsetsRaDecSchema!.params" :enums="{}" />
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm w-100"
-            :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_radec`] || !permitted('set_offsets_radec')"
-            :title="permitted('set_offsets_radec') ? undefined : NOT_PERMITTED_TITLE"
-            @click="runCommand(currentModule, 'IOffsetsRaDec', 'set_offsets_radec')"
-          >
-            <span v-if="commandRunning[`${currentModule.jid}:set_offsets_radec`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
-            Offset
-          </button>
-          <div v-if="commandErrors[`${currentModule.jid}:set_offsets_radec`]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
-            {{ commandErrors[`${currentModule.jid}:set_offsets_radec`] }}
-          </div>
-        </template>
       </template>
 
       <!-- Alt/Az -->
@@ -448,45 +588,13 @@ const trackBodySchema = computed(
         <div v-if="commandErrors[`${currentModule.jid}:move_altaz`]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
           {{ commandErrors[`${currentModule.jid}:move_altaz`] }}
         </div>
-
-        <template v-if="currentModule.interfaces['IOffsetsAltAz']">
-          <hr class="my-3" />
-          <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Offset</div>
-          <ModuleStateCard
-            v-if="currentModule.interfaces['IOffsetsAltAz']?.state"
-            :jid="currentModule.jid"
-            interface-name="IOffsetsAltAz"
-            :version="currentModule.interfaces['IOffsetsAltAz']!.version"
-            title="Current offset"
-          />
-          <ParamForm v-model="paramValues.set_offsets_altaz" :fields="offsetsAltAzSchema!.params" :enums="{}" />
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm w-100"
-            :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_altaz`] || !permitted('set_offsets_altaz')"
-            :title="permitted('set_offsets_altaz') ? undefined : NOT_PERMITTED_TITLE"
-            @click="runCommand(currentModule, 'IOffsetsAltAz', 'set_offsets_altaz')"
-          >
-            <span v-if="commandRunning[`${currentModule.jid}:set_offsets_altaz`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
-            Offset
-          </button>
-          <div v-if="commandErrors[`${currentModule.jid}:set_offsets_altaz`]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
-            {{ commandErrors[`${currentModule.jid}:set_offsets_altaz`] }}
-          </div>
-        </template>
       </template>
 
       <!-- Tracking: mode / rate / named body -->
       <template v-else-if="activeSection === 'tracking'">
         <template v-if="currentModule.interfaces['ITrackingMode']">
           <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Mode</div>
-          <ModuleStateCard
-            v-if="currentModule.interfaces['ITrackingMode']?.state"
-            :jid="currentModule.jid"
-            interface-name="ITrackingMode"
-            :version="currentModule.interfaces['ITrackingMode']!.version"
-            title="Current mode"
-          />
+          <StatusRow v-if="trackingModeFields.length > 0" :fields="trackingModeFields" class="mb-2" />
           <ParamForm v-model="paramValues.set_tracking_mode" :fields="trackingModeSchema!.params" :enums="trackingModeEnums" />
           <button
             type="button"
@@ -506,13 +614,7 @@ const trackBodySchema = computed(
         <template v-if="currentModule.interfaces['ITrackingRate']">
           <hr v-if="currentModule.interfaces['ITrackingMode']" class="my-3" />
           <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Rate</div>
-          <ModuleStateCard
-            v-if="currentModule.interfaces['ITrackingRate']?.state"
-            :jid="currentModule.jid"
-            interface-name="ITrackingRate"
-            :version="currentModule.interfaces['ITrackingRate']!.version"
-            title="Current rate"
-          />
+          <StatusRow v-if="trackingRateFields.length > 0" :fields="trackingRateFields" class="mb-2" />
           <ParamForm v-model="paramValues.set_tracking_rate" :fields="trackingRateSchema!.params" :enums="{}" />
           <button
             type="button"
@@ -547,6 +649,51 @@ const trackBodySchema = computed(
             {{ commandErrors[`${currentModule.jid}:track_body`] }}
           </div>
         </template>
+      </template>
+    </div>
+
+    <!-- Offsets — independent of the RA/Dec vs Alt/Az tab above (see
+         telescopewidget.py's groupEquatorialOffsets/groupHorizontalOffsets,
+         each shown purely by capability, not by which move-frame tab is
+         active — a module implementing both shows both, always). See #35. -->
+    <div v-if="currentModule.interfaces['IOffsetsRaDec'] || currentModule.interfaces['IOffsetsAltAz']" class="pyobs-card mt-2">
+      <template v-if="currentModule.interfaces['IOffsetsRaDec']">
+        <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">RA/Dec offset</div>
+        <StatusRow v-if="raDecOffsetFields.length > 0" :fields="raDecOffsetFields" class="mb-2" />
+        <ParamForm v-model="paramValues.set_offsets_radec" :fields="offsetsRaDecSchema!.params" :enums="{}" />
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm w-100"
+          :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_radec`] || !permitted('set_offsets_radec')"
+          :title="permitted('set_offsets_radec') ? undefined : NOT_PERMITTED_TITLE"
+          @click="runCommand(currentModule, 'IOffsetsRaDec', 'set_offsets_radec')"
+        >
+          <span v-if="commandRunning[`${currentModule.jid}:set_offsets_radec`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
+          Offset
+        </button>
+        <div v-if="commandErrors[`${currentModule.jid}:set_offsets_radec`]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
+          {{ commandErrors[`${currentModule.jid}:set_offsets_radec`] }}
+        </div>
+      </template>
+
+      <template v-if="currentModule.interfaces['IOffsetsAltAz']">
+        <hr v-if="currentModule.interfaces['IOffsetsRaDec']" class="my-3" />
+        <div class="text-muted mb-1 text-uppercase" style="font-size:0.65rem; letter-spacing:.06em">Alt/Az offset</div>
+        <StatusRow v-if="altAzOffsetFields.length > 0" :fields="altAzOffsetFields" class="mb-2" />
+        <ParamForm v-model="paramValues.set_offsets_altaz" :fields="offsetsAltAzSchema!.params" :enums="{}" />
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm w-100"
+          :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_altaz`] || !permitted('set_offsets_altaz')"
+          :title="permitted('set_offsets_altaz') ? undefined : NOT_PERMITTED_TITLE"
+          @click="runCommand(currentModule, 'IOffsetsAltAz', 'set_offsets_altaz')"
+        >
+          <span v-if="commandRunning[`${currentModule.jid}:set_offsets_altaz`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
+          Offset
+        </button>
+        <div v-if="commandErrors[`${currentModule.jid}:set_offsets_altaz`]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
+          {{ commandErrors[`${currentModule.jid}:set_offsets_altaz`] }}
+        </div>
       </template>
     </div>
   </div>
