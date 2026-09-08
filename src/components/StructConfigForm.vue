@@ -23,6 +23,7 @@ import {
   type ConfigFieldSchemaWire,
   type WireType,
 } from '@/pyobs-codec'
+import { humanizeParamName } from '@/utils/paramLabel'
 
 const props = defineProps<{
   fields: Record<string, ConfigFieldSchemaWire>
@@ -58,7 +59,7 @@ function pathFor(name: string): string {
     <template v-for="[name, f] in visibleEntries" :key="name">
       <!-- nested object with a known schema: recurse -->
       <div v-if="f.type === 'object' && f.nested" class="pyobs-card mb-2">
-        <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ name }}</div>
+        <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ humanizeParamName(name) }}</div>
         <p v-if="f.description" class="text-secondary mb-2" style="font-size:0.7rem">{{ f.description }}</p>
         <StructConfigForm v-model="values" :fields="f.nested" :path="`${pathFor(name)}.`" :show-expert="showExpert" />
       </div>
@@ -67,13 +68,13 @@ function pathFor(name: string): string {
            schema to build an editor from; round-trips unchanged (see file
            header), just flagged here rather than silently vanishing -->
       <div v-else-if="f.type === 'object'" class="mb-2">
-        <div class="text-muted mb-1" style="font-size:0.8rem">{{ name }} <span class="text-secondary" style="font-size:0.7rem">(not editable here)</span></div>
+        <div class="text-muted mb-1" style="font-size:0.8rem">{{ humanizeParamName(name) }} <span class="text-secondary" style="font-size:0.7rem">(not editable here)</span></div>
       </div>
 
       <!-- scalar/enum leaf field -->
       <div v-else class="mb-2">
         <div class="d-flex align-items-baseline gap-2 mb-1">
-          <label class="form-label mb-0 text-muted" style="font-size:0.8rem">{{ name }}</label>
+          <label class="form-label mb-0 text-muted" style="font-size:0.8rem">{{ humanizeParamName(name) }}</label>
           <span class="text-secondary" style="font-size:0.7rem">
             {{ formatWireType(wireTypeFor(name, f)) }}
             <span v-if="f.unit">({{ f.unit }})</span>
