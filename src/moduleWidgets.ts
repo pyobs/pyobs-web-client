@@ -13,6 +13,9 @@ import CoolingView from '@/views/CoolingView.vue'
 import FocuserView from '@/views/FocuserView.vue'
 import FiltersView from '@/views/FiltersView.vue'
 import TemperaturesView from '@/views/TemperaturesView.vue'
+import SpectrographView from '@/views/SpectrographView.vue'
+import VideoView from '@/views/VideoView.vue'
+import VideoGrabView from '@/views/VideoGrabView.vue'
 
 // The module-grouped drill-down's registry — see
 // specs/plans/2026-09-06-module-page-rework.md. Resolves which widget component(s) a given
@@ -74,6 +77,15 @@ export const MODULE_WIDGETS: ModuleWidgetEntry[] = [
     component: TemperaturesView,
     sidebarPreferred: true,
   },
+  {
+    interfaceName: 'ISpectrograph',
+    routeName: 'spectrograph',
+    label: interfaceLabel('ISpectrograph'),
+    icon: 'bi-graph-up',
+    component: SpectrographView,
+  },
+  { interfaceName: 'IVideo', routeName: 'video-live', label: 'Live View', icon: 'bi-camera-video', component: VideoView },
+  { interfaceName: 'IVideo', routeName: 'video-grab', label: 'FITS Image', icon: 'bi-image', component: VideoGrabView },
 ]
 
 function matchesForModule(mod: DeepReadonly<Pick<PyobsModule, 'interfaces'>>): ModuleWidgetEntry[] {
