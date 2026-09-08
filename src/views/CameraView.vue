@@ -27,10 +27,8 @@ import { useVfsConfig } from '@/composables/useVfsConfig'
 import { allMethodsPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import {
   defaultParamValue,
-  enumOptions,
   hasUnsupportedField,
   paramValueFromString,
-  unwrapOptional,
   type CommandSchema,
   type FieldSchema,
 } from '@/pyobs-codec'
@@ -120,6 +118,83 @@ const settingsGroups = computed<SettingsGroup[]>(() => {
   })
 })
 
+// IBinning.capabilities = BinningCapabilities(binnings: list[Binning]) — when
+// a module publishes it, the binning group renders a single dropdown of
+// valid x/y pairs instead of the generic two-number-input fallback (issue #41).
+type Binning = { x: number; y: number }
+function binningOptions(capabilities: Record<string, unknown> | undefined): Binning[] | undefined {
+  const binnings = capabilities?.binnings as Binning[] | undefined
+  return binnings && binnings.length > 0 ? binnings : undefined
+}
+
+const binningSelection = computed({
+  get: () => `${settingsParams.value['x']}x${settingsParams.value['y']}`,
+  set: (val: string) => {
+    const [x, y] = val.split('x')
+    settingsParams.value = { ...settingsParams.value, x: x ?? '1', y: y ?? '1' }
+    resetWindowToFullFrame()
+  },
+})
+
+// IWindow.capabilities = WindowCapabilities(full_frame_x/y/width/height) —
+// the only bound pyobs-core publishes is the unbinned full-frame size, so
+// the binned max is derived here the same way pyobs-gui's camerawidget.py
+// _do_set_full_frame() does: full_frame_size / binning (verified against
+// that reference implementation for issue #43 — pyobs-core exposes no
+// separate binned-max field). Binning changes reset the window to full
+// frame at the new scale rather than trying to rescale an existing crop
+// that may no longer fit — camerawidget.py does the same, wiring
+// comboBinning.currentTextChanged straight to set_full_frame().
+type WindowFullFrame = { x: number; y: number; width: number; height: number }
+function windowFullFrame(capabilities: Record<string, unknown> | undefined): WindowFullFrame | undefined {
+  const caps = capabilities as Partial<Record<'full_frame_x' | 'full_frame_y' | 'full_frame_width' | 'full_frame_height', number>> | undefined
+  const { full_frame_x, full_frame_y, full_frame_width, full_frame_height } = caps ?? {}
+  if (
+    typeof full_frame_x !== 'number' ||
+    typeof full_frame_y !== 'number' ||
+    typeof full_frame_width !== 'number' ||
+    typeof full_frame_height !== 'number'
+  ) {
+    return undefined
+  }
+  return { x: full_frame_x, y: full_frame_y, width: full_frame_width, height: full_frame_height }
+}
+
+const currentBinning = computed(() => {
+  const x = Number(settingsParams.value['x'])
+  const y = Number(settingsParams.value['y'])
+  return { x: x > 0 ? x : 1, y: y > 0 ? y : 1 }
+})
+
+const windowLimits = computed(() => {
+  const group = settingsGroups.value.find((g) => g.key === 'window')
+  const full = windowFullFrame(group?.capabilities)
+  if (!full) return undefined
+  const bin = currentBinning.value
+  const maxWidth = Math.floor(full.width / bin.x)
+  const maxHeight = Math.floor(full.height / bin.y)
+  return {
+    left: { min: 0, max: maxWidth },
+    top: { min: 0, max: maxHeight },
+    width: { min: 0, max: maxWidth },
+    height: { min: 0, max: maxHeight },
+  }
+})
+
+function resetWindowToFullFrame() {
+  const group = settingsGroups.value.find((g) => g.key === 'window')
+  const full = windowFullFrame(group?.capabilities)
+  if (!full) return
+  const bin = currentBinning.value
+  settingsParams.value = {
+    ...settingsParams.value,
+    left: String(full.x),
+    top: String(full.y),
+    width: String(Math.floor(full.width / bin.x)),
+    height: String(Math.floor(full.height / bin.y)),
+  }
+}
+
 // Above-FitsCanvas groups: set before every Expose. Everything else (window,
 // binning, image format, gain) renders below — touched far less often.
 const TOP_GROUP_KEYS = ['exposureTime', 'imageType']
@@ -128,35 +203,42 @@ const bottomSettingsGroups = computed(() => settingsGroups.value.filter((g) => !
 
 const settingsParams = ref<Record<string, string>>({})
 
-// defaultParamValue() leaves required enum fields blank ('—' in the
-// <select>) and required numbers at '0' — fine for Shell, where a human
-// always reviews params before Execute, but Expose is meant to work with no
-// Settings-panel visit at all. Both bit us live: a blank required enum
-// (IImageFormat.set_image_format's fmt) gets rejected server-side ("'' is
-// not a valid ImageFormat"), and IWindow's width/height defaulting to '0'
+// defaultParamValue() already seeds required numbers/enums/bools with a
+// real value (see #42) — needed here because, unlike Shell where a human
+// reviews params before Execute, Expose is meant to work with no
+// Settings-panel visit at all, so every required field must resolve to
+// something the server will accept, not a blank/zero guess. Window and
+// binning go further and use the module's actually-advertised capabilities
+// instead of a generic guess (IWindow's width/height defaulting to '0'
 // crashed grab_data() with a zero-size-array error deep in DummyCamera's
-// image generation. Neither reflects the module's actual current value
-// (that would need subscribing to each interface's state, matching
-// pyobs-gui's camerawidget.py _init() — not done here, left for a
-// follow-up if these guessed defaults prove confusing in practice); a
-// guessed-but-valid default beats a value the server can't accept at all.
-function seedFieldValue(group: SettingsGroup, field: FieldSchema): string {
-  const caps = group.capabilities as Record<string, number> | undefined
-  if (group.key === 'window' && caps) {
-    const capField = { left: 'full_frame_x', top: 'full_frame_y', width: 'full_frame_width', height: 'full_frame_height' }[field.name]
-    if (capField && typeof caps[capField] === 'number') return String(caps[capField])
+// image generation) — still not the module's actual *current* value (that
+// would need subscribing to each interface's state, matching pyobs-gui's
+// camerawidget.py _init() — not done here, left for a follow-up if these
+// guessed defaults prove confusing in practice).
+function seedFieldValue(groups: SettingsGroup[], group: SettingsGroup, field: FieldSchema): string {
+  if (group.key === 'window') {
+    const full = windowFullFrame(group.capabilities)
+    if (full) {
+      const binningGroup = groups.find((g) => g.key === 'binning')
+      const bin = binningOptions(binningGroup?.capabilities)?.[0] ?? { x: 1, y: 1 }
+      if (field.name === 'left') return String(full.x)
+      if (field.name === 'top') return String(full.y)
+      if (field.name === 'width') return String(Math.floor(full.width / bin.x))
+      if (field.name === 'height') return String(Math.floor(full.height / bin.y))
+    }
   }
-  if (group.key === 'binning' && (field.name === 'x' || field.name === 'y')) return '1'
+  if (group.key === 'binning' && (field.name === 'x' || field.name === 'y')) {
+    const first = binningOptions(group.capabilities)?.[0]
+    return first ? String(first[field.name]) : '1'
+  }
 
-  const base = defaultParamValue(field.type)
-  if (base !== '' || unwrapOptional(field.type).optional) return base
-  return enumOptions(field.type, group.enums)[0] ?? ''
+  return defaultParamValue(field.type, group.enums)
 }
 
 watch(
   settingsGroups,
   (groups) => {
-    settingsParams.value = Object.fromEntries(groups.flatMap((g) => g.fields.map((f) => [f.name, seedFieldValue(g, f)])))
+    settingsParams.value = Object.fromEntries(groups.flatMap((g) => g.fields.map((f) => [f.name, seedFieldValue(groups, g, f)])))
   },
   { immediate: true },
 )
@@ -294,8 +376,36 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
 
     <div v-if="bottomSettingsGroups.length > 0" class="pyobs-card">
       <div v-for="group in bottomSettingsGroups" :key="group.key" class="mb-2">
-        <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ group.title }}</div>
-        <ParamForm v-model="settingsParams" :fields="group.fields" :enums="group.enums" compact :testid="`camera-settings-${group.key}`" />
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <div class="text-muted fw-semibold" style="font-size:0.75rem">{{ group.title }}</div>
+          <button
+            v-if="group.key === 'window' && windowFullFrame(group.capabilities)"
+            type="button"
+            class="btn btn-outline-secondary btn-sm py-0 px-1"
+            style="font-size:0.7rem"
+            :data-testid="`camera-settings-window-full-frame`"
+            @click="resetWindowToFullFrame"
+          >
+            Full frame
+          </button>
+        </div>
+        <select
+          v-if="group.key === 'binning' && binningOptions(group.capabilities)"
+          v-model="binningSelection"
+          class="form-select form-select-sm bg-dark border-secondary text-light"
+          :data-testid="`camera-settings-${group.key}`"
+        >
+          <option v-for="b in binningOptions(group.capabilities)" :key="`${b.x}x${b.y}`" :value="`${b.x}x${b.y}`">{{ b.x }}x{{ b.y }}</option>
+        </select>
+        <ParamForm
+          v-else
+          v-model="settingsParams"
+          :fields="group.fields"
+          :enums="group.enums"
+          :limits="group.key === 'window' ? windowLimits : undefined"
+          compact
+          :testid="`camera-settings-${group.key}`"
+        />
       </div>
     </div>
   </div>
