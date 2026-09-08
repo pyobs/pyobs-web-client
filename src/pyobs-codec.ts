@@ -300,15 +300,19 @@ export function hasUnsupportedField(fields: FieldSchema[]): boolean {
 // option, so it needs 'true' rather than ''). Non-optional number params
 // also need a real seeded value: an empty number input must never silently
 // become nil for a non-optional int32/float64 param (pyobs-core rejects it,
-// e.g. a "%d format: a real number is required, not NoneType" crash).
+// e.g. a "%d format: a real number is required, not NoneType" crash). A
+// required enum has the same problem — ParamForm's <select> has no empty
+// option for it (see issue #42), and pyobs-core rejects '' outright (e.g.
+// "'' is not a valid ImageFormat"), so it needs its first real option.
 // Optional params of any kind default to '' regardless — that's the one
 // value paramValueFromString maps to null, the correct default for "unset".
-export function defaultParamValue(type: WireType): string {
+export function defaultParamValue(type: WireType, enums: Record<string, string[]> = {}): string {
   const { inner, optional } = unwrapOptional(type)
   if (optional) return ''
   const kind = widgetKind(inner)
   if (kind === 'bool') return 'true'
   if (kind === 'number') return '0'
+  if (kind === 'enum') return enumOptions(type, enums)[0] ?? ''
   return ''
 }
 

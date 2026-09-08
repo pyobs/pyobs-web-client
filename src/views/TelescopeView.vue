@@ -316,7 +316,8 @@ watch(
     if (mod) {
       for (const { iface, name } of COMMANDS) {
         const schema = mod.interfaces[iface]?.commands[name] as CommandSchema | undefined
-        if (schema) next[name] = Object.fromEntries(schema.params.map((p) => [p.name, defaultParamValue(p.type)]))
+        const enums = mod.interfaces[iface]?.enums as Record<string, string[]> | undefined
+        if (schema) next[name] = Object.fromEntries(schema.params.map((p) => [p.name, defaultParamValue(p.type, enums)]))
       }
     }
     paramValues.value = next

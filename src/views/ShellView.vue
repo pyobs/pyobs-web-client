@@ -85,7 +85,7 @@ watch(selectedJid, () => {
 })
 
 watch(currentCommandSchema, (schema) => {
-  paramValues.value = Object.fromEntries((schema?.params ?? []).map((p) => [p.name, defaultParamValue(p.type)]))
+  paramValues.value = Object.fromEntries((schema?.params ?? []).map((p) => [p.name, defaultParamValue(p.type, currentEnums.value)]))
 })
 
 function formatParamForDisplay(value: unknown): string {

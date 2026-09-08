@@ -778,10 +778,12 @@ async function autoReconnect(savedJid: string, savedPassword: string): Promise<v
     // First attempt failed — wait 1 s (ejabberd cleaning up old session) then retry.
     await new Promise((r) => setTimeout(r, 1000))
     if (sessionStorage.getItem(SESSION_JID_KEY)) {
-      await connect(savedJid, savedPassword, true).catch(() => {
-        // Both attempts failed; let the user log in manually.
-        status.value = 'disconnected'
-      })
+      // Final attempt: not silent, so connect() itself sets status/errorMessage
+      // on failure exactly like a manual login attempt would (issue #47) — the
+      // user landing back on the login screen needs to know why the session
+      // was dropped (expired/invalid session vs. server unreachable vs. wrong
+      // password), not just that it was.
+      await connect(savedJid, savedPassword, false).catch(() => {})
     }
   }
 }
