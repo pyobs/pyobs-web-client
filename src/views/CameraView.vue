@@ -5,14 +5,19 @@
 // NewImageEvent subscription) — see the plan's Phase 2 section for why.
 //
 // Phase 3: dedicated IWindow/IBinning/IGain/IImageFormat/IExposureTime/
-// IImageType controls, in a collapsible "Settings" panel — reverses the
-// plan's original call to leave these to Shell (see Phase 3's "Scope
-// reversal" note). Deliberately *not* one Set button per interface
-// (considered and rejected — six independent buttons is worse UX than one
-// combined form): settings are staged in one form and applied, one RPC per
-// configured interface, immediately before each grab_data() call, matching
-// pyobs-gui's camerawidget.py:271-330. IFilters deferred — no live module
-// implements it to verify against yet.
+// IImageType controls — reverses the plan's original call to leave these to
+// Shell (see Phase 3's "Scope reversal" note). Deliberately *not* one Set
+// button per interface (considered and rejected — six independent buttons is
+// worse UX than one combined form): settings are staged in one form and
+// applied, one RPC per configured interface, immediately before each
+// grab_data() call, matching pyobs-gui's camerawidget.py:271-330. IFilters
+// deferred — no live module implements it to verify against yet.
+//
+// Settings groups show/hide individually by capability, same as pyobs-gui's
+// camerawidget.py open() (setVisible per QGroupBox) — no single hide-everything
+// toggle (see issue #33). Split display-only into two spots around FitsCanvas:
+// exposure time + image type above it (set before every Expose), the rest
+// (window, binning, image format, gain) below it (touched far less often).
 //
 // One tab on ModulePageView.vue now, not its own routed page — see
 // specs/plans/module-page-rework.md.
@@ -115,7 +120,12 @@ const settingsGroups = computed<SettingsGroup[]>(() => {
   })
 })
 
-const showSettings = ref(false)
+// Above-FitsCanvas groups: set before every Expose. Everything else (window,
+// binning, image format, gain) renders below — touched far less often.
+const TOP_GROUP_KEYS = ['exposureTime', 'imageType']
+const topSettingsGroups = computed(() => settingsGroups.value.filter((g) => TOP_GROUP_KEYS.includes(g.key)))
+const bottomSettingsGroups = computed(() => settingsGroups.value.filter((g) => !TOP_GROUP_KEYS.includes(g.key)))
+
 const settingsParams = ref<Record<string, string>>({})
 
 // defaultParamValue() leaves required enum fields blank ('—' in the
@@ -254,25 +264,14 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
       </div>
     </div>
 
-    <div v-if="settingsGroups.length > 0" class="mt-2">
-      <button
-        type="button"
-        class="btn btn-outline-secondary btn-sm"
-        @click="showSettings = !showSettings"
-      >
-        <i class="bi" :class="showSettings ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
-        Settings
-      </button>
-
-      <div v-if="showSettings" class="pyobs-card mt-2">
-        <div v-for="group in settingsGroups" :key="group.key" class="mb-2">
-          <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ group.title }}</div>
-          <ParamForm v-model="settingsParams" :fields="group.fields" :enums="group.enums" :testid="`camera-settings-${group.key}`" />
-        </div>
+    <div v-if="topSettingsGroups.length > 0" class="pyobs-card">
+      <div v-for="group in topSettingsGroups" :key="group.key" class="mb-2">
+        <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ group.title }}</div>
+        <ParamForm v-model="settingsParams" :fields="group.fields" :enums="group.enums" :testid="`camera-settings-${group.key}`" />
       </div>
     </div>
 
-    <div class="d-flex gap-2 mt-2">
+    <div class="d-flex gap-2">
       <button
         type="button"
         class="btn btn-primary btn-sm flex-fill"
@@ -285,12 +284,19 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
       </button>
     </div>
 
-    <div v-if="errors[currentModule.jid]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
+    <div v-if="errors[currentModule.jid]" class="alert alert-danger py-1 px-2 mb-0" style="font-size:0.8rem">
       {{ errors[currentModule.jid] }}
     </div>
 
-    <div class="pyobs-card mt-2">
+    <div class="pyobs-card">
       <FitsCanvas :data="images[currentModule.jid] ?? null" />
+    </div>
+
+    <div v-if="bottomSettingsGroups.length > 0" class="pyobs-card">
+      <div v-for="group in bottomSettingsGroups" :key="group.key" class="mb-2">
+        <div class="text-muted fw-semibold mb-1" style="font-size:0.75rem">{{ group.title }}</div>
+        <ParamForm v-model="settingsParams" :fields="group.fields" :enums="group.enums" compact :testid="`camera-settings-${group.key}`" />
+      </div>
     </div>
   </div>
 </template>
