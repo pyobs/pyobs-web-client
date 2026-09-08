@@ -151,7 +151,7 @@ function removeConnection() {
           v-model="labelInput"
           type="text"
           class="form-control form-control-sm bg-dark border-secondary text-light mb-2"
-          placeholder="e.g. MONET SAAO"
+          placeholder="e.g. My Telescope"
         />
         <div class="text-muted" style="font-size:0.75rem">Shown instead of the JID in the connections list and recent logins.</div>
       </div>

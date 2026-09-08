@@ -158,7 +158,7 @@ async function confirmAdd() {
           v-model="newLabel"
           type="text"
           class="form-control bg-dark border-secondary text-light mb-2"
-          placeholder="e.g. MONET SAAO"
+          placeholder="e.g. My Telescope"
         />
         <label class="form-label text-muted" style="font-size:0.78rem">Password <span class="text-secondary">(optional)</span></label>
         <input
