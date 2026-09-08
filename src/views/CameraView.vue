@@ -289,6 +289,8 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
       {{ errors[currentModule.jid] }}
     </div>
 
-    <FitsCanvas v-if="images[currentModule.jid]" class="mt-2" :data="images[currentModule.jid]!" />
+    <div class="pyobs-card mt-2">
+      <FitsCanvas :data="images[currentModule.jid] ?? null" />
+    </div>
   </div>
 </template>

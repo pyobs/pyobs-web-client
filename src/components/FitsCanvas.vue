@@ -45,6 +45,7 @@ watch(() => props.data, render, { immediate: true })
   <div>
     <div v-if="loading" class="text-body-secondary small">Decoding…</div>
     <div v-if="error" class="alert alert-danger py-1 px-2 mb-0" style="font-size:0.8rem">{{ error }}</div>
-    <canvas ref="canvasRef" style="max-width:100%; height:auto"></canvas>
+    <div v-if="!data && !loading && !error" class="text-muted" style="font-size:0.8rem">No image yet.</div>
+    <canvas v-show="data" ref="canvasRef" style="max-width:100%; height:auto"></canvas>
   </div>
 </template>

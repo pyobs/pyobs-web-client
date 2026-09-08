@@ -224,6 +224,12 @@ into one wrong generic guess.
   default-range tick labels), so the card is now always present and fills in as data arrives, no
   layout shift. Live-verified on a freshly-restarted, genuinely-empty `acquisition` module: renders
   a blank `DistanceChart` and a clean placeholder `OffsetScatterChart`, no crash, no visual break.
+- **`CameraView.vue`'s grabbed-image display had the same pop-in problem — found and fixed
+  2026-09-08 (live feedback: "same as before: always keep a widget for the image, so that nothing
+  pops up from nowhere").** `FitsCanvas.vue` was only mounted (`v-if="images[jid]"`) after a
+  successful Expose. Now always rendered inside its own `pyobs-card`, and `FitsCanvas.vue` itself
+  shows "No image yet." in place of the canvas when `data` is `null` rather than a blank/undersized
+  canvas — same "always visible, empty until data arrives" pattern as the charts above.
 - **Every action-button row and multi-field input row sat narrow and left-aligned instead of
   spanning full width — found and fixed 2026-09-08 (live feedback: "wouldn't it be nice if the three
   input fields fill the full width together? also the two buttons below?", confirmed against the

@@ -1,11 +1,16 @@
 # Plan: auxiliary interface widgets (attach-or-standalone)
 
-Status: proposed, not yet implemented. **Revised 2026-09-07**: this plan's "attach dynamically"
-design was derived independently before `specs/design/pyobs-gui-widget-parity.md` existed, and
-arrived at a mechanism close to but not identical with `pyobs-gui`'s actual one
-(`sidebar_preferred` + the promotion rule, `pyobs-gui/specs/2026-08-28-gui-main-vs-sidebar-widgets.md`
-D1). Read that doc first — the terminology and exact demotion/promotion condition below are now
-aligned to it; the four widget components and their `pyobs-gui` references are unchanged.
+Status: in progress. **Revised 2026-09-07**: this plan's "attach dynamically" design was derived
+independently before `specs/design/pyobs-gui-widget-parity.md` existed, and arrived at a mechanism
+close to but not identical with `pyobs-gui`'s actual one (`sidebar_preferred` + the promotion rule,
+`pyobs-gui/specs/2026-08-28-gui-main-vs-sidebar-widgets.md` D1). Read that doc first — the
+terminology and exact demotion/promotion condition below are now aligned to it; the four widget
+components and their `pyobs-gui` references are unchanged. **2026-09-08: `ICooling`/`CoolingView.vue`
+done and live-verified** (`camera@localhost`'s `DummyCamera`, which implements both `ICamera` and
+`ICooling` — confirms the demotion case: no separate "Cooling" tab appears, the widget renders in
+`ModulePageView.vue`'s shared section instead, in its own labelled box; `set_cooling` RPC verified
+working end-to-end, state updated live). `FiltersWidget.vue`/`TemperaturesWidget.vue`/
+`FocuserWidget.vue` and the promoted-to-main (standalone-module) case remain to be built/verified.
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -152,21 +157,24 @@ promotion exists). This is strictly simpler than what this section originally pr
 
 ## Implementation checklist (revised 2026-09-07 for the corrected mechanism)
 
-- [ ] `CoolingWidget.vue`, `FiltersWidget.vue`, `TemperaturesWidget.vue`,
-      `FocuserWidget.vue`.
-- [ ] `ModuleWidgetEntry` gains `sidebarPreferred?: boolean` (`src/moduleWidgets.ts`); register the
-      four widgets above with it set.
-- [ ] `widgetsForModule`'s promotion logic: split matches into non-preferred/preferred, return
-      non-preferred if non-empty else every preferred match — port `collect_main_widgets`'s rule
-      (`pyobs-gui/pyobs_gui/mainwindow.py`) exactly, don't re-derive it.
-- [ ] `ModulePageView.vue`'s shared-section slot renders the demoted (`sidebarPreferred`, not
-      promoted) matches for the current module — no separate `AuxiliaryWidgets.vue`/`AuxiliaryView.vue`
-      needed, the existing per-module page already hosts this.
-- [ ] Manual verification against `DummyCamera` (already implements
-      `ICooling`; a live test config could add `IFilters`/`IFocuser` to
-      exercise the demoted-to-shared-section case) *and* at least one module implementing
-      only an auxiliary interface with no camera/telescope, to exercise the promoted-to-main
-      (standalone) case.
+- [x] `CoolingView.vue` (named to match this app's `*View.vue` convention, not the plan's original
+      `CoolingWidget.vue`) — 2026-09-08.
+- [ ] `FiltersView.vue`, `TemperaturesView.vue`, `FocuserView.vue`.
+- [x] `ModuleWidgetEntry` gains `sidebarPreferred?: boolean` (`src/moduleWidgets.ts`) — 2026-09-08.
+      `ICooling` registered with it set; register the remaining three the same way once built.
+- [x] `widgetsForModule`'s promotion logic — 2026-09-08: split matches into non-preferred/preferred,
+      return non-preferred if non-empty else every preferred match, per `collect_main_widgets`
+      (`pyobs-gui/pyobs_gui/mainwindow.py`). A new `sidebarWidgetsForModule` returns the demoted half.
+- [x] `ModulePageView.vue`'s shared-section slot — 2026-09-08: renders the demoted matches, each in
+      its own labelled box (icon + uppercase interface label) so it's visually clear the content
+      belongs to a separate attached widget, not the active tab. No separate
+      `AuxiliaryWidgets.vue`/`AuxiliaryView.vue` needed, confirmed.
+- [x] Manual verification against `DummyCamera` (`camera@localhost`) — 2026-09-08: demoted-to-
+      shared-section case confirmed (`ICamera` + `ICooling`, one "Camera" tab, no separate "Cooling"
+      tab, `CoolingView` renders in the shared section); `set_cooling` RPC confirmed working
+      end-to-end, live state update observed (setpoint/power changed after Apply).
+- [ ] Still needed: a module implementing only an auxiliary interface with no camera/telescope, to
+      exercise the promoted-to-main (standalone) case — no such fixture exists yet.
 
 ## References
 
