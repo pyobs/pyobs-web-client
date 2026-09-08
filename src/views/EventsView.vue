@@ -87,7 +87,7 @@ function backToEventStep() {
 }
 
 watch(currentEventSchema, (schema) => {
-  paramValues.value = Object.fromEntries((schema?.fields ?? []).map((f) => [f.name, defaultParamValue(f.type)]))
+  paramValues.value = Object.fromEntries((schema?.fields ?? []).map((f) => [f.name, defaultParamValue(f.type, schema?.enums)]))
 })
 
 function toggleSender() {
