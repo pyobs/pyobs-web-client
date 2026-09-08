@@ -7,6 +7,7 @@
 // replacement for tableSchedule's literal column layout.
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
+import { useConfirmArm } from '@/composables/useConfirmArm'
 import type { CommandSchema } from '@/pyobs-codec'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 
@@ -28,6 +29,9 @@ const props = defineProps<{ jid: string }>()
 const { modules, executeMethod, subscribeState } = useXmpp()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
+
+// Tap-to-arm confirmation — see #38.
+const confirmArm = useConfirmArm()
 
 function permitted(method: string): boolean {
   return isMethodPermitted(currentModule.value?.permittedMethods, method)
@@ -164,13 +168,14 @@ async function reschedule() {
       <button
         v-if="currentModule.interfaces['IRunnable']"
         type="button"
-        class="btn btn-outline-secondary btn-sm flex-fill"
+        class="btn btn-sm flex-fill"
+        :class="confirmArm.isArmed('reschedule') ? 'btn-warning' : 'btn-outline-secondary'"
         :disabled="rescheduling || !permitted('run')"
         :title="permitted('run') ? undefined : NOT_PERMITTED_TITLE"
-        @click="reschedule"
+        @click="confirmArm.confirm('reschedule') && reschedule()"
       >
         <span v-if="rescheduling" class="spinner-border spinner-border-sm me-1" role="status"></span>
-        Reschedule
+        {{ confirmArm.isArmed('reschedule') ? 'Confirm reschedule?' : 'Reschedule' }}
       </button>
     </div>
 

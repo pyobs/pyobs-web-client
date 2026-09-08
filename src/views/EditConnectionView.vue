@@ -5,6 +5,7 @@ import { useXmpp } from '@/composables/useXmpp'
 import { useServerConfig } from '@/composables/useServerConfig'
 import { useVfsConfig, type VfsEndpoint } from '@/composables/useVfsConfig'
 import { useCredentialStore } from '@/composables/useCredentialStore'
+import { useConfirmArm } from '@/composables/useConfirmArm'
 
 const props = defineProps<{ jid: string }>()
 const emit = defineEmits<{ back: []; 'save-and-connect': [jid: string] }>()
@@ -125,6 +126,9 @@ async function save() {
   }
   editingIndex.value = null
 }
+
+// Tap-to-arm confirmation — see #38.
+const confirmArm = useConfirmArm()
 
 function removeConnection() {
   forgetLogin(props.jid)
@@ -259,11 +263,15 @@ function removeConnection() {
     <button
       type="button"
       class="btn w-100 d-flex align-items-center justify-content-center gap-2"
-      style="height:48px; border-radius:12px; border:1px solid #dc354540; color:#ff8f8f"
-      @click="removeConnection"
+      :style="
+        confirmArm.isArmed('remove')
+          ? 'height:48px; border-radius:12px; border:1px solid #dc3545; background:#dc354520; color:#ff8f8f'
+          : 'height:48px; border-radius:12px; border:1px solid #dc354540; color:#ff8f8f'
+      "
+      @click="confirmArm.confirm('remove') && removeConnection()"
     >
       <i class="bi bi-trash"></i>
-      Remove connection
+      {{ confirmArm.isArmed('remove') ? 'Confirm remove?' : 'Remove connection' }}
     </button>
   </div>
 </template>

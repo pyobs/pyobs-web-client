@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, watchEffect, onUnmounted, type DeepReadonly } from 'vue'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
+import { useConfirmArm } from '@/composables/useConfirmArm'
 import type { CommandSchema } from '@/pyobs-codec'
 import { defaultParamValue, paramValueFromString } from '@/pyobs-codec'
 import {
@@ -22,6 +23,11 @@ import ParamForm from '@/components/ParamForm.vue'
 // specs/plans/2026-09-06-module-page-rework.md.
 const props = defineProps<{ jid: string }>()
 const { modules, executeMethod, subscribeState } = useXmpp()
+
+// Tap-to-arm confirmation for motion/offset commands — see #38. Deliberately
+// not applied to Stop (an emergency-stop-shaped action shouldn't get extra
+// friction) or to reading/tab-switching.
+const confirmArm = useConfirmArm()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
 
@@ -463,23 +469,25 @@ const trackBodySchema = computed(
     <div class="d-flex gap-2 mt-2">
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm flex-fill"
+        class="btn btn-sm flex-fill"
+        :class="confirmArm.isArmed('init') ? 'btn-warning' : 'btn-outline-secondary'"
         :disabled="!!motionRunning[currentModule.jid] || !permitted('init')"
         :title="permitted('init') ? undefined : NOT_PERMITTED_TITLE"
-        @click="runMotion(currentModule, 'init')"
+        @click="confirmArm.confirm('init') && runMotion(currentModule, 'init')"
       >
         <span v-if="motionRunning[currentModule.jid] === 'init'" class="spinner-border spinner-border-sm me-1" role="status"></span>
-        Init
+        {{ confirmArm.isArmed('init') ? 'Confirm Init?' : 'Init' }}
       </button>
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm flex-fill"
+        class="btn btn-sm flex-fill"
+        :class="confirmArm.isArmed('park') ? 'btn-warning' : 'btn-outline-secondary'"
         :disabled="!!motionRunning[currentModule.jid] || !permitted('park')"
         :title="permitted('park') ? undefined : NOT_PERMITTED_TITLE"
-        @click="runMotion(currentModule, 'park')"
+        @click="confirmArm.confirm('park') && runMotion(currentModule, 'park')"
       >
         <span v-if="motionRunning[currentModule.jid] === 'park'" class="spinner-border spinner-border-sm me-1" role="status"></span>
-        Park
+        {{ confirmArm.isArmed('park') ? 'Confirm Park?' : 'Park' }}
       </button>
       <button
         type="button"
@@ -554,13 +562,14 @@ const trackBodySchema = computed(
         </div>
         <button
           type="button"
-          class="btn btn-primary btn-sm w-100"
+          class="btn btn-sm w-100"
+          :class="confirmArm.isArmed('move_radec') ? 'btn-warning' : 'btn-primary'"
           :disabled="!!commandRunning[`${currentModule.jid}:move_radec`] || !permitted('move_radec')"
           :title="permitted('move_radec') ? undefined : NOT_PERMITTED_TITLE"
-          @click="moveRaDec(currentModule)"
+          @click="confirmArm.confirm('move_radec') && moveRaDec(currentModule)"
         >
           <span v-if="commandRunning[`${currentModule.jid}:move_radec`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
-          Move
+          {{ confirmArm.isArmed('move_radec') ? 'Confirm move?' : 'Move' }}
         </button>
         <div v-if="commandErrors[`${currentModule.jid}:move_radec`]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
           {{ commandErrors[`${currentModule.jid}:move_radec`] }}
@@ -577,13 +586,14 @@ const trackBodySchema = computed(
         </div>
         <button
           type="button"
-          class="btn btn-primary btn-sm w-100"
+          class="btn btn-sm w-100"
+          :class="confirmArm.isArmed('move_altaz') ? 'btn-warning' : 'btn-primary'"
           :disabled="!!commandRunning[`${currentModule.jid}:move_altaz`] || !permitted('move_altaz')"
           :title="permitted('move_altaz') ? undefined : NOT_PERMITTED_TITLE"
-          @click="runCommand(currentModule, 'IPointingAltAz', 'move_altaz')"
+          @click="confirmArm.confirm('move_altaz') && runCommand(currentModule, 'IPointingAltAz', 'move_altaz')"
         >
           <span v-if="commandRunning[`${currentModule.jid}:move_altaz`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
-          Move
+          {{ confirmArm.isArmed('move_altaz') ? 'Confirm move?' : 'Move' }}
         </button>
         <div v-if="commandErrors[`${currentModule.jid}:move_altaz`]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
           {{ commandErrors[`${currentModule.jid}:move_altaz`] }}
@@ -663,13 +673,14 @@ const trackBodySchema = computed(
         <ParamForm v-model="paramValues.set_offsets_radec" :fields="offsetsRaDecSchema!.params" :enums="{}" />
         <button
           type="button"
-          class="btn btn-outline-secondary btn-sm w-100"
+          class="btn btn-sm w-100"
+          :class="confirmArm.isArmed('set_offsets_radec') ? 'btn-warning' : 'btn-outline-secondary'"
           :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_radec`] || !permitted('set_offsets_radec')"
           :title="permitted('set_offsets_radec') ? undefined : NOT_PERMITTED_TITLE"
-          @click="runCommand(currentModule, 'IOffsetsRaDec', 'set_offsets_radec')"
+          @click="confirmArm.confirm('set_offsets_radec') && runCommand(currentModule, 'IOffsetsRaDec', 'set_offsets_radec')"
         >
           <span v-if="commandRunning[`${currentModule.jid}:set_offsets_radec`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
-          Offset
+          {{ confirmArm.isArmed('set_offsets_radec') ? 'Confirm offset?' : 'Offset' }}
         </button>
         <div v-if="commandErrors[`${currentModule.jid}:set_offsets_radec`]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
           {{ commandErrors[`${currentModule.jid}:set_offsets_radec`] }}
@@ -683,13 +694,14 @@ const trackBodySchema = computed(
         <ParamForm v-model="paramValues.set_offsets_altaz" :fields="offsetsAltAzSchema!.params" :enums="{}" />
         <button
           type="button"
-          class="btn btn-outline-secondary btn-sm w-100"
+          class="btn btn-sm w-100"
+          :class="confirmArm.isArmed('set_offsets_altaz') ? 'btn-warning' : 'btn-outline-secondary'"
           :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_altaz`] || !permitted('set_offsets_altaz')"
           :title="permitted('set_offsets_altaz') ? undefined : NOT_PERMITTED_TITLE"
-          @click="runCommand(currentModule, 'IOffsetsAltAz', 'set_offsets_altaz')"
+          @click="confirmArm.confirm('set_offsets_altaz') && runCommand(currentModule, 'IOffsetsAltAz', 'set_offsets_altaz')"
         >
           <span v-if="commandRunning[`${currentModule.jid}:set_offsets_altaz`]" class="spinner-border spinner-border-sm me-1" role="status"></span>
-          Offset
+          {{ confirmArm.isArmed('set_offsets_altaz') ? 'Confirm offset?' : 'Offset' }}
         </button>
         <div v-if="commandErrors[`${currentModule.jid}:set_offsets_altaz`]" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:0.8rem">
           {{ commandErrors[`${currentModule.jid}:set_offsets_altaz`] }}
