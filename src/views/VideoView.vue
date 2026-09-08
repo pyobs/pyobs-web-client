@@ -34,8 +34,23 @@ watch(
     streamTokenProtected.value = false
     streamError.value = ''
 
-    const mjpegPath = (mod?.capabilities['IVideo']?.mjpeg as string | null | undefined) ?? null
-    if (!mod || !mjpegPath) return
+    if (!mod) return
+
+    // Distinguish "hasn't published capabilities at all" from "published them,
+    // but this module has no mjpeg stream" from "VFS not configured" — these
+    // used to collapse into one generic "No video stream available", which
+    // made a real capabilities-publishing bug (see #39) indistinguishable
+    // from a module that genuinely doesn't support a live stream.
+    const videoCaps = mod.capabilities['IVideo'] as { mjpeg?: string | null } | undefined
+    if (!videoCaps) {
+      streamError.value = "This module hasn't published its IVideo capabilities yet."
+      return
+    }
+    const mjpegPath = videoCaps.mjpeg ?? null
+    if (!mjpegPath) {
+      streamError.value = 'This module does not support a live MJPEG stream.'
+      return
+    }
 
     const resolved = await resolveVfsEndpoint(mjpegPath)
     if (!resolved) {
