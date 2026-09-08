@@ -272,10 +272,10 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
       </div>
     </div>
 
-    <div class="d-flex flex-wrap gap-2 mt-2">
+    <div class="d-flex gap-2 mt-2">
       <button
         type="button"
-        class="btn btn-primary btn-sm"
+        class="btn btn-primary btn-sm flex-fill"
         :disabled="!!exposing[currentModule.jid] || hasUnsupportedSettingsField || !exposePermitted"
         :title="exposePermitted ? undefined : NOT_PERMITTED_TITLE"
         @click="expose(currentModule)"

@@ -19,13 +19,12 @@ Implementation plans, checklist-style.
   plus secure-storage-backing the token. **done**
 - [2026-08-03-acl-aware-shell-forms.md](2026-08-03-acl-aware-shell-forms.md) — proactive per-method ACL
   gating, project-wide (not Shell itself, which stays ungated). **done**
-
-## Not finished
-
 - [2026-09-07-widget-visual-redesign.md](2026-09-07-widget-visual-redesign.md) — curated per-interface
   status rows + shared card/button design system for the 7 module widgets, closing out
-  mobile-first-redesign's unresolved visual-language gap. **proposed, highest priority** — ahead of
-  new-feature work below until the shipped widgets match the mockup.
+  mobile-first-redesign's unresolved visual-language gap. **done** 2026-09-08 — landed, then a full
+  round of corrections (found by cross-checking against `pyobs-gui` and live-testing) and further
+  live-feedback fixes (chart legibility, matching widths, always-visible plots, full-width rows),
+  all live-verified; see the plan's own "Corrections" section.
 - [2026-08-04-auxiliary-interface-widgets.md](2026-08-04-auxiliary-interface-widgets.md) — auxiliary interface widgets
   (Cooling/Filters/Temperatures/Focuser, `sidebar_preferred`-promoted or demoted to the shared
   section). **proposed**, revised 2026-09-07 to match `pyobs-gui`'s actual mechanism
@@ -45,4 +44,4 @@ Implementation plans, checklist-style.
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** (Phase 1 done;
   Dashboard + Connections/Login + the ModulePage drill-down migrated; per-widget compact visual
-  passes still outstanding)
+  passes done via `2026-09-07-widget-visual-redesign.md`)

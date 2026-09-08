@@ -5,7 +5,8 @@
 // charting library dependency, same shape as TimeSeriesChart.vue but
 // focus-keyed instead of time-keyed, and no zoom/pan (a focus curve is
 // small, fixed-range data).
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
+import { useResponsiveCanvas } from '@/composables/useResponsiveCanvas'
 
 const props = defineProps<{
   points: { focus: number; value: number }[]
@@ -14,7 +15,6 @@ const props = defineProps<{
 
 const canvasRef = ref<HTMLCanvasElement>()
 
-const WIDTH = 600
 const HEIGHT = 220
 const PADDING = { top: 10, right: 10, bottom: 24, left: 36 }
 
@@ -24,6 +24,7 @@ function draw() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
+  const WIDTH = canvasWidth.value
   const dpr = window.devicePixelRatio || 1
   canvas.width = WIDTH * dpr
   canvas.height = HEIGHT * dpr
@@ -122,10 +123,10 @@ function draw() {
   }
 }
 
+const canvasWidth = useResponsiveCanvas(canvasRef, draw)
 watch(() => [props.points, props.result], draw, { deep: true })
-onMounted(draw)
 </script>
 
 <template>
-  <canvas ref="canvasRef" :width="WIDTH" :height="HEIGHT" style="max-width:100%; height:auto; width:100%"></canvas>
+  <canvas ref="canvasRef" :width="600" :height="HEIGHT" style="max-width:100%; height:auto; width:100%"></canvas>
 </template>

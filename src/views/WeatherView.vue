@@ -103,8 +103,7 @@ onUnmounted(() => stopSubscription?.())
           class="pyobs-card"
         >
           <TimeSeriesChart
-            v-if="(history[reading.sensor]?.length ?? 0) > 1"
-            :points="history[reading.sensor]!"
+            :points="history[reading.sensor] ?? []"
             :label="weatherSensorLabel(reading.sensor)"
             :unit="reading.unit"
           />

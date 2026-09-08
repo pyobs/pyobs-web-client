@@ -82,9 +82,16 @@ watch(
 
 onUnmounted(() => stopSubscription?.())
 
-const runningStatusFields = computed(() => {
+// Semantic status, matching pyobs-gui's acquisitionwidget.py labelStatus exactly (not a generic
+// running/idle boolean) — see specs/plans/2026-09-07-widget-visual-redesign.md's corrections.
+const statusFields = computed(() => {
   if (runningStateValue.value === undefined) return []
-  return [{ label: 'Running', value: runningStateValue.value.running ? 'Yes' : 'No' }]
+  const value = runningStateValue.value.running
+    ? 'Acquiring...'
+    : acquisitionStateValue.value?.result
+      ? 'Acquired.'
+      : 'Idle'
+  return [{ label: 'Status', value }]
 })
 
 const distancePoints = computed(
@@ -167,12 +174,12 @@ async function abort() {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <StatusRow v-if="runningStatusFields.length > 0" :fields="runningStatusFields" />
+    <StatusRow v-if="statusFields.length > 0" :fields="statusFields" />
 
-    <div class="d-flex flex-wrap align-items-end gap-2 mt-2">
+    <div class="d-flex gap-2 mt-2">
       <button
         type="button"
-        class="btn btn-primary btn-sm"
+        class="btn btn-primary btn-sm flex-fill"
         :disabled="running || !permitted('acquire_target')"
         :title="permitted('acquire_target') ? undefined : NOT_PERMITTED_TITLE"
         @click="run"
@@ -182,7 +189,7 @@ async function abort() {
       </button>
       <button
         type="button"
-        class="btn btn-outline-danger btn-sm"
+        class="btn btn-outline-danger btn-sm flex-fill"
         :disabled="!runningStateValue?.running || !permitted('abort')"
         :title="permitted('abort') ? undefined : NOT_PERMITTED_TITLE"
         @click="abort"
@@ -208,15 +215,11 @@ async function abort() {
       <div v-if="resultOffsetLabel">{{ resultOffsetLabel }}</div>
     </div>
 
-    <div v-if="distancePoints.length > 0" class="d-flex flex-column gap-2 mt-2">
+    <div class="d-flex flex-column gap-2 mt-2">
       <div class="pyobs-card">
         <DistanceChart :points="distancePoints" />
       </div>
-      <div
-        v-if="scatterPoints.length > 0"
-        class="pyobs-card"
-        style="max-width:340px"
-      >
+      <div class="pyobs-card">
         <OffsetScatterChart :points="scatterPoints" :x-label="scatterAxisLabels.x" :y-label="scatterAxisLabels.y" />
       </div>
     </div>

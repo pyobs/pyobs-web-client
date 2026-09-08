@@ -130,14 +130,14 @@ watch(
 
 onUnmounted(() => stopSubscription?.())
 
-const runningStatusFields = computed(() => {
-  if (runningStateValue.value === undefined) return []
-  return [{ label: 'Running', value: runningStateValue.value.running ? 'Yes' : 'No' }]
-})
-
 const loopStateLabel = computed(() => {
   if (!runningStateValue.value?.running) return 'Stopped'
   return guidingStateValue.value?.loop_closed ? 'Closed loop' : 'Open loop'
+})
+
+const statusFields = computed(() => {
+  if (runningStateValue.value === undefined) return []
+  return [{ label: 'Loop', value: loopStateLabel.value }]
 })
 
 const magnitudeHistory = computed(() => offsetHistory.value.map((o) => Math.sqrt(o.lon ** 2 + o.lat ** 2)))
@@ -187,12 +187,12 @@ async function setExposureTime() {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
-    <StatusRow v-if="runningStatusFields.length > 0" :fields="runningStatusFields" />
+    <StatusRow v-if="statusFields.length > 0" :fields="statusFields" />
 
-    <div class="d-flex flex-wrap align-items-end gap-2 mt-2">
+    <div class="d-flex gap-2 mt-2">
       <button
         type="button"
-        class="btn btn-primary btn-sm"
+        class="btn btn-primary btn-sm flex-fill"
         :disabled="!!runningStateValue?.running || !permitted('start')"
         :title="permitted('start') ? undefined : NOT_PERMITTED_TITLE"
         @click="start"
@@ -201,38 +201,34 @@ async function setExposureTime() {
       </button>
       <button
         type="button"
-        class="btn btn-outline-danger btn-sm"
+        class="btn btn-outline-danger btn-sm flex-fill"
         :disabled="!runningStateValue?.running || !permitted('stop')"
         :title="permitted('stop') ? undefined : NOT_PERMITTED_TITLE"
         @click="stop"
       >
         Stop
       </button>
+    </div>
 
-      <div>
-        <label class="text-muted d-block" style="font-size:0.7rem">Exposure time (s)</label>
-        <div class="d-flex gap-1">
-          <input
-            v-model.number="exposureTimeInput"
-            type="number"
-            step="any"
-            class="form-control form-control-sm"
-            style="width:100px"
-          />
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm"
-            :disabled="!permitted('set_exposure_time')"
-            :title="permitted('set_exposure_time') ? undefined : NOT_PERMITTED_TITLE"
-            @click="setExposureTime"
-          >
-            Set
-          </button>
-        </div>
-      </div>
-
-      <div class="rounded-2 px-2 py-1 fw-semibold" style="font-size:0.8rem">
-        {{ loopStateLabel }}
+    <div class="mt-2">
+      <label class="text-muted d-block" style="font-size:0.7rem">Exposure time (s)</label>
+      <div class="d-flex gap-1">
+        <input
+          v-model.number="exposureTimeInput"
+          type="number"
+          step="any"
+          class="form-control form-control-sm"
+          style="width:100px"
+        />
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm"
+          :disabled="!permitted('set_exposure_time')"
+          :title="permitted('set_exposure_time') ? undefined : NOT_PERMITTED_TITLE"
+          @click="setExposureTime"
+        >
+          Set
+        </button>
       </div>
     </div>
 
@@ -240,11 +236,11 @@ async function setExposureTime() {
       {{ error }}
     </div>
 
-    <div v-if="offsetHistory.length > 0" class="d-flex flex-column gap-2 mt-2">
+    <div class="d-flex flex-column gap-2 mt-2">
       <div class="pyobs-card">
         <OffsetMagnitudeChart :values="magnitudeHistory" />
       </div>
-      <div class="pyobs-card" style="max-width:340px">
+      <div class="pyobs-card">
         <OffsetScatterChart :points="scatterPoints" :x-label="scatterAxisLabels.x" :y-label="scatterAxisLabels.y" />
       </div>
     </div>

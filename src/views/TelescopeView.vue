@@ -327,10 +327,10 @@ const trackBodySchema = computed(
   <div v-if="currentModule" class="d-flex flex-column gap-2">
     <StatusRow v-if="motionStatusFields.length > 0" :fields="motionStatusFields" />
 
-    <div class="d-flex flex-wrap gap-2 mt-2">
+    <div class="d-flex gap-2 mt-2">
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-outline-secondary btn-sm flex-fill"
         :disabled="!!motionRunning[currentModule.jid] || !permitted('init')"
         :title="permitted('init') ? undefined : NOT_PERMITTED_TITLE"
         @click="runMotion(currentModule, 'init')"
@@ -340,7 +340,7 @@ const trackBodySchema = computed(
       </button>
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-outline-secondary btn-sm flex-fill"
         :disabled="!!motionRunning[currentModule.jid] || !permitted('park')"
         :title="permitted('park') ? undefined : NOT_PERMITTED_TITLE"
         @click="runMotion(currentModule, 'park')"
@@ -350,7 +350,7 @@ const trackBodySchema = computed(
       </button>
       <button
         type="button"
-        class="btn btn-outline-danger btn-sm"
+        class="btn btn-outline-danger btn-sm flex-fill"
         :disabled="!!motionRunning[currentModule.jid] || !permitted('stop_motion')"
         :title="permitted('stop_motion') ? undefined : NOT_PERMITTED_TITLE"
         @click="runMotion(currentModule, 'stop_motion')"
@@ -365,12 +365,12 @@ const trackBodySchema = computed(
     </div>
 
     <div v-if="applicableSections.length > 0" class="pyobs-card mt-2">
-      <div v-if="applicableSections.length > 1" class="d-flex flex-wrap gap-2 mb-3">
+      <div v-if="applicableSections.length > 1" class="d-flex gap-2 mb-3">
         <button
           v-for="section in applicableSections"
           :key="section"
           type="button"
-          class="btn btn-sm"
+          class="btn btn-sm flex-fill"
           :class="activeSection === section ? 'btn-primary' : 'btn-outline-secondary'"
           @click="activeSection = section"
         >
@@ -388,7 +388,7 @@ const trackBodySchema = computed(
         </div>
         <button
           type="button"
-          class="btn btn-primary btn-sm"
+          class="btn btn-primary btn-sm w-100"
           :disabled="!!commandRunning[`${currentModule.jid}:move_radec`] || !permitted('move_radec')"
           :title="permitted('move_radec') ? undefined : NOT_PERMITTED_TITLE"
           @click="runCommand(currentModule, 'IPointingRaDec', 'move_radec')"
@@ -413,7 +413,7 @@ const trackBodySchema = computed(
           <ParamForm v-model="paramValues.set_offsets_radec" :fields="offsetsRaDecSchema!.params" :enums="{}" />
           <button
             type="button"
-            class="btn btn-outline-secondary btn-sm"
+            class="btn btn-outline-secondary btn-sm w-100"
             :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_radec`] || !permitted('set_offsets_radec')"
             :title="permitted('set_offsets_radec') ? undefined : NOT_PERMITTED_TITLE"
             @click="runCommand(currentModule, 'IOffsetsRaDec', 'set_offsets_radec')"
@@ -437,7 +437,7 @@ const trackBodySchema = computed(
         </div>
         <button
           type="button"
-          class="btn btn-primary btn-sm"
+          class="btn btn-primary btn-sm w-100"
           :disabled="!!commandRunning[`${currentModule.jid}:move_altaz`] || !permitted('move_altaz')"
           :title="permitted('move_altaz') ? undefined : NOT_PERMITTED_TITLE"
           @click="runCommand(currentModule, 'IPointingAltAz', 'move_altaz')"
@@ -462,7 +462,7 @@ const trackBodySchema = computed(
           <ParamForm v-model="paramValues.set_offsets_altaz" :fields="offsetsAltAzSchema!.params" :enums="{}" />
           <button
             type="button"
-            class="btn btn-outline-secondary btn-sm"
+            class="btn btn-outline-secondary btn-sm w-100"
             :disabled="!!commandRunning[`${currentModule.jid}:set_offsets_altaz`] || !permitted('set_offsets_altaz')"
             :title="permitted('set_offsets_altaz') ? undefined : NOT_PERMITTED_TITLE"
             @click="runCommand(currentModule, 'IOffsetsAltAz', 'set_offsets_altaz')"
@@ -490,7 +490,7 @@ const trackBodySchema = computed(
           <ParamForm v-model="paramValues.set_tracking_mode" :fields="trackingModeSchema!.params" :enums="trackingModeEnums" />
           <button
             type="button"
-            class="btn btn-outline-secondary btn-sm"
+            class="btn btn-outline-secondary btn-sm w-100"
             :disabled="!!commandRunning[`${currentModule.jid}:set_tracking_mode`] || !permitted('set_tracking_mode')"
             :title="permitted('set_tracking_mode') ? undefined : NOT_PERMITTED_TITLE"
             @click="runCommand(currentModule, 'ITrackingMode', 'set_tracking_mode')"
@@ -516,7 +516,7 @@ const trackBodySchema = computed(
           <ParamForm v-model="paramValues.set_tracking_rate" :fields="trackingRateSchema!.params" :enums="{}" />
           <button
             type="button"
-            class="btn btn-outline-secondary btn-sm"
+            class="btn btn-outline-secondary btn-sm w-100"
             :disabled="!!commandRunning[`${currentModule.jid}:set_tracking_rate`] || !permitted('set_tracking_rate')"
             :title="permitted('set_tracking_rate') ? undefined : NOT_PERMITTED_TITLE"
             @click="runCommand(currentModule, 'ITrackingRate', 'set_tracking_rate')"
@@ -535,7 +535,7 @@ const trackBodySchema = computed(
           <ParamForm v-model="paramValues.track_body" :fields="trackBodySchema!.params" :enums="{}" />
           <button
             type="button"
-            class="btn btn-outline-secondary btn-sm"
+            class="btn btn-outline-secondary btn-sm w-100"
             :disabled="!!commandRunning[`${currentModule.jid}:track_body`] || !permitted('track_body')"
             :title="permitted('track_body') ? undefined : NOT_PERMITTED_TITLE"
             @click="runCommand(currentModule, 'IPointingBody', 'track_body')"

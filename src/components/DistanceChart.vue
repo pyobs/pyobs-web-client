@@ -3,7 +3,8 @@
 // (arcsec) per attempt number. Same no-charting-library shape as
 // OffsetMagnitudeChart.vue, but x is the attempt number rather than a plain
 // sample index. See specs/plans/acquisition-widget.md.
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
+import { useResponsiveCanvas } from '@/composables/useResponsiveCanvas'
 
 const props = defineProps<{
   points: { attempt: number; distance: number }[]
@@ -11,7 +12,6 @@ const props = defineProps<{
 
 const canvasRef = ref<HTMLCanvasElement>()
 
-const WIDTH = 600
 const HEIGHT = 160
 const PADDING = { top: 10, right: 10, bottom: 20, left: 36 }
 
@@ -21,6 +21,7 @@ function draw() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
+  const WIDTH = canvasWidth.value
   const dpr = window.devicePixelRatio || 1
   canvas.width = WIDTH * dpr
   canvas.height = HEIGHT * dpr
@@ -95,10 +96,10 @@ function draw() {
   ctx.fillText(`attempt ${attempts[attempts.length - 1]}`, plotRight, plotTop + 10)
 }
 
+const canvasWidth = useResponsiveCanvas(canvasRef, draw)
 watch(() => props.points, draw, { deep: true })
-onMounted(draw)
 </script>
 
 <template>
-  <canvas ref="canvasRef" :width="WIDTH" :height="HEIGHT" style="max-width:100%; height:auto; width:100%"></canvas>
+  <canvas ref="canvasRef" :width="600" :height="HEIGHT" style="max-width:100%; height:auto; width:100%"></canvas>
 </template>

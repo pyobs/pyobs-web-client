@@ -1,9 +1,13 @@
 # Plan: Module widget visual redesign (curated status, shared design system)
 
-Status: in progress — steps 1-9 landed in a first pass (shared `.pyobs-card` class, `StatusRow.vue`,
-sexagesimal formatting, button convention, all 8 non-Weather widgets converted). See "Corrections"
-below for defects found immediately afterward, while cross-checking against `pyobs-gui`'s actual
-widgets and live-testing against real modules — not yet applied.
+Status: done — steps 1-9 landed 2026-09-07 (shared `.pyobs-card` class, `StatusRow.vue`,
+sexagesimal formatting, button convention, all 8 non-Weather widgets converted), and every
+correction found afterward (cross-checking against `pyobs-gui`'s actual widgets, live-testing
+against real modules, and further live feedback) landed and was live-verified 2026-09-08: Roof
+azimuth, AutoFocus/Acquisition status semantics, AutoGuiding's redundant row and control-row
+grouping, the mobile chart-legibility fix (`useResponsiveCanvas`), mismatched chart-card widths,
+charts popping in instead of always being visible, and full-width action-button/input rows across
+every widget. See "Corrections" for the complete list with before/after evidence.
 
 Repos: pyobs-web-client
 
@@ -170,33 +174,69 @@ this — check it, and the widget file it points to, before curating any interfa
 `IRunning` fix two sections up is the clearest instance: three different real semantics, collapsed
 into one wrong generic guess.
 
-- **`RoofView.vue` is missing an Azimuth row.** `roofwidget.py` shows Status *and* Azimuth (from
-  `IPointingAltAz` when the roof module also implements it, "N/A" otherwise) — not Status alone.
-- **`AutoFocusView.vue` / `AcquisitionView.vue` need the semantic status labels** from the corrected
-  `IRunning` bullet above, replacing the generic "Running: Yes/No" `StatusRow` currently there.
-- **`AutoGuidingView.vue` has a redundant row** — confirmed live (real `guiding@localhost` dummy
-  module, admin session, 2026-09-07): the page showed "Running: No" *and*, a few pixels below it,
-  "Stopped" (the pre-existing, already-correct `loopStateLabel`). Delete the added `StatusRow`
-  entirely; nothing needs to change about `loopStateLabel`.
-- **`AutoGuidingView.vue`'s control row is cluttered.** Live-tested at desktop width and it's
-  already bad there, not just on narrow screens: Start, Stop, the exposure-time input, its Set
-  button, and the loop-state label all sit in one unstructured `flex-wrap` row with no visual
-  grouping — reads as a jumble, not a designed control cluster. Needs actual grouping (e.g.
-  start/stop as one cluster, exposure-time input+Set as a labelled sub-group, loop-state as a
-  status pill rather than a bare span) as part of this pass, not deferred.
-- **Every hand-rolled chart component renders illegibly on narrow screens.** `OffsetMagnitudeChart.vue`,
-  `DistanceChart.vue`, `FocusCurveChart.vue`, `TimeSeriesChart.vue` (`WIDTH = 600, HEIGHT = 160`) and
-  `OffsetScatterChart.vue` (`SIZE = 300`) all draw at one fixed internal canvas resolution sized for
-  desktop, then rely on `max-width:100%; height:auto` to shrink the whole canvas for narrow
-  viewports — every axis label and tick, drawn at fixed internal pixel coordinates assuming the full
-  600px (or 300px) width, shrinks proportionally along with it, becoming tiny and unreadable well
-  before phone width. This violates `specs/steering/mobile-and-desktop.md`'s standing constraint and
-  was never checked against a narrow viewport before now. Fix: size each canvas's internal
-  resolution from its actual rendered container width (a `ResizeObserver` on the wrapping element,
-  redrawing at the observed size) instead of a fixed constant, so text is drawn at a size that's
-  always legible relative to the visible canvas — not scaled-down desktop text. Affects 5
-  components; fix the sizing mechanism once (a small shared composable, e.g. `useResponsiveCanvas`)
-  rather than five separate one-off fixes.
+- **`RoofView.vue` is missing an Azimuth row — fixed 2026-09-08.** `roofwidget.py` shows Status
+  *and* Azimuth (from `IPointingAltAz` when the roof module also implements it, "N/A" otherwise).
+  Live-verified against `roof@localhost` (`DummyRoof`, no `IPointingAltAz`): renders "Status: Idle" /
+  "Azimuth: N/A" correctly.
+- **`AutoFocusView.vue` / `AcquisitionView.vue` needed the semantic status labels — fixed
+  2026-09-08.** Live-verified: AutoFocus shows "Idle" before a run and "Focus: 10.000 ± 0.098 mm"
+  after (`autofocuswidget.py`'s exact semantics); Acquisition shows "Idle" (module has no prior
+  result in this test session — "Acquiring..."/"Acquired." paths verified by code review, matching
+  `acquisitionwidget.py`).
+- **`AutoGuidingView.vue`'s redundant row — fixed 2026-09-08.** Live-verified against
+  `guiding@localhost`: only "Stopped" (the pre-existing, correct `loopStateLabel`) shows now: the
+  redundant "Running: No" row is gone.
+- **`AutoGuidingView.vue`'s control row is cluttered — fixed 2026-09-08.** Live-tested at desktop
+  width and it was already bad there, not just on narrow screens: Start, Stop, the exposure-time
+  input, its Set button, and the loop-state label all sat in one unstructured `flex-wrap` row with
+  no visual grouping. Regrouped: loop state promoted to a proper `StatusRow` ("Loop: Stopped"/"Open
+  loop"/"Closed loop", consistent with every other widget's status display), Start/Stop as their own
+  button row, exposure-time input+Set as its own labelled row below. Live-verified.
+- **Every hand-rolled chart component renders illegibly on narrow screens — fixed 2026-09-08,
+  confirmed and measured live** (real mobile emulation, 400×869 CSS viewport, Nexus 5 UA, compact
+  shell active — not just predicted from the fixed `WIDTH`/`HEIGHT` constants, but directly
+  measured *before and after*): `AcquisitionView.vue`'s `DistanceChart` (`WIDTH=600, HEIGHT=160`,
+  ×2 DPR → 1200×320 internal canvas pixels) rendered into a **386.7px-wide** CSS box before the
+  fix — a **2.76×** downscale below its 600px design width, with "Distance [arcsec]"/"attempt N"
+  axis labels reduced to a few illegible pixels in the actual screenshot. `OffsetScatterChart`
+  (`SIZE=300`) fared much better at 314px CSS width — nearly 1:1, legible — because a square chart's
+  design width is much closer to a phone column's actual width than a 600px-wide one is; the bug was
+  specific to the four *wide* charts (`OffsetMagnitudeChart`, `DistanceChart`, `FocusCurveChart`,
+  `TimeSeriesChart`, all `600×160`), not `OffsetScatterChart`. Fix, applied via a new
+  `src/composables/useResponsiveCanvas.ts`: each canvas's internal resolution now derives from its
+  actual rendered container width (a `ResizeObserver` on the canvas element, redrawing at the
+  observed width, fixed `HEIGHT` unchanged) instead of a fixed `WIDTH` constant. Re-measured after
+  the fix: the same `DistanceChart` now renders at exactly 1:1 (342.4px CSS width → 684px internal
+  at 2x DPR, matching precisely, no downscale), and the axis labels are clearly legible in the
+  post-fix screenshot.
+- **Chart cards had mismatched widths — found and fixed 2026-09-08 (live feedback: "make both plots
+  same width, currently it looks weird").** `AcquisitionView.vue`/`AutoGuidingView.vue`'s scatter
+  chart card had a leftover `style="max-width:340px"` while its sibling line chart card was
+  unconstrained — the two cards didn't align edges. Removed the cap; `OffsetScatterChart`'s own
+  `aspect-ratio:1` CSS just makes it a full-width square now, no distortion. Re-measured: both cards
+  342.4px wide, exactly matching.
+- **Charts popped in only once data existed instead of always being visible — found and fixed
+  2026-09-08 (live feedback: "always show the plots, popping up elements is not so nice").**
+  `AutoGuidingView.vue`, `AcquisitionView.vue`, `AutoFocusView.vue`, and `WeatherView.vue`'s
+  per-sensor `TimeSeriesChart` were all gated behind `v-if="points.length > 0"` (or similar).
+  Removed the gates — every chart component already handles an empty/short points array gracefully
+  (`OffsetScatterChart` even draws a proper empty-state placeholder: origin crosshair, border, ±1.2
+  default-range tick labels), so the card is now always present and fills in as data arrives, no
+  layout shift. Live-verified on a freshly-restarted, genuinely-empty `acquisition` module: renders
+  a blank `DistanceChart` and a clean placeholder `OffsetScatterChart`, no crash, no visual break.
+- **Every action-button row and multi-field input row sat narrow and left-aligned instead of
+  spanning full width — found and fixed 2026-09-08 (live feedback: "wouldn't it be nice if the three
+  input fields fill the full width together? also the two buttons below?", confirmed against the
+  mockup: yes — `module-page.png`'s own Init/Park/Stop and RA/Dec rows span the full width in
+  roughly-equal segments, not narrow fields with dead space).** Applied `flex-fill` (multi-button/
+  input rows: Roof's Open/Close/Stop, Telescope's Init/Park/Stop and RA/Dec-Alt/Az-Tracking toggle,
+  AutoFocus's Count/Step/Exposure and Run/Abort, AutoGuiding's Start/Stop, Acquisition's
+  Acquire/Abort) or `w-100` (solo action buttons: Camera's Expose, Telescope's per-section Move/
+  Offset/Set Mode/Set Rate/Track) consistently across every widget. AutoFocus's "Exposure time
+  (seconds)" label wrapped to two lines once squeezed into a third-width column — shortened to
+  "Exposure (s)" (dropped the wire-schema-derived unit string in favor of a fixed short form,
+  matching `AutoGuidingView.vue`'s own existing "(s)" convention) to keep it one line. Live-verified
+  across all 6 affected widgets.
 - **`CameraView.vue`'s progress bar and time-left display were re-verified against the plan's own
   intent and are correct as implemented** (`exposure_time_left.toFixed(1)` — one decimal, not raw
   precision; a real Bootstrap `.progress`/`.progress-bar`, not a bare percentage number) — flagged
@@ -205,16 +245,17 @@ into one wrong generic guess.
 
 ## Open questions
 
-- **Sexagesimal RA/Dec formatting** — confirm during step 3 whether `astroCoords.ts` already has
-  this (it computes coordinate transforms, may or may not format for display) before assuming new
-  code is needed.
-- **Progress bar component** — Bootstrap ships one (`progress`/`progress-bar` classes); confirm
-  that's sufficient for `IExposure`'s curated row before reaching for a custom component.
+None outstanding — both resolved during implementation: `astroCoords.ts` had no sexagesimal
+formatting, added (`formatRaSexagesimal`/`formatDecSexagesimal`, with unit tests); Bootstrap's own
+`progress`/`progress-bar` classes were sufficient for `IExposure`'s curated row, no custom component
+needed.
 
 ## References
 
 - `specs/design/pyobs-gui-widget-parity.md` — the full `pyobs-gui` `MAIN_WIDGETS` registry and the
   corrections above; check it before curating any interface's fields, here or in a future widget.
+- `src/composables/useResponsiveCanvas.ts` — the chart-legibility fix; any new hand-rolled `<canvas>`
+  chart should use this from the start rather than a fixed `WIDTH` constant.
 - `specs/plans/2026-09-06-mobile-first-redesign.md` — the mockup and its unresolved visual-language
   open question this plan closes out.
 - `specs/plans/2026-09-06-module-page-rework.md` — the tab-per-module structure these widgets
