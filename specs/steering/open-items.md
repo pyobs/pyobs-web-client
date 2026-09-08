@@ -21,14 +21,21 @@ instead of this list for the completed-feature catalog.
   system, full-width action rows, legible mobile charts). Landed, then corrected against a live
   cross-check with `pyobs-gui`'s own widgets and further live-feedback fixes — see that plan's
   "Corrections" section for the full list. No longer blocking new-feature work below.
-- **Four `pyobs-gui` `MAIN_WIDGETS` registry entries have no web-client equivalent at all — now the
-  top of this list, per this session's "get widgets right before adding more" prioritization.**
-  `IVideo` (`specs/plans/2026-09-07-video-widget.md`), `ISpectrograph`
-  (`specs/plans/2026-09-07-spectrograph-widget.md`), `IStructuredConfig`
-  (`specs/plans/2026-09-07-structured-config-widget.md`), `IRobotic`/`IRoboticScheduler`
+- **`IVideo` (`specs/plans/2026-09-07-video-widget.md`), `ISpectrograph`
+  (`specs/plans/2026-09-07-spectrograph-widget.md`), `IRobotic`/`IRoboticScheduler`
   (`specs/plans/2026-09-07-robotic-widgets.md` — flagged there as unusually high mobile value, not
-  just a completeness gap). Full registry + what's built vs. not:
-  `specs/design/pyobs-gui-widget-parity.md`.
+  just a completeness gap) — built 2026-09-08.** Live-verification against real modules is now
+  Tim's own testing pass, not an open web-client task tracked here; issues get filed as that
+  surfaces gaps (see e.g. issue #33, filed this way for the Camera page). Each plan's own "Open
+  questions" section still lists real unresolved technical gaps independent of that pass (e.g.
+  `IVideo`'s bearer-token auth has no token-protected fixture to verify against; `IRobotic`/
+  `IRoboticScheduler` have no test fixture at all yet).
+- **`IStructuredConfig`** (`specs/plans/2026-09-07-structured-config-widget.md`) — **not** in the
+  built-and-verifying group above: only Phase 1 (flat fields) is built. Phases 2 (nested `object`
+  fields) and 3 (basic/expert toggle) are explicitly deferred, and there's no test fixture in
+  `testing/pyobs-gui-configs/xmpp/` at all yet — needed before Phase 2 can be built against a real
+  shape rather than a guessed one. This is genuine remaining implementation work, not just
+  verification. Full registry + what's built vs. not: `specs/design/pyobs-gui-widget-parity.md`.
 - **`IDataSequence`** — plan at `specs/plans/2026-08-03-idatasequence.md`. Depends on
   the Camera page plan (shipped), open question there on how the client
   learns a new image is ready per-grab.

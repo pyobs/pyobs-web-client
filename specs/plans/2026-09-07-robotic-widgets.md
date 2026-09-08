@@ -1,10 +1,11 @@
 # Plan: Robotic + Scheduler widgets (`IRobotic`, `IRoboticScheduler`)
 
-Status: built (`RoboticView.vue`, `ScheduleView.vue`), not yet live-verified — 2026-09-08. No test
-fixture for either interface exists yet (open question below still open). `ScheduleView.vue` also
-picked up `schedulewidget.py`'s Reschedule button (`IRunnable.run`, re-fetching the schedule
-afterward) — present in the actual widget source but not called out in this plan's own summary
-above.
+Status: built (`RoboticView.vue`, `ScheduleView.vue`) — 2026-09-08. Live-verification is now Tim's
+own testing pass rather than an open web-client task tracked here; file an issue for anything it
+turns up. No test fixture for either interface exists yet (open question below still open).
+`ScheduleView.vue` also picked up `schedulewidget.py`'s Reschedule button (`IRunnable.run`,
+re-fetching the schedule afterward) — present in the actual widget source but not called out in
+this plan's own summary above.
 
 Repos: pyobs-web-client (all implementation here)
 

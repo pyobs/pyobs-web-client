@@ -1,6 +1,7 @@
 # Plan: Spectrograph widget (`ISpectrograph`)
 
-Status: built (`SpectrographView.vue`), not yet live-verified — 2026-09-08.
+Status: built (`SpectrographView.vue`) — 2026-09-08. Live-verification is now Tim's own testing
+pass rather than an open web-client task tracked here; file an issue for anything it turns up.
 
 Repos: pyobs-web-client (all implementation here)
 

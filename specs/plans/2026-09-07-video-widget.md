@@ -1,10 +1,11 @@
 # Plan: Video widget (`IVideo` — Live View + FITS Image)
 
-Status: built (`VideoView.vue`, `VideoGrabView.vue`), not yet live-verified — 2026-09-08. No
-token-protected `IVideo` fixture exists yet, so the bearer-token open question below is still
-unresolved (surfaced as a message in the UI rather than guessed at). `videograbwidget.py` also
-references a `comboImageFormat` combo box that doesn't exist in its own `.ui` file — dead code,
-not reproduced in `VideoGrabView.vue`.
+Status: built (`VideoView.vue`, `VideoGrabView.vue`) — 2026-09-08. Live-verification is now Tim's
+own testing pass rather than an open web-client task tracked here; file an issue for anything it
+turns up. No token-protected `IVideo` fixture exists yet, so the bearer-token open question below
+is still unresolved (surfaced as a message in the UI rather than guessed at). `videograbwidget.py`
+also references a `comboImageFormat` combo box that doesn't exist in its own `.ui` file — dead
+code, not reproduced in `VideoGrabView.vue`.
 
 Repos: pyobs-web-client (all implementation here)
 
