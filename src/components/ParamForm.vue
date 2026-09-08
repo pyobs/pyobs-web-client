@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { FieldSchema } from '@/pyobs-codec'
-import { unwrapOptional, widgetKind, enumOptions, formatWireType } from '@/pyobs-codec'
+import { unwrapOptional, widgetKind, enumOptions } from '@/pyobs-codec'
 
-defineProps<{
+const props = defineProps<{
   fields: FieldSchema[]
   enums: Record<string, string[]>
   testid?: string
@@ -10,7 +10,16 @@ defineProps<{
   // groups of short fields (binning/gain/image-format dropdowns) where a
   // stacked layout wastes mobile vertical space. See issue #33.
   compact?: boolean
+  // Per-field min/max for number inputs, keyed by field name — e.g. the
+  // Camera page's window widget bounds left/top/width/height by the
+  // module's advertised full-frame size (see issue #43). Fields not present
+  // here render with no constraint, same as before.
+  limits?: Record<string, { min?: number; max?: number }>
 }>()
+
+function limitFor(name: string): { min?: number; max?: number } {
+  return props.limits?.[name] ?? {}
+}
 
 const paramValues = defineModel<Record<string, string>>({ required: true })
 </script>
@@ -23,10 +32,7 @@ const paramValues = defineModel<Record<string, string>>({ required: true })
           {{ param.name }}
           <span v-if="unwrapOptional(param.type).optional" class="text-secondary" style="font-size:0.7rem">(optional)</span>
         </label>
-        <span class="text-secondary" style="font-size:0.7rem">
-          {{ formatWireType(param.type) }}
-          <span v-if="param.unit">({{ param.unit }})</span>
-        </span>
+        <span v-if="param.unit" class="text-secondary" style="font-size:0.7rem">({{ param.unit }})</span>
       </div>
       <select
         v-if="widgetKind(unwrapOptional(param.type).inner) === 'bool'"
@@ -41,13 +47,15 @@ const paramValues = defineModel<Record<string, string>>({ required: true })
         v-model="paramValues[param.name]"
         class="form-select form-select-sm bg-dark border-secondary text-light"
       >
-        <option value="">—</option>
+        <option v-if="unwrapOptional(param.type).optional" value="">—</option>
         <option v-for="opt in enumOptions(param.type, enums)" :key="opt" :value="opt">{{ opt }}</option>
       </select>
       <input
         v-else-if="widgetKind(unwrapOptional(param.type).inner) !== 'unsupported'"
         v-model="paramValues[param.name]"
         :type="widgetKind(unwrapOptional(param.type).inner) === 'number' ? 'number' : 'text'"
+        :min="widgetKind(unwrapOptional(param.type).inner) === 'number' ? limitFor(param.name).min : undefined"
+        :max="widgetKind(unwrapOptional(param.type).inner) === 'number' ? limitFor(param.name).max : undefined"
         class="form-control form-control-sm bg-dark border-secondary text-light"
       />
       <span v-else class="text-danger" style="font-size:0.75rem">unsupported param type</span>
