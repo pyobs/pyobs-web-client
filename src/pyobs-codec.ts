@@ -152,6 +152,108 @@ export function valueToXml(value: unknown, type: WireType): Element {
   throw new Error(`Cannot encode a value for wire type ${JSON.stringify(type)}`)
 }
 
+// ── encode: a known-shape struct/dict value -> <dict> (set_config and similar) ─
+// valueToXml can't handle a struct/any param because a *command's* wire schema
+// never publishes struct field lists (see the comment above) — but a caller
+// that already knows the field types from another source (e.g.
+// IStructuredConfig's ConfigFieldSchema tree, published via capabilities) can
+// encode precisely, not guess from the JS runtime value alone (which can't
+// distinguish an int-valued float field from a real int field). `fields: null`
+// falls back to a runtime-type guess for a truly opaque/freeform dict blob
+// (pydantic_to_schema's own "dict with no nested schema" case) — the
+// unavoidable case, not the common one.
+export type StructFieldType = 'str' | 'int' | 'float' | 'bool' | 'enum' | { kind: 'object'; fields: StructFields | null }
+export type StructFields = Record<string, StructFieldType>
+
+export function structValueToXml(value: unknown, fields: StructFields): Element {
+  const dictEl = createElement('dict')
+  for (const [name, fieldType] of Object.entries(fields)) {
+    const entry = createElement('entry')
+    const keyEl = createElement('key')
+    const keyValueEl = createElement('string')
+    keyValueEl.textContent = name
+    keyEl.appendChild(keyValueEl)
+    const valEl = createElement('val')
+    valEl.appendChild(structFieldValueToXml((value as Record<string, unknown> | null | undefined)?.[name], fieldType))
+    entry.appendChild(keyEl)
+    entry.appendChild(valEl)
+    dictEl.appendChild(entry)
+  }
+  return dictEl
+}
+
+function structFieldValueToXml(value: unknown, fieldType: StructFieldType): Element {
+  if (value === null || value === undefined) return createElement('nil')
+  if (typeof fieldType === 'object') {
+    return fieldType.fields ? structValueToXml(value, fieldType.fields) : opaqueValueToXml(value)
+  }
+  if (fieldType === 'bool') {
+    const el = createElement('boolean')
+    el.textContent = value ? 'true' : 'false'
+    return el
+  }
+  if (fieldType === 'int') {
+    const el = createElement('int')
+    el.textContent = String(Math.trunc(Number(value)))
+    return el
+  }
+  if (fieldType === 'float') {
+    const el = createElement('double')
+    el.textContent = String(Number(value))
+    return el
+  }
+  // 'str' | 'enum' — enum values are plain strings on the wire, matching valueToXml's own enum case.
+  const el = createElement('string')
+  el.textContent = String(value)
+  return el
+}
+
+// No field-type information at all — the truly-opaque-blob fallback. Guesses
+// int vs. float from the JS runtime value (both are just `number` in JS), the
+// one unavoidable ambiguity here; every other case is unambiguous from the
+// value's own runtime shape.
+function opaqueValueToXml(value: unknown): Element {
+  if (value === null || value === undefined) return createElement('nil')
+  if (typeof value === 'boolean') {
+    const el = createElement('boolean')
+    el.textContent = value ? 'true' : 'false'
+    return el
+  }
+  if (typeof value === 'number') {
+    const el = createElement(Number.isInteger(value) ? 'int' : 'double')
+    el.textContent = String(value)
+    return el
+  }
+  if (Array.isArray(value)) {
+    const el = createElement('items')
+    for (const item of value) {
+      const itemEl = createElement('item')
+      itemEl.appendChild(opaqueValueToXml(item))
+      el.appendChild(itemEl)
+    }
+    return el
+  }
+  if (typeof value === 'object') {
+    const el = createElement('dict')
+    for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+      const entry = createElement('entry')
+      const keyEl = createElement('key')
+      const keyValueEl = createElement('string')
+      keyValueEl.textContent = key
+      keyEl.appendChild(keyValueEl)
+      const valEl = createElement('val')
+      valEl.appendChild(opaqueValueToXml(v))
+      entry.appendChild(keyEl)
+      entry.appendChild(valEl)
+      el.appendChild(entry)
+    }
+    return el
+  }
+  const el = createElement('string')
+  el.textContent = String(value)
+  return el
+}
+
 // ── shared param-form logic (Shell's RPC params, events' send-tool data) ───
 // One codec for "a WireType-typed field driven by a plain string form input"
 // — used for RPC call params (still wrapped via valueToXml for the wire) and

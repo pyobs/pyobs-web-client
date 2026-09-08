@@ -505,6 +505,47 @@ async function executeMethod(fullJid: string, methodName: string, params: unknow
   return { success: true, value: parseRpcReturn(result) }
 }
 
+// Same IQ-building/send/parse shape as executeMethod, for the rare command whose param can't be
+// encoded from its wire schema alone (valueToXml has no case for struct/any — see its own comment)
+// but whose exact shape the *caller* does know from another source (e.g. IStructuredConfig's
+// set_config, whose ConfigFieldSchema tree — from capabilities, not the command schema — fully
+// describes every field). Callers build each param's content Element themselves instead of this
+// function calling valueToXml against the command schema's (here, useless) declared param type.
+async function executeMethodRaw(fullJid: string, methodName: string, paramContents: Element[]): Promise<RpcResult> {
+  if (!connection) throw new Error('Not connected')
+
+  const builder = $iq({ to: fullJid, type: 'set' })
+    .c('query', { xmlns: NS_RPC })
+    .c('methodCall')
+    .c('methodName')
+    .t(methodName)
+    .up()
+    .c('params')
+
+  paramContents.forEach((contentEl) => {
+    const pyobsValue = createNamespacedElement(NS_PYOBS_RPC, 'value')
+    pyobsValue.appendChild(contentEl)
+    builder.c('param').c('value').cnode(pyobsValue).up().up().up()
+  })
+
+  let result: Element
+  try {
+    result = await sendRpcIQ(builder.tree())
+  } catch (err: unknown) {
+    const msg = err instanceof Element
+      ? (err.getElementsByTagName('text')[0]?.textContent ?? 'XMPP error')
+      : String(err)
+    return { success: false, value: msg }
+  }
+
+  const fault = findRpcFault(result)
+  if (fault) {
+    return { success: false, value: fault.message, errorClass: fault.exception }
+  }
+
+  return { success: true, value: parseRpcReturn(result) }
+}
+
 // Publishes a fabricated event under this client's own JID (XEP-0163 PEP
 // self-publish — no `to` attribute — matching xmppcomm.py's own send_event(),
 // see specs/design/events-page-send-tool.md). `data` is plain JSON, not
@@ -735,6 +776,7 @@ export function useXmpp() {
     connect,
     disconnect,
     executeMethod,
+    executeMethodRaw,
     publishEvent,
     subscribeState,
     clearEvents: () => { events.value = [] },

@@ -3,6 +3,7 @@ import {
   localTag,
   xmlToValue,
   valueToXml,
+  structValueToXml,
   parseWireType,
   parseVersionedFeature,
   parseInterfaceSchema,
@@ -152,6 +153,48 @@ describe('valueToXml + xmlToValue round trip', () => {
   it('throws for wire types it cannot build a value for (no schema for their fields)', () => {
     expect(() => valueToXml({}, { kind: 'struct', name: 'SensorReading' })).toThrow()
     expect(() => valueToXml({}, 'any')).toThrow()
+  })
+})
+
+describe('structValueToXml + xmlToValue round trip', () => {
+  it('round-trips flat scalar fields by declared type, not runtime shape', () => {
+    const encoded = structValueToXml({ name: 'x', count: 5, gain: 5, enabled: true }, {
+      name: 'str',
+      count: 'int',
+      gain: 'float', // whole-number value, must still encode as <double> per the declared type
+      enabled: 'bool',
+    })
+    expect(xmlToValue(encoded)).toEqual({ name: 'x', count: 5, gain: 5, enabled: true })
+    const gainEntry = Array.from(encoded.children).find(
+      (entry) => entry.querySelector('key > string')?.textContent === 'gain',
+    )
+    expect(localTag(gainEntry!.querySelector('val')!.firstElementChild!)).toBe('double')
+  })
+
+  it('round-trips an enum field as a plain string', () => {
+    const encoded = structValueToXml({ mode: 'FAST' }, { mode: 'enum' })
+    expect(xmlToValue(encoded)).toEqual({ mode: 'FAST' })
+  })
+
+  it('encodes a missing/undefined field as nil', () => {
+    const encoded = structValueToXml({}, { missing: 'str' })
+    expect(xmlToValue(encoded)).toEqual({ missing: null })
+  })
+
+  it('recurses into a nested object field using its own known field types', () => {
+    const encoded = structValueToXml(
+      { outer: 1, inner: { a: 2, b: false } },
+      { outer: 'int', inner: { kind: 'object', fields: { a: 'int', b: 'bool' } } },
+    )
+    expect(xmlToValue(encoded)).toEqual({ outer: 1, inner: { a: 2, b: false } })
+  })
+
+  it('falls back to a runtime-type guess for an opaque object field with no nested schema', () => {
+    const encoded = structValueToXml(
+      { blob: { x: 1, y: [true, 'z'] } },
+      { blob: { kind: 'object', fields: null } },
+    )
+    expect(xmlToValue(encoded)).toEqual({ blob: { x: 1, y: [true, 'z'] } })
   })
 })
 

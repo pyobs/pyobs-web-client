@@ -18,6 +18,7 @@ import VideoView from '@/views/VideoView.vue'
 import VideoGrabView from '@/views/VideoGrabView.vue'
 import RoboticView from '@/views/RoboticView.vue'
 import ScheduleView from '@/views/ScheduleView.vue'
+import ConfigView from '@/views/ConfigView.vue'
 
 // The module-grouped drill-down's registry — see
 // specs/plans/2026-09-06-module-page-rework.md. Resolves which widget component(s) a given
@@ -96,6 +97,7 @@ export const MODULE_WIDGETS: ModuleWidgetEntry[] = [
     icon: 'bi-calendar-week',
     component: ScheduleView,
   },
+  { interfaceName: 'IStructuredConfig', routeName: 'config', label: interfaceLabel('IStructuredConfig'), icon: 'bi-gear', component: ConfigView },
 ]
 
 function matchesForModule(mod: DeepReadonly<Pick<PyobsModule, 'interfaces'>>): ModuleWidgetEntry[] {
