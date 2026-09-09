@@ -1,10 +1,12 @@
 # Plan: Mobile-first redesign of the app shell and views
 
 Status: in progress — Phase 1 implemented; Dashboard, the Connections/Login flow, and the
-ModulePage-style drill-down migrated (Phase 2, partial — see `specs/plans/2026-09-06-module-page-rework.md`,
-now implemented). Remaining Phase 2 per-view migrations (Roof/Mode/Weather/AutoFocus/AutoGuiding/
-Acquisition/Camera/Settings still reached via `MoreView.vue`'s plain list, not yet redesigned for
-the compact shell), Phase 3, and Phase 4 not started.
+ModulePage-style drill-down migrated (Phase 2 — see `specs/plans/2026-09-06-module-page-rework.md`,
+now implemented). **Corrected 2026-09-09**: Phase 2 is actually complete, not partial —
+`MoreView.vue` (as of the 2026-09-07 edge-swipe-back fix) only lists Events/Shell/Settings, with
+its module-access duplication explicitly removed since Dashboard cards route straight to
+`ModulePageView.vue` now; none of Roof/Mode/Weather/AutoFocus/AutoGuiding/Acquisition/Camera/Settings
+are reached via a plain list anymore. Phase 3 and Phase 4 not started.
 
 Repos: pyobs-web-client (all implementation here)
 
