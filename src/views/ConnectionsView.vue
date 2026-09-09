@@ -130,7 +130,7 @@ async function confirmAdd() {
     <button
       type="button"
       class="d-flex align-items-center justify-content-center"
-      style="position:fixed; right:20px; bottom:28px; width:56px; height:56px; border-radius:28px; background:#0d6efd; color:#fff; border:none; box-shadow:0 6px 16px rgba(0,0,0,0.35)"
+      style="position:fixed; right:20px; bottom:max(28px, env(safe-area-inset-bottom)); width:56px; height:56px; border-radius:28px; background:#0d6efd; color:#fff; border:none; box-shadow:0 6px 16px rgba(0,0,0,0.35)"
       aria-label="Add a connection"
       @click="openAddSheet"
     >
@@ -143,7 +143,7 @@ async function confirmAdd() {
       style="position:fixed; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:flex-end; z-index:20"
       @click.self="showAddSheet = false"
     >
-      <div class="w-100 p-4" style="background:#1a1d21; border:1px solid #2d3035; border-top-left-radius:20px; border-top-right-radius:20px">
+      <div class="w-100 p-4" style="background:#1a1d21; padding-bottom:calc(1.5rem + env(safe-area-inset-bottom)); border:1px solid #2d3035; border-top-left-radius:20px; border-top-right-radius:20px">
         <div class="mx-auto mb-3" style="width:36px; height:4px; border-radius:2px; background:#495057"></div>
         <div class="text-light fw-semibold text-center mb-3" style="font-size:1.05rem">New connection</div>
         <label class="form-label text-muted" style="font-size:0.78rem">XMPP JID</label>

@@ -40,6 +40,8 @@ Implementation plans, checklist-style.
 - [2026-08-03-rpc-fault-call-id.md](2026-08-03-rpc-fault-call-id.md) — surface `call_id` on RPC faults. **proposed**
 - [2026-08-03-struct-typed-command-params.md](2026-08-03-struct-typed-command-params.md) — `struct<Name>`-typed command
   params. **blocked on upstream**
+- [2026-09-09-safe-area-insets.md](2026-09-09-safe-area-insets.md) — status bar / gesture-nav inset
+  handling for the compact shell + FAB, split out of mobile-first-redesign Phase 3. **proposed**
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** — Phase 1 done;
   Phase 2 done except `SettingsView` (still unmigrated, no responsive styling); Phases 3-4 not started
