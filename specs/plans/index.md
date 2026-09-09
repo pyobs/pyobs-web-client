@@ -42,6 +42,9 @@ Implementation plans, checklist-style.
   params. **blocked on upstream**
 - [2026-09-09-safe-area-insets.md](2026-09-09-safe-area-insets.md) — status bar / gesture-nav inset
   handling for the compact shell + FAB, split out of mobile-first-redesign Phase 3. **proposed**
+- [2026-09-09-keyboard-avoidance.md](2026-09-09-keyboard-avoidance.md) — keep focused text/number
+  inputs visible above the on-screen keyboard, split out of mobile-first-redesign Phase 3.
+  **implemented**, real-device verification pending
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** — Phase 1 done;
   Phase 2 done except `SettingsView` (still unmigrated, no responsive styling); Phases 3-4 not started

@@ -137,7 +137,7 @@ real-world phone use first): ~~Dashboard~~ → ~~Connections/Login~~ → ~~the M
 - Safe-area inset handling (status bar / gesture nav) — an Android concern now, doubles as iOS
   prep for Phase 4. Scoped out as its own plan: `specs/plans/2026-09-09-safe-area-insets.md`.
 - Keyboard-avoidance check on every numeric/text form (exposure time, RA/Dec, filter selection) —
-  a known WebView pain point. Not yet addressed anywhere in `src/`.
+  scoped out as its own plan: `specs/plans/2026-09-09-keyboard-avoidance.md`.
 
 Decided 2026-09-09: no haptic feedback — not needed.
 

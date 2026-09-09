@@ -5,6 +5,7 @@ import LoginView from '@/views/LoginView.vue'
 import { useXmpp } from '@/composables/useXmpp'
 import { usePushNotifications } from '@/composables/usePushNotifications'
 import { useExitGuard } from '@/composables/useExitGuard'
+import { useKeyboardAvoidance } from '@/composables/useKeyboardAvoidance'
 
 const { status } = useXmpp()
 
@@ -13,6 +14,7 @@ const { status } = useXmpp()
 onMounted(() => usePushNotifications().initialize())
 
 const { showConfirmExit, cancelExit, confirmExit } = useExitGuard()
+useKeyboardAvoidance()
 </script>
 
 <template>
