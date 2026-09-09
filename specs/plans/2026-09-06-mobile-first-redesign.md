@@ -39,9 +39,7 @@ just "doesn't break."
 - **No iOS-specific fixing yet** — blocked on Mac access (own machine or a cloud Mac CI runner).
   Folded in as Phase 4 once available; the shared Vue/CSS work in Phases 0–3 is what iOS runs on
   too, so this is verification and quirk-fixing, not a second redesign.
-- **No push notifications, no biometric re-auth** — out of scope for this plan. Biometric re-auth
-  before issuing control commands was raised while scoping the original mobile design and never
-  resolved; revisit as an explicit decision in Phase 3, not assumed in or out.
+- **No push notifications, no biometric re-auth.** Out of scope — decided 2026-09-09, not needed.
 - **No assumption that every existing view ships on mobile unchanged.** Phase 2 is an explicit
   per-view audit, not an automatic 1:1 port.
 
@@ -136,15 +134,12 @@ real-world phone use first): ~~Dashboard~~ → ~~Connections/Login~~ → ~~the M
 
 ## Phase 3 — Cross-cutting polish
 
-- Haptic feedback (`@capacitor/haptics`) on key actions — confirm-style commands (open dome, abort
-  exposure) were flagged earlier as the concrete case for this.
 - Safe-area inset handling (status bar / gesture nav) — an Android concern now, doubles as iOS
-  prep for Phase 4.
+  prep for Phase 4. Not yet addressed anywhere in `src/`.
 - Keyboard-avoidance check on every numeric/text form (exposure time, RA/Dec, filter selection) —
-  a known WebView pain point named earlier in this design's history.
-- **Decide** (not pre-committed): biometric re-auth gate before control commands, given the app
-  can now remember passwords (`useCredentialStore.ts`) and a lost/unlocked phone could otherwise
-  issue commands to hardware freely.
+  a known WebView pain point. Not yet addressed anywhere in `src/`.
+
+Decided 2026-09-09: no haptic feedback — not needed.
 
 ## Phase 4 — iOS pass (blocked on Mac access)
 
@@ -160,8 +155,10 @@ fix safe-area/keyboard/scroll-physics quirks specific to iOS's WebView. Not a re
   colors) rather than inventing a new palette, but the *implemented* views still use inline styles
   copied from the mockup rather than a shared set of Vue components/classes — a real design system
   vs. "restyled Bootstrap, consistently" is still an open call, not just a rubber-stamp of Phase 0.
-- **Biometric re-auth — still open**, not resolved. Deferred to Phase 3 as planned; the app can
-  now remember passwords, which makes this more relevant than when it was first raised, not less.
+- **Biometric re-auth — resolved 2026-09-09: not needed.** The earlier framing ("raised while
+  scoping the original mobile design") had no actual grounding — no prior doc or discussion behind
+  it, likely invented by whichever session first drafted this plan. Decided on its own merits, not
+  as a correction of real prior scoping.
 - **Whether `ShellView` stays in primary mobile navigation — resolved.** Stays, reachable via
   More: it's the only way to operate a module with no dedicated widget of its own.
 - **The ModulePage-style module-grouped drill-down** (Phase 2) — **resolved, implemented.** Scoped
