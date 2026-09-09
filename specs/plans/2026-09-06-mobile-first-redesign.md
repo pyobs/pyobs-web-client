@@ -2,11 +2,11 @@
 
 Status: in progress — Phase 1 implemented; Dashboard, the Connections/Login flow, and the
 ModulePage-style drill-down migrated (Phase 2 — see `specs/plans/2026-09-06-module-page-rework.md`,
-now implemented). **Corrected 2026-09-09**: Phase 2 is actually complete, not partial —
-`MoreView.vue` (as of the 2026-09-07 edge-swipe-back fix) only lists Events/Shell/Settings, with
-its module-access duplication explicitly removed since Dashboard cards route straight to
-`ModulePageView.vue` now; none of Roof/Mode/Weather/AutoFocus/AutoGuiding/Acquisition/Camera/Settings
-are reached via a plain list anymore. Phase 3 and Phase 4 not started.
+now implemented). **Corrected 2026-09-09**: Phase 2 is done except `SettingsView` — routing for
+Roof/Mode/Weather/AutoFocus/AutoGuiding/Acquisition/Camera is done (all as `ModulePageView` tabs)
+and their compact-width visual pass landed via `2026-09-07-widget-visual-redesign.md`; only
+`SettingsView` remains unmigrated, still reached via `MoreView.vue`'s plain list, no responsive
+styling. Phase 3 and Phase 4 not started.
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -83,7 +83,7 @@ living documentation — the canvas may have moved on since.
   interface-grouped (see Phase 2 below); Logs earned a primary tab because filtered monitoring,
   not module control, is this shell's actual primary job.
 
-## Phase 2 — Per-view audit and migration (partial)
+## Phase 2 — Per-view audit and migration (done except `SettingsView`)
 
 For each existing view — `DashboardView`, `ShellView`, `RoofView`, `ModeView`, `WeatherView`,
 `AutoFocusView`, `AutoGuidingView`, `AcquisitionView`, `CameraView`, `LoggingView`, `EventsView`,
@@ -119,16 +119,20 @@ breakpoint switch, redesign for the compact shell, or descope from primary mobil
   render as tabs on `ModulePageView.vue` now, one nav entry per module rather than per interface.
 - **`ShellView`** — resolved: stays reachable on mobile (via More), not descoped. It's the only
   way to operate a module with no dedicated widget of its own, so cutting it isn't an option.
-- Remaining unmigrated: `RoofView`, `ModeView`, `WeatherView`, `AutoFocusView`, `AutoGuidingView`,
-  `AcquisitionView`, `CameraView` — folded into `ModulePageView` as tabs (routing done, see the
-  drill-down bullet above), but none of their own content has had a compact-width visual pass
-  against the Phase 0 mockup language yet; they still render the same markup on both widths.
-  `SettingsView` is separate — never folded into ModulePage (it isn't per-module), still reached
-  via `MoreView.vue`'s plain list, same route the old sidebar used, not yet redesigned either.
+- **`RoofView`, `ModeView`, `WeatherView`, `AutoFocusView`, `AutoGuidingView`, `AcquisitionView`,
+  `CameraView` — done.** Folded into `ModulePageView` as tabs (routing done, see the drill-down
+  bullet above), and the compact-width visual pass this section originally flagged as outstanding
+  landed via `specs/plans/2026-09-07-widget-visual-redesign.md` (done 2026-09-08): shared
+  `.pyobs-card`/`StatusRow.vue` design, mobile chart-legibility fix, full-width action-button/input
+  rows, applied to all 8 module widgets, live-verified.
+- **`SettingsView` — still unmigrated.** Separate from the above (it isn't per-module), never
+  folded into ModulePage, still reached via `MoreView.vue`'s plain list on the same route the old
+  sidebar used. No responsive/compact styling in the file at all as of 2026-09-09 — the one
+  remaining Phase 2 item.
 
 Migrate incrementally, each view landing as its own reviewable change. Suggested order (highest
 real-world phone use first): ~~Dashboard~~ → ~~Connections/Login~~ → ~~the ModulePage rework~~ →
-Roof/Mode/Weather → Logging/Events visual pass → Settings → AutoFocus/AutoGuiding/Acquisition.
+~~Roof/Mode/Weather~~ → ~~Logging/Events visual pass~~ → Settings → ~~AutoFocus/AutoGuiding/Acquisition~~.
 
 ## Phase 3 — Cross-cutting polish
 

@@ -41,7 +41,5 @@ Implementation plans, checklist-style.
 - [2026-08-03-struct-typed-command-params.md](2026-08-03-struct-typed-command-params.md) — `struct<Name>`-typed command
   params. **blocked on upstream**
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
-  redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** — Phases 1-2 done
-  (Dashboard + Connections/Login + the ModulePage drill-down migrated, `MoreView.vue` no longer
-  duplicates module access, per-widget compact visual passes done via
-  `2026-09-07-widget-visual-redesign.md`); Phases 3-4 not started
+  redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** — Phase 1 done;
+  Phase 2 done except `SettingsView` (still unmigrated, no responsive styling); Phases 3-4 not started
