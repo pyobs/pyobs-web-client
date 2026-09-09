@@ -1,6 +1,6 @@
 # Plan: auxiliary interface widgets (attach-or-standalone)
 
-Status: in progress. **Revised 2026-09-07**: this plan's "attach dynamically" design was derived
+Status: done. **Revised 2026-09-07**: this plan's "attach dynamically" design was derived
 independently before `specs/design/pyobs-gui-widget-parity.md` existed, and arrived at a mechanism
 close to but not identical with `pyobs-gui`'s actual one (`sidebar_preferred` + the promotion rule,
 `pyobs-gui/specs/2026-08-28-gui-main-vs-sidebar-widgets.md` D1). Read that doc first — the
@@ -9,8 +9,10 @@ components and their `pyobs-gui` references are unchanged. **2026-09-08: `ICooli
 done and live-verified** (`camera@localhost`'s `DummyCamera`, which implements both `ICamera` and
 `ICooling` — confirms the demotion case: no separate "Cooling" tab appears, the widget renders in
 `ModulePageView.vue`'s shared section instead, in its own labelled box; `set_cooling` RPC verified
-working end-to-end, state updated live). `FiltersWidget.vue`/`TemperaturesWidget.vue`/
-`FocuserWidget.vue` and the promoted-to-main (standalone-module) case remain to be built/verified.
+working end-to-end, state updated live). **2026-09-08: `FocuserView.vue`/`FiltersView.vue`/
+`TemperaturesView.vue` also landed** ("Add Focuser/Filters/Temperatures aux widgets" commit), all
+registered in `moduleWidgets.ts` with `sidebarPreferred: true` alongside Cooling — all four widget
+components from this plan are now built and registered.
 
 Repos: pyobs-web-client (all implementation here)
 

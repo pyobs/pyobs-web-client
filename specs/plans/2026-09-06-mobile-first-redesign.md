@@ -1,10 +1,12 @@
 # Plan: Mobile-first redesign of the app shell and views
 
 Status: in progress — Phase 1 implemented; Dashboard, the Connections/Login flow, and the
-ModulePage-style drill-down migrated (Phase 2, partial — see `specs/plans/2026-09-06-module-page-rework.md`,
-now implemented). Remaining Phase 2 per-view migrations (Roof/Mode/Weather/AutoFocus/AutoGuiding/
-Acquisition/Camera/Settings still reached via `MoreView.vue`'s plain list, not yet redesigned for
-the compact shell), Phase 3, and Phase 4 not started.
+ModulePage-style drill-down migrated (Phase 2 — see `specs/plans/2026-09-06-module-page-rework.md`,
+now implemented). **Corrected 2026-09-09**: Phase 2 is done except `SettingsView` — routing for
+Roof/Mode/Weather/AutoFocus/AutoGuiding/Acquisition/Camera is done (all as `ModulePageView` tabs)
+and their compact-width visual pass landed via `2026-09-07-widget-visual-redesign.md`; only
+`SettingsView` remains unmigrated, still reached via `MoreView.vue`'s plain list, no responsive
+styling. Phase 3 and Phase 4 not started.
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -37,9 +39,7 @@ just "doesn't break."
 - **No iOS-specific fixing yet** — blocked on Mac access (own machine or a cloud Mac CI runner).
   Folded in as Phase 4 once available; the shared Vue/CSS work in Phases 0–3 is what iOS runs on
   too, so this is verification and quirk-fixing, not a second redesign.
-- **No push notifications, no biometric re-auth** — out of scope for this plan. Biometric re-auth
-  before issuing control commands was raised while scoping the original mobile design and never
-  resolved; revisit as an explicit decision in Phase 3, not assumed in or out.
+- **No push notifications, no biometric re-auth.** Out of scope — decided 2026-09-09, not needed.
 - **No assumption that every existing view ships on mobile unchanged.** Phase 2 is an explicit
   per-view audit, not an automatic 1:1 port.
 
@@ -81,7 +81,7 @@ living documentation — the canvas may have moved on since.
   interface-grouped (see Phase 2 below); Logs earned a primary tab because filtered monitoring,
   not module control, is this shell's actual primary job.
 
-## Phase 2 — Per-view audit and migration (partial)
+## Phase 2 — Per-view audit and migration (done except `SettingsView`)
 
 For each existing view — `DashboardView`, `ShellView`, `RoofView`, `ModeView`, `WeatherView`,
 `AutoFocusView`, `AutoGuidingView`, `AcquisitionView`, `CameraView`, `LoggingView`, `EventsView`,
@@ -117,28 +117,29 @@ breakpoint switch, redesign for the compact shell, or descope from primary mobil
   render as tabs on `ModulePageView.vue` now, one nav entry per module rather than per interface.
 - **`ShellView`** — resolved: stays reachable on mobile (via More), not descoped. It's the only
   way to operate a module with no dedicated widget of its own, so cutting it isn't an option.
-- Remaining unmigrated: `RoofView`, `ModeView`, `WeatherView`, `AutoFocusView`, `AutoGuidingView`,
-  `AcquisitionView`, `CameraView` — folded into `ModulePageView` as tabs (routing done, see the
-  drill-down bullet above), but none of their own content has had a compact-width visual pass
-  against the Phase 0 mockup language yet; they still render the same markup on both widths.
-  `SettingsView` is separate — never folded into ModulePage (it isn't per-module), still reached
-  via `MoreView.vue`'s plain list, same route the old sidebar used, not yet redesigned either.
+- **`RoofView`, `ModeView`, `WeatherView`, `AutoFocusView`, `AutoGuidingView`, `AcquisitionView`,
+  `CameraView` — done.** Folded into `ModulePageView` as tabs (routing done, see the drill-down
+  bullet above), and the compact-width visual pass this section originally flagged as outstanding
+  landed via `specs/plans/2026-09-07-widget-visual-redesign.md` (done 2026-09-08): shared
+  `.pyobs-card`/`StatusRow.vue` design, mobile chart-legibility fix, full-width action-button/input
+  rows, applied to all 8 module widgets, live-verified.
+- **`SettingsView` — still unmigrated.** Separate from the above (it isn't per-module), never
+  folded into ModulePage, still reached via `MoreView.vue`'s plain list on the same route the old
+  sidebar used. No responsive/compact styling in the file at all as of 2026-09-09 — the one
+  remaining Phase 2 item.
 
 Migrate incrementally, each view landing as its own reviewable change. Suggested order (highest
 real-world phone use first): ~~Dashboard~~ → ~~Connections/Login~~ → ~~the ModulePage rework~~ →
-Roof/Mode/Weather → Logging/Events visual pass → Settings → AutoFocus/AutoGuiding/Acquisition.
+~~Roof/Mode/Weather~~ → ~~Logging/Events visual pass~~ → Settings → ~~AutoFocus/AutoGuiding/Acquisition~~.
 
 ## Phase 3 — Cross-cutting polish
 
-- Haptic feedback (`@capacitor/haptics`) on key actions — confirm-style commands (open dome, abort
-  exposure) were flagged earlier as the concrete case for this.
 - Safe-area inset handling (status bar / gesture nav) — an Android concern now, doubles as iOS
-  prep for Phase 4.
+  prep for Phase 4. Scoped out as its own plan: `specs/plans/2026-09-09-safe-area-insets.md`.
 - Keyboard-avoidance check on every numeric/text form (exposure time, RA/Dec, filter selection) —
-  a known WebView pain point named earlier in this design's history.
-- **Decide** (not pre-committed): biometric re-auth gate before control commands, given the app
-  can now remember passwords (`useCredentialStore.ts`) and a lost/unlocked phone could otherwise
-  issue commands to hardware freely.
+  scoped out as its own plan: `specs/plans/2026-09-09-keyboard-avoidance.md`.
+
+Decided 2026-09-09: no haptic feedback — not needed.
 
 ## Phase 4 — iOS pass (blocked on Mac access)
 
@@ -154,8 +155,10 @@ fix safe-area/keyboard/scroll-physics quirks specific to iOS's WebView. Not a re
   colors) rather than inventing a new palette, but the *implemented* views still use inline styles
   copied from the mockup rather than a shared set of Vue components/classes — a real design system
   vs. "restyled Bootstrap, consistently" is still an open call, not just a rubber-stamp of Phase 0.
-- **Biometric re-auth — still open**, not resolved. Deferred to Phase 3 as planned; the app can
-  now remember passwords, which makes this more relevant than when it was first raised, not less.
+- **Biometric re-auth — resolved 2026-09-09: not needed.** The earlier framing ("raised while
+  scoping the original mobile design") had no actual grounding — no prior doc or discussion behind
+  it, likely invented by whichever session first drafted this plan. Decided on its own merits, not
+  as a correction of real prior scoping.
 - **Whether `ShellView` stays in primary mobile navigation — resolved.** Stays, reachable via
   More: it's the only way to operate a module with no dedicated widget of its own.
 - **The ModulePage-style module-grouped drill-down** (Phase 2) — **resolved, implemented.** Scoped

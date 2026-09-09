@@ -27,21 +27,24 @@ Implementation plans, checklist-style.
   all live-verified; see the plan's own "Corrections" section.
 - [2026-08-04-auxiliary-interface-widgets.md](2026-08-04-auxiliary-interface-widgets.md) — auxiliary interface widgets
   (Cooling/Filters/Temperatures/Focuser, `sidebar_preferred`-promoted or demoted to the shared
-  section). **proposed**, revised 2026-09-07 to match `pyobs-gui`'s actual mechanism
+  section). **done** 2026-09-08 — all four widgets built and registered
 - [2026-09-07-video-widget.md](2026-09-07-video-widget.md) — `IVideo` widget (Live View via native
-  `<img>` MJPEG, FITS Image grab). **proposed**
+  `<img>` MJPEG, FITS Image grab). **built** 2026-09-08
 - [2026-09-07-spectrograph-widget.md](2026-09-07-spectrograph-widget.md) — `ISpectrograph` widget
-  (camera-lite: expose/abort/status, no settings panel). **proposed**
+  (camera-lite: expose/abort/status, no settings panel). **built** 2026-09-08
 - [2026-09-07-structured-config-widget.md](2026-09-07-structured-config-widget.md) — `IStructuredConfig`
-  widget (schema-driven module config form). **proposed**, phased (flat fields first, nested/basic-expert deferred)
+  widget (schema-driven module config form). **done** 2026-09-08 — all three phases built and live-verified
 - [2026-09-07-robotic-widgets.md](2026-09-07-robotic-widgets.md) — `IRobotic` + `IRoboticScheduler`
-  widgets (current/next task, countdown, upcoming schedule). **proposed** — high mobile value
-  (status-at-a-glance), not just a registry-completeness item
+  widgets (current/next task, countdown, upcoming schedule). **built** 2026-09-08
 - [2026-08-03-idatasequence.md](2026-08-03-idatasequence.md) — `IDataSequence` support ("grab N images"). **proposed**
 - [2026-08-03-rpc-fault-call-id.md](2026-08-03-rpc-fault-call-id.md) — surface `call_id` on RPC faults. **proposed**
 - [2026-08-03-struct-typed-command-params.md](2026-08-03-struct-typed-command-params.md) — `struct<Name>`-typed command
   params. **blocked on upstream**
+- [2026-09-09-safe-area-insets.md](2026-09-09-safe-area-insets.md) — status bar / gesture-nav inset
+  handling for the compact shell + FAB, split out of mobile-first-redesign Phase 3. **proposed**
+- [2026-09-09-keyboard-avoidance.md](2026-09-09-keyboard-avoidance.md) — keep focused text/number
+  inputs visible above the on-screen keyboard, split out of mobile-first-redesign Phase 3.
+  **implemented**, real-device verification pending
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
-  redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** (Phase 1 done;
-  Dashboard + Connections/Login + the ModulePage drill-down migrated; per-widget compact visual
-  passes done via `2026-09-07-widget-visual-redesign.md`)
+  redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** — Phase 1 done;
+  Phase 2 done except `SettingsView` (still unmigrated, no responsive styling); Phases 3-4 not started

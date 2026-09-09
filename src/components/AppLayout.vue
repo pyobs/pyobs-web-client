@@ -66,7 +66,7 @@ const appVersion = __APP_VERSION__
   <div v-if="isCompact" class="d-flex flex-column vh-100" style="background-color:#111316">
     <div
       class="d-flex align-items-center px-3 flex-shrink-0"
-      style="height:56px; border-bottom:1px solid #2d3035"
+      style="height:56px; padding-top:env(safe-area-inset-top); border-bottom:1px solid #2d3035; box-sizing:content-box"
     >
       <button
         v-if="!isRootRoute"
@@ -96,7 +96,7 @@ const appVersion = __APP_VERSION__
 
     <nav
       class="d-flex flex-shrink-0"
-      style="background-color:#1a1d21; border-top:1px solid #2d3035; padding-bottom:10px"
+      style="background-color:#1a1d21; border-top:1px solid #2d3035; padding-bottom:max(10px, env(safe-area-inset-bottom))"
     >
       <a
         class="compact-navtab"
