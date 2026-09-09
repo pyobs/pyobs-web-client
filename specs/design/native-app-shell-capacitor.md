@@ -126,6 +126,14 @@ being re-derived: module `ERROR` transitions, bad weather with the roof open, gu
 `CRITICAL` log events. No client code runs while the app is fully closed, so threshold/filtering
 logic for these needs to live server-side or in a relay, not in the app.
 
+**2026-09-09: scoped as a new pyobs-core module**, not the XEP-0357/ejabberd relay this section
+originally implied — see `../pyobs-core/specs/design/push-notification-module.md`. Confirmed the
+wire-protocol prerequisite ("keep these distinguishable on the wire") is already satisfied by
+existing code, so nothing here needed a wire change after all. v1 there covers module `ERROR`
+only. The one change this repo will need once that module exists: `usePushNotifications.ts` calls
+its device-registration RPC once a token is obtained, closing the gap its own comment already
+flags ("associating a token with an account server-side is a later, not-yet-designed step").
+
 ## Handling flaky connections
 
 Not designed here — `pyobs-core`'s `specs/steering/rpc-timeout-command-idempotency.md` is the

@@ -45,7 +45,14 @@ instead of this list for the completed-feature catalog.
   server-side triggers a push yet for the events that matter (module
   `ERROR` transitions, bad weather with the roof open, guiding lost,
   `CRITICAL` log events). That logic has to live server-side or in a relay,
-  not in this client — see that doc's "Push notifications" section.
+  not in this client — see that doc's "Push notifications" section. 2026-09-09:
+  scoped as a new pyobs-core module (not XEP-0357/ejabberd), sketch at
+  `../pyobs-core/specs/design/push-notification-module.md` — v1 covers module
+  `ERROR` only; weather/CRITICAL-log alerts still deferred. The one piece that
+  lands in this repo when that module exists: `usePushNotifications.ts` needs
+  a small addition to call its device-registration RPC once a token is
+  obtained (currently the token only reaches `SettingsView.vue`'s diagnostic
+  panel).
 - **iOS build + TestFlight distribution** — not started, blocked on Mac
   access. See `specs/design/native-app-shell-capacitor.md`'s Phasing.
 
