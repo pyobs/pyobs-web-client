@@ -20,6 +20,9 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [roof-page.md](roof-page.md) — roof page status + Open/Close/Stop for `IRoof` modules.
   *implemented, closed* — routing since superseded by
   `specs/plans/2026-09-06-module-page-rework.md` (widget behavior itself still accurate)
+- [embedded-app-auth.md](embedded-app-auth.md) — auth model for embedding web-admin/portal/weather
+  via Keycloak SSO: external-user-agent overlay (`ASWebAuthenticationSession`/Custom Tabs) per open,
+  not true inline rendering. *proposed*, issue #48 — pipeline excluded, follows later
 - [background-foreground-reconnect.md](background-foreground-reconnect.md) — reconnect
   automatically on any connection drop (not just backgrounding) using stored credentials, plus
   `@capacitor/app` lifecycle awareness to catch a dead socket on foreground resume.
