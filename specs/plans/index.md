@@ -48,8 +48,8 @@ Implementation plans, checklist-style.
   real-device verified 2026-09-13
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** — Phase 1 done;
-  Phase 2 done except `SettingsView` (still unmigrated, no responsive styling); Phase 3 done (both
-  scoped-out sub-plans, safe-area-insets and keyboard-avoidance, implemented and real-device
+  Phase 2 now fully done (`SettingsView` migrated 2026-09-13, real-device verified); Phase 3 done
+  (both scoped-out sub-plans, safe-area-insets and keyboard-avoidance, implemented and real-device
   verified); Phase 4 not started (blocked on Mac access)
 - [2026-09-13-background-foreground-reconnect.md](2026-09-13-background-foreground-reconnect.md) —
   auto-reconnect on any XMPP connection drop (not just backgrounding), plus `@capacitor/app`
