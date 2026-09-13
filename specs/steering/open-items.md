@@ -103,8 +103,17 @@ Smaller/technical items:
 
 Unchecked risks (no dedicated plan, tracked here so they aren't lost):
 
-- **Saved-connections data model vs. `pyobs-polaris`** — never compared;
-  the offline connections screen shipped without checking that equivalent.
-  See `specs/design/native-app-shell-capacitor.md`'s Open questions.
+- **Saved-connections data model vs. `pyobs-polaris`** — compared 2026-09-13 against
+  `pyobs-polaris/specs/design/configuration-file-and-saved-accounts.md`. Two structural
+  differences, both consistent/non-bugs as currently used: (1) Polaris keys everything on a
+  generated UUID (so editing a JID never orphans its keychain entry); this app keys everything on
+  the bare JID directly, which is fine only because a saved connection's JID is never editable here
+  (`EditConnectionView.vue` shows it read-only — delete/re-add instead). (2) Polaris scopes
+  `host`/`port`/`insecureSkipTls` overrides per-account; this app scopes the equivalent
+  (`useServerConfig`) per-domain, so two saved connections on the same domain can't have different
+  overrides here. One real finding filed as issue #53: this app's non-native (plain web) build
+  falls back to storing remembered passwords in plaintext, where Polaris's `QtKeychain` never falls
+  back and fails the save cleanly instead. Polaris's DNS-SRV/legacy-TLS-port hang bug doesn't apply
+  here — this app connects straight to a fixed WebSocket URL, no SRV-based discovery.
 - **Does WebView feel "good enough"?** — still open, waiting on real use via
   `specs/plans/2026-09-06-mobile-first-redesign.md`.
