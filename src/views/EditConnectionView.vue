@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import { Strophe } from 'strophe.js'
 import { useXmpp } from '@/composables/useXmpp'
 import { useServerConfig } from '@/composables/useServerConfig'
@@ -43,6 +44,8 @@ function saveAndConnect() {
 // "Forget saved password" is shown.
 const hasStoredPassword = ref(false)
 const passwordInput = ref('')
+// No Keychain/Keystore on the web build — see useCredentialStore.ts and issue #53.
+const canRememberPassword = Capacitor.isNativePlatform()
 
 async function refreshPasswordFlag() {
   hasStoredPassword.value = (await getPassword(bareJid.value)) !== null
@@ -186,16 +189,22 @@ function removeConnection() {
     <div class="mb-4">
       <div class="text-muted mb-2" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em">Password</div>
       <div class="rounded-3 p-3" style="background-color:#1a1d21; border:1px solid #2d3035">
-        <input
-          v-model="passwordInput"
-          type="password"
-          class="form-control form-control-sm bg-dark border-secondary text-light mb-2"
-          :placeholder="hasStoredPassword ? '•••••••• (leave blank to keep it)' : 'Not saved — enter to remember it'"
-          autocomplete="off"
-        />
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-primary btn-sm" :disabled="!passwordInput" @click="savePassword">Save password</button>
-          <button v-if="hasStoredPassword" type="button" class="btn btn-outline-secondary btn-sm" @click="forgetSavedPassword">Forget saved password</button>
+        <template v-if="canRememberPassword">
+          <input
+            v-model="passwordInput"
+            type="password"
+            class="form-control form-control-sm bg-dark border-secondary text-light mb-2"
+            :placeholder="hasStoredPassword ? '•••••••• (leave blank to keep it)' : 'Not saved — enter to remember it'"
+            autocomplete="off"
+          />
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary btn-sm" :disabled="!passwordInput" @click="savePassword">Save password</button>
+            <button v-if="hasStoredPassword" type="button" class="btn btn-outline-secondary btn-sm" @click="forgetSavedPassword">Forget saved password</button>
+          </div>
+        </template>
+        <div v-else class="text-muted" style="font-size:0.75rem">
+          <i class="bi bi-info-circle me-1"></i>
+          Remembering passwords needs the native app — not available in the browser.
         </div>
       </div>
     </div>

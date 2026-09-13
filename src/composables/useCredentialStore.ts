@@ -1,11 +1,17 @@
+import { Capacitor } from '@capacitor/core'
 import { SecureStorage } from '@aparajita/capacitor-secure-storage'
 
 // Opt-in, per-JID password storage — Keychain-backed on iOS, Keystore-backed
-// encrypted storage on Android (native builds), a plain (unencrypted) web
-// fallback in the browser dev server. Never called unless the user explicitly
-// checks "Remember password" — see LoginView.vue. Failures degrade to
-// "no stored password" rather than blocking login, since this is a
-// convenience layer on top of the always-available manual password entry.
+// encrypted storage on Android (native builds). This app's web build is a
+// real deployment target (see README.md/Dockerfile/deploy/nginx.conf), not
+// just a dev convenience, so — same stance as pyobs-polaris's QtKeychain
+// usage (never falls back to plaintext if no OS keychain is available) — the
+// set* functions below refuse to persist anything at all on a non-native
+// platform rather than falling back to plaintext localStorage. Never called
+// unless the user explicitly checks "Remember password" — see LoginView.vue.
+// Failures (including this refusal) degrade to "no stored password" rather
+// than blocking login, since this is a convenience layer on top of the
+// always-available manual password entry.
 const KEY_PREFIX = 'pw:'
 
 // Same storage, same everything, for VFS endpoint bearer tokens (see
@@ -33,7 +39,7 @@ export function useCredentialStore() {
   }
 
   async function setPassword(bareJid: string, password: string): Promise<void> {
-    if (!bareJid) return
+    if (!bareJid || !Capacitor.isNativePlatform()) return
     try {
       await SecureStorage.set(KEY_PREFIX + bareJid, password)
     } catch {

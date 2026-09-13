@@ -111,9 +111,15 @@ Unchecked risks (no dedicated plan, tracked here so they aren't lost):
   (`EditConnectionView.vue` shows it read-only — delete/re-add instead). (2) Polaris scopes
   `host`/`port`/`insecureSkipTls` overrides per-account; this app scopes the equivalent
   (`useServerConfig`) per-domain, so two saved connections on the same domain can't have different
-  overrides here. One real finding filed as issue #53: this app's non-native (plain web) build
-  falls back to storing remembered passwords in plaintext, where Polaris's `QtKeychain` never falls
-  back and fails the save cleanly instead. Polaris's DNS-SRV/legacy-TLS-port hang bug doesn't apply
-  here — this app connects straight to a fixed WebSocket URL, no SRV-based discovery.
+  overrides here. One real finding, fixed 2026-09-13 (issue #53, closed): this app's non-native
+  (plain web) build used to fall back to storing remembered passwords in plaintext localStorage,
+  where Polaris's `QtKeychain` never falls back and fails the save cleanly instead. Now matches
+  Polaris's stance: `useCredentialStore.ts`'s `setPassword()` refuses to persist anything at all
+  when `Capacitor.isNativePlatform()` is false, and `LoginView.vue`/`EditConnectionView.vue`/
+  `ConnectionsView.vue` all hide the "remember password" UI on web with an explanatory note instead
+  of silently doing nothing. Deliberately scoped to passwords only — VFS bearer tokens
+  (`setVfsToken()`) still use the plaintext web fallback, unchanged; not part of this fix. Polaris's
+  DNS-SRV/legacy-TLS-port hang bug doesn't apply here — this app connects straight to a fixed
+  WebSocket URL, no SRV-based discovery.
 - **Does WebView feel "good enough"?** — still open, waiting on real use via
   `specs/plans/2026-09-06-mobile-first-redesign.md`.

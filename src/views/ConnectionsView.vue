@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import { Strophe } from 'strophe.js'
 import { useXmpp } from '@/composables/useXmpp'
 import { useCredentialStore } from '@/composables/useCredentialStore'
@@ -22,6 +23,8 @@ function bareJidOf(jid: string): string {
 }
 
 const jidsWithSavedPassword = ref<Set<string>>(new Set())
+// No Keychain/Keystore on the web build — see useCredentialStore.ts and issue #53.
+const canRememberPassword = Capacitor.isNativePlatform()
 
 async function refreshPasswordFlags() {
   const flags = await Promise.all(
@@ -160,17 +163,23 @@ async function confirmAdd() {
           class="form-control bg-dark border-secondary text-light mb-2"
           placeholder="e.g. My Telescope"
         />
-        <label class="form-label text-muted" style="font-size:0.78rem">Password <span class="text-secondary">(optional)</span></label>
-        <input
-          v-model="newPassword"
-          type="password"
-          class="form-control bg-dark border-secondary text-light mb-2"
-          placeholder="Leave blank to enter it later"
-          autocomplete="off"
-          @keydown.enter.prevent="confirmAdd"
-        />
-        <p class="text-muted mb-3" style="font-size:0.72rem">
-          Server and VFS settings can be added after via ⋯. A saved password lets Connect skip straight in next time.
+        <template v-if="canRememberPassword">
+          <label class="form-label text-muted" style="font-size:0.78rem">Password <span class="text-secondary">(optional)</span></label>
+          <input
+            v-model="newPassword"
+            type="password"
+            class="form-control bg-dark border-secondary text-light mb-2"
+            placeholder="Leave blank to enter it later"
+            autocomplete="off"
+            @keydown.enter.prevent="confirmAdd"
+          />
+          <p class="text-muted mb-3" style="font-size:0.72rem">
+            Server and VFS settings can be added after via ⋯. A saved password lets Connect skip straight in next time.
+          </p>
+        </template>
+        <p v-else class="text-muted mb-3" style="font-size:0.72rem">
+          <i class="bi bi-info-circle me-1"></i>
+          Server and VFS settings can be added after via ⋯. Remembering passwords needs the native app.
         </p>
         <button type="button" class="btn btn-primary w-100 mb-2" :disabled="!newJid.trim()" @click="confirmAdd">Add</button>
         <button type="button" class="btn btn-link w-100 text-muted" @click="showAddSheet = false">Cancel</button>
