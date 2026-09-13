@@ -158,8 +158,10 @@ Safari/Chrome cookie jar directly, with no partial-sharing ambiguity to design a
   was a mitigation for `ASWebAuthenticationSession`'s specific partial-sharing behavior, which no
   longer applies. (Might still be worth doing for other reasons, e.g. long-lived sessions in
   general — but that's a separate conversation, not something this feature needs.)
-- **Scope unchanged**: web-admin, portal, weather; `pyobs-pipeline` still excluded (no Keycloak
-  integration yet, "pipeline will follow later").
+- **Scope unchanged**: web-admin, portal, weather; `pyobs-pipeline` still excluded from this
+  feature's implementation. Update: pipeline's Keycloak login is now actively being built (in
+  `pyobs-pipeline` itself, not here) — once that lands, adding pipeline as a fourth entry is just
+  more rows in the same generic link list, no design change needed here.
 
 **Now out of scope (rejected, not deferred):**
 
