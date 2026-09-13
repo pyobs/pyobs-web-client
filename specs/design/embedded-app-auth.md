@@ -168,12 +168,18 @@ Safari/Chrome cookie jar directly, with no partial-sharing ambiguity to design a
 - True inline rendering — still rejected, same reasoning as before, now doubly so since there's no
   overlay-based login step to bridge cookies from either.
 
-**Still genuinely open** (unaffected by this revision):
-
-- **Logout propagation** — does logging out of pyobs-web-client end the shared Keycloak session
-  (affecting the other apps too), or just this app's own local state? Arguably less pressing now
-  that these are full external links rather than something living inside this app's own UI, but
-  still undecided.
+**Resolved**: **logout does not propagate.** Logging out of pyobs-web-client (XMPP credentials)
+does nothing to the Keycloak session sitting in the system browser, and this design doesn't add
+anything to change that. Reasoning: the two are unrelated auth systems — this app's login is XMPP
+(JID/password via strophe.js), never touches Keycloak, and the Keycloak session lives entirely in
+the system browser once established there. Propagating would mean deliberately opening a Keycloak
+logout URL on XMPP logout, coupling two identities that aren't necessarily even the same account,
+and would be surprising behavior no comparable app does (logging out of the Twitter app doesn't log
+you out of twitter.com in Safari). One real residual risk, named rather than solved: on a **shared
+device**, the browser's Keycloak session outlives any pyobs-web-client logout, so the next person to
+tap an embedded-app link inherits the previous person's session — a pre-existing shared-device
+concern independent of this feature, not something an app can fix without an OS hook that doesn't
+exist.
 
 **Resolved**: **direct links to the specific page/section, not just each app's landing page** —
 decided with the user. If the target page requires auth and the browser doesn't have a session yet,
