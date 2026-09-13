@@ -170,9 +170,13 @@ Safari/Chrome cookie jar directly, with no partial-sharing ambiguity to design a
 
 **Still genuinely open** (unaffected by this revision):
 
-- **Deep-linking into a specific page/section of an embedded app** vs. just its landing page/
-  wherever the post-login redirect lands.
 - **Logout propagation** — does logging out of pyobs-web-client end the shared Keycloak session
   (affecting the other apps too), or just this app's own local state? Arguably less pressing now
   that these are full external links rather than something living inside this app's own UI, but
   still undecided.
+
+**Resolved**: **direct links to the specific page/section, not just each app's landing page** —
+decided with the user. If the target page requires auth and the browser doesn't have a session yet,
+Keycloak's normal redirect flow takes over and lands the user back on that same deep link after
+login (standard OIDC `redirect_uri`/relay-state behavior) — no extra work needed here, this falls
+out of "let the browser handle SSO" the same way the rest of this design does.
