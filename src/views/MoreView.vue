@@ -1,6 +1,13 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useXmpp } from '@/composables/useXmpp'
+import { useLinkedApps } from '@/composables/useLinkedApps'
+
+const { linkedApps } = useLinkedApps()
+// Same "swap to a fallback glyph on load failure" approach as SettingsView.vue's Linked Apps
+// section.
+const brokenLinkIcons = ref<Record<number, boolean>>({})
 
 // Compact-shell counterpart to the desktop sidebar's "Tools" section —
 // everything not on a primary bottom tab (Dashboard, Logs) and not a module
@@ -47,6 +54,23 @@ function handleLogout() {
         <i class="bi bi-gear"></i>
         <span class="flex-grow-1">Settings</span>
         <i class="bi bi-chevron-right text-secondary" style="font-size:0.8rem"></i>
+      </a>
+    </div>
+
+    <div v-if="linkedApps.length > 0" class="rounded-3 mt-3" style="background-color:#1a1d21; border:1px solid #2d3035; overflow:hidden">
+      <a v-for="(app, index) in linkedApps" :key="index" class="more-row" :href="app.url">
+        <img
+          v-if="app.icon && !brokenLinkIcons[index]"
+          :src="app.icon"
+          alt=""
+          width="18"
+          height="18"
+          style="border-radius:4px"
+          @error="brokenLinkIcons[index] = true"
+        />
+        <i v-else class="bi bi-link-45deg"></i>
+        <span class="flex-grow-1">{{ app.label }}</span>
+        <i class="bi bi-box-arrow-up-right text-secondary" style="font-size:0.75rem"></i>
       </a>
     </div>
 

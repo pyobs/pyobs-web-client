@@ -48,3 +48,10 @@ Implementation plans, checklist-style.
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** — Phase 1 done;
   Phase 2 done except `SettingsView` (still unmigrated, no responsive styling); Phases 3-4 not started
+- [2026-09-13-background-foreground-reconnect.md](2026-09-13-background-foreground-reconnect.md) —
+  auto-reconnect on any XMPP connection drop (not just backgrounding), plus `@capacitor/app`
+  lifecycle awareness to catch a dead socket on foreground resume. **implemented**, issue #49 —
+  real-device verification pending
+- [2026-09-13-linked-apps.md](2026-09-13-linked-apps.md) — editable list of external links
+  (web-admin/portal/weather) with domain-guessed defaults, surfaced in Settings + compact/desktop
+  nav. **proposed**, issue #48

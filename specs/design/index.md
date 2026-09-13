@@ -20,6 +20,14 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [roof-page.md](roof-page.md) — roof page status + Open/Close/Stop for `IRoof` modules.
   *implemented, closed* — routing since superseded by
   `specs/plans/2026-09-06-module-page-rework.md` (widget behavior itself still accurate)
+- [embedded-app-auth.md](embedded-app-auth.md) — reaching web-admin/portal/weather from this app:
+  plain external links (full app switch, real Safari/Chrome cookie jar), no in-app overlay/plugin
+  needed — see the doc's "Revised" section for why the simpler answer turned out to be correct, not
+  just easier. *proposed*, issue #48 — pipeline excluded, follows later
+- [background-foreground-reconnect.md](background-foreground-reconnect.md) — reconnect
+  automatically on any connection drop (not just backgrounding) using stored credentials, plus
+  `@capacitor/app` lifecycle awareness to catch a dead socket on foreground resume.
+  *implemented*, issue #49 — real-device verification pending
 - [pyobs-2-0-wire-protocol-client.md](pyobs-2-0-wire-protocol-client.md) — this client's own
   implementation of the pyobs-core 2.0 wire protocol (codec, `useXmpp.ts`, generic
   capability/state rendering). *implemented, closed*

@@ -2,9 +2,11 @@
 import { ref, watch } from 'vue'
 import { Capacitor } from '@capacitor/core'
 import { useVfsConfig, type VfsEndpoint } from '@/composables/useVfsConfig'
+import { useLinkedApps, type LinkedApp } from '@/composables/useLinkedApps'
 import { usePushNotifications } from '@/composables/usePushNotifications'
 
 const { vfsEndpoints, addEndpoint, updateEndpoint, removeEndpoint, hasToken } = useVfsConfig()
+const { linkedApps, addLink, updateLink, removeLink } = useLinkedApps()
 
 // Per-root "is a token stored" flag for the list display below — fetched
 // async, never exposes the token itself. Recomputed whenever the endpoint
@@ -66,6 +68,48 @@ async function save() {
   }
   editingIndex.value = null
 }
+
+const editingLinkIndex = ref<number | null>(null)
+const isNewLink = ref(false)
+const linkForm = ref<LinkedApp>({ label: '', url: '', icon: '' })
+
+function startAddLink() {
+  isNewLink.value = true
+  editingLinkIndex.value = -1
+  linkForm.value = { label: '', url: '', icon: '' }
+}
+
+function startEditLink(index: number) {
+  const existing = linkedApps.value[index]
+  if (!existing) return
+  isNewLink.value = false
+  editingLinkIndex.value = index
+  linkForm.value = { ...existing }
+}
+
+function cancelLink() {
+  editingLinkIndex.value = null
+}
+
+function saveLink() {
+  if (!linkForm.value.label || !linkForm.value.url) return
+  const app: LinkedApp = {
+    label: linkForm.value.label,
+    url: linkForm.value.url,
+    ...(linkForm.value.icon ? { icon: linkForm.value.icon } : {}),
+  }
+  if (isNewLink.value) {
+    addLink(app)
+  } else if (editingLinkIndex.value !== null) {
+    updateLink(editingLinkIndex.value, app)
+  }
+  editingLinkIndex.value = null
+}
+
+// Broken/missing icon falls back to a generic glyph rather than a broken-image icon — swaps the
+// <img> itself out for the fallback <i> via a per-row "did this icon fail" flag, since v-if can't
+// react to the img's own load failure otherwise.
+const brokenLinkIcons = ref<Record<number, boolean>>({})
 </script>
 
 <template>
@@ -140,6 +184,76 @@ async function save() {
       <div class="d-flex gap-2">
         <button class="btn btn-primary btn-sm" :disabled="!form.root || !form.baseUrl" @click="save">Save</button>
         <button class="btn btn-outline-secondary btn-sm" @click="cancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3 mb-3 mt-4">
+      <h6 class="text-light mb-0" style="font-size:0.9rem">Linked Apps</h6>
+      <button class="btn btn-outline-secondary btn-sm ms-auto" @click="startAddLink">
+        <i class="bi bi-plus-lg me-1"></i>Add link
+      </button>
+    </div>
+
+    <p class="text-muted mb-3" style="font-size:0.8rem">
+      External pyobs apps to reach from here — opens in the browser (or, on a native build, the
+      system browser), which is what handles staying logged in across them.
+    </p>
+
+    <p v-if="linkedApps.length === 0 && editingLinkIndex === null" class="text-muted" style="font-size:0.85rem">
+      <i class="bi bi-info-circle me-1"></i>
+      No linked apps configured.
+    </p>
+
+    <div
+      v-for="(app, index) in linkedApps"
+      :key="index"
+      class="rounded-3 p-3 mb-2"
+      style="background-color:#1a1d21; border:1px solid #2d3035"
+    >
+      <div class="d-flex align-items-center gap-2">
+        <img
+          v-if="app.icon && !brokenLinkIcons[index]"
+          :src="app.icon"
+          alt=""
+          width="20"
+          height="20"
+          style="border-radius:4px"
+          @error="brokenLinkIcons[index] = true"
+        />
+        <i v-else class="bi bi-link-45deg text-secondary" style="font-size:1.1rem"></i>
+        <div class="flex-grow-1">
+          <div class="text-light fw-semibold" style="font-size:0.85rem">{{ app.label }}</div>
+          <div class="text-muted text-break" style="font-size:0.75rem">{{ app.url }}</div>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" @click="startEditLink(index)">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-outline-danger btn-sm" @click="removeLink(index)">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+
+    <div
+      v-if="editingLinkIndex !== null"
+      class="rounded-3 p-3 mt-3"
+      style="background-color:#1a1d21; border:1px solid #2d3035"
+    >
+      <div class="mb-2">
+        <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Label</label>
+        <input v-model="linkForm.label" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="Portal" />
+      </div>
+      <div class="mb-2">
+        <label class="form-label mb-1 text-muted" style="font-size:0.8rem">URL</label>
+        <input v-model="linkForm.url" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="https://observe.example.com" />
+      </div>
+      <div class="mb-3">
+        <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Icon URL <span class="text-secondary">(optional)</span></label>
+        <input v-model="linkForm.icon" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="https://observe.example.com/favicon.ico" />
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary btn-sm" :disabled="!linkForm.label || !linkForm.url" @click="saveLink">Save</button>
+        <button class="btn btn-outline-secondary btn-sm" @click="cancelLink">Cancel</button>
       </div>
     </div>
 

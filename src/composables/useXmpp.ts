@@ -141,6 +141,11 @@ const stateSubscribing = new Set<string>()
 let connection: InstanceType<typeof Strophe.Connection> | null = null
 let connectionGeneration = 0
 
+// Set right before disconnect() tears the connection down, cleared on the next successful
+// connect() — distinguishes "user chose to log out" (never auto-reconnect) from "the socket died
+// out from under us" (should auto-reconnect), for the DISCONNECTED handling below.
+let intentionalDisconnect = false
+
 function buildWsUrl(domain: string): string {
   const base = import.meta.env.VITE_XMPP_WS_URL
     ? (import.meta.env.VITE_XMPP_WS_URL as string)
@@ -697,6 +702,7 @@ function subscribeState(bareJid: string, interfaceName: string, version: number)
 
 function connect(userJid: string, password: string, silent = false): Promise<void> {
   const myGeneration = ++connectionGeneration
+  intentionalDisconnect = false
   return new Promise((resolve, reject) => {
     status.value = 'connecting'
     errorMessage.value = ''
@@ -747,6 +753,12 @@ function connect(userJid: string, password: string, silent = false): Promise<voi
       } else if (st === Strophe.Status.DISCONNECTED) {
         if (status.value === 'connected') {
           status.value = 'disconnected'
+          // The socket died out from under us (network blip, backgrounding, server
+          // restart, ...) rather than a user-initiated logout — heal it automatically
+          // using the same credentials this connection was using.
+          if (!intentionalDisconnect && sessionStorage.getItem(SESSION_JID_KEY)) {
+            attemptReconnect(userJid, password)
+          }
         }
       }
     })
@@ -754,6 +766,7 @@ function connect(userJid: string, password: string, silent = false): Promise<voi
 }
 
 function disconnect() {
+  intentionalDisconnect = true
   sessionStorage.removeItem(SESSION_JID_KEY)
   sessionStorage.removeItem(SESSION_PW_KEY)
   if (connection) {
@@ -769,9 +782,12 @@ function disconnect() {
   stateSubscribing.clear()
 }
 
-// Restore session automatically on page reload, with one retry after 1 s in
-// case ejabberd is still tearing down the previous WebSocket session.
-async function autoReconnect(savedJid: string, savedPassword: string): Promise<void> {
+// Heal a dropped connection automatically using stored credentials, with one retry after 1 s in
+// case ejabberd is still tearing down the previous WebSocket session. Used both for the one-time
+// page-load restore below and for any later drop noticed while the app is already running (the
+// DISCONNECTED handler in connect(), and useAppLifecycle.ts's foreground-resume check) — see
+// specs/design/background-foreground-reconnect.md.
+async function attemptReconnect(savedJid: string, savedPassword: string): Promise<void> {
   try {
     await connect(savedJid, savedPassword, true)
   } catch {
@@ -788,10 +804,58 @@ async function autoReconnect(savedJid: string, savedPassword: string): Promise<v
   }
 }
 
+// XEP-0199 liveness probe, addressed to the server domain itself (no pyobs-core participation
+// needed). Strophe reporting `status === 'connected'` doesn't guarantee the socket is actually
+// alive — the OS can invalidate it (e.g. after backgrounding) without ever delivering a close
+// event the JS side observes promptly. Both a successful pong *and* an XMPP-level error response
+// (e.g. `service-unavailable` if ejabberd's mod_ping isn't loaded) prove the round trip completed,
+// so both count as "alive" here — only a bare timeout with no response at all means the socket is
+// actually dead. Deliberately doesn't reuse sendIQ(): that helper rejects on an error IQ (wrong
+// here — an error still proves liveness) and has its own fixed 10 s timeout (too long for a
+// foreground-resume check with the user already looking at the screen).
+function pingServer(timeoutMs = 3000): Promise<boolean> {
+  return new Promise((resolve) => {
+    const domain = jid.value ? Strophe.getDomainFromJid(jid.value) : null
+    if (!connection || !domain) {
+      resolve(false)
+      return
+    }
+    const conn = connection
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      resolve(false)
+    }, timeoutMs)
+    const alive = () => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve(true)
+    }
+    conn.sendIQ(
+      $iq({ to: domain, type: 'get' }).c('ping', { xmlns: 'urn:xmpp:ping' }).tree(),
+      alive,
+      alive,
+      timeoutMs,
+    )
+  })
+}
+
+// Same "read stored credentials, reconnect if present" shape the page-load restore below uses,
+// exposed for useAppLifecycle.ts's foreground-resume check — keeps SESSION_JID_KEY/SESSION_PW_KEY
+// module-private rather than exporting them.
+function attemptReconnectFromStorage(): Promise<void> {
+  const savedJid = sessionStorage.getItem(SESSION_JID_KEY)
+  const savedPassword = sessionStorage.getItem(SESSION_PW_KEY)
+  if (!savedJid || !savedPassword) return Promise.resolve()
+  return attemptReconnect(savedJid, savedPassword)
+}
+
 const storedJid = sessionStorage.getItem(SESSION_JID_KEY)
 const storedPassword = sessionStorage.getItem(SESSION_PW_KEY)
 if (storedJid && storedPassword) {
-  autoReconnect(storedJid, storedPassword)
+  attemptReconnect(storedJid, storedPassword)
 }
 
 export function useXmpp() {
@@ -807,6 +871,8 @@ export function useXmpp() {
     forgetLogin,
     connect,
     disconnect,
+    attemptReconnectFromStorage,
+    pingServer,
     executeMethod,
     executeMethodRaw,
     publishEvent,
