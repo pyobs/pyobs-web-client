@@ -188,3 +188,37 @@ decided with the user. If the target page requires auth and the browser doesn't 
 Keycloak's normal redirect flow takes over and lands the user back on that same deep link after
 login (standard OIDC `redirect_uri`/relay-state behavior) — no extra work needed here, this falls
 out of "let the browser handle SSO" the same way the rest of this design does.
+
+## Extended: editable link list + domain-guessed defaults (2026-09-13)
+
+Grew out of resolving the auth question above: since these are now just links, the app needs
+somewhere to keep them. Settled shape:
+
+- **One generic, user-editable list** of `{ label, url, icon? }` entries — no built-in distinction
+  between "official pyobs project" and "custom," matching how `recentLogins`/VFS endpoints
+  (`useServerConfig.ts`/`useVfsConfig.ts`) already handle similar per-user config in this app. This
+  also means adding `pyobs-pipeline` later, or a site linking something unrelated (Grafana, etc.),
+  is just another row — no code change needed.
+- **`icon` defaults to `{entry's own domain}/favicon.ico`**, overridable, blank/error falls back to
+  a generic placeholder icon. Reliable now that web-admin/portal/weather all serve a real
+  `favicon.ico` at their site root (see the favicon-unification work landing alongside this doc —
+  web-admin `v2.3.3`, portal `v2.5.1`, weather in progress on a separate fresh design).
+- **URL for the three known entries (web-admin/portal/weather) is guessed on first connect from the
+  XMPP JID's domain**, pre-filled as an editable default rather than silently trusted — confirmed
+  against real fleets, not assumed:
+  - `weather.<domain>` — exact match on IAG-VT (`weather.iagvtsrv.astro.physik.uni-goettingen.de`)
+    and IAG50 (`weather.iag50srv.astro.physik.uni-goettingen.de`).
+  - `observe.<domain>` (portal) — exact match on MONET south (`observe.monet.saao.ac.za`, XMPP
+    domain `monet.saao.ac.za`) and MONET north (`observe.monet.as.utexas.edu`, XMPP domain
+    `monet.as.utexas.edu`). Note: an earlier pass here wrongly concluded this pattern was broken,
+    based on a stale URL found in `pyobs-monet/config/north/monet/robotic.yaml`
+    (`observe.monet.uni-goettingen.de`) that no longer matches the real deployment — corrected by
+    the user directly; a checked-in config file isn't proof of current live state, it needs to be
+    treated as possibly stale, not as confirmed reality.
+  - `admin.<domain>` (web-admin) — confirmed by the user directly ("it's admin.<domain>
+    everywhere"), no counter-evidence.
+  - Still pre-filled as an editable suggestion, never auto-saved/trusted without the user seeing
+    it — same lesson this repo already learned once for WS-URL guessing
+    (`specs/design/per-domain-websocket-config.md`): confirmed-in-N-known-fleets isn't the same
+    guarantee as reliable-everywhere, and a wrong guess should be a one-tap fix, not a silent
+    failure.
