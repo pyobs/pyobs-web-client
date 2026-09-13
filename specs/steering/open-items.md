@@ -45,10 +45,14 @@ instead of this list for the completed-feature catalog.
   (`specs/plans/2026-09-07-robotic-widgets.md` — flagged there as unusually high mobile value, not
   just a completeness gap) — built 2026-09-08.** Live-verification against real modules is now
   Tim's own testing pass, not an open web-client task tracked here; issues get filed as that
-  surfaces gaps (see e.g. issue #33, filed this way for the Camera page). Each plan's own "Open
-  questions" section still lists real unresolved technical gaps independent of that pass (e.g.
-  `IVideo`'s bearer-token auth has no token-protected fixture to verify against; `IRobotic`/
-  `IRoboticScheduler` have no test fixture at all yet).
+  surfaces gaps (see e.g. issue #33, filed this way for the Camera page). **2026-09-13**: both
+  fixtures each plan's own "Open questions" flagged as missing now exist —
+  `testing/pyobs-gui-configs/xmpp/robotic.yaml` (new) and `.../video_token.yaml` (new, and its
+  mechanism — `BaseVideo`'s `token` param + `/login` cookie flow — resolves `IVideo`'s bearer-token
+  open question; `VideoView.vue` actually driving that login flow is separately still open, see
+  that plan). Also found and fixed while building these: `video.yaml`/`full.yaml`'s `video`
+  submodule used `port:`, which current `BaseVideo` renamed to `http_port:` — both failed to start
+  before this, independent of the `name:`/`label:` fix below.
 - **`IStructuredConfig` — done, all three phases, 2026-09-08.** Plan at
   `specs/plans/2026-09-07-structured-config-widget.md`. Nested `object` fields and the basic/expert
   toggle (Phases 2/3, previously deferred for lack of a fixture) landed via a new recursive

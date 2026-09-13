@@ -2,10 +2,24 @@
 
 Status: built (`VideoView.vue`, `VideoGrabView.vue`) — 2026-09-08. Live-verification is now Tim's
 own testing pass rather than an open web-client task tracked here; file an issue for anything it
-turns up. No token-protected `IVideo` fixture exists yet, so the bearer-token open question below
-is still unresolved (surfaced as a message in the UI rather than guessed at). `videograbwidget.py`
-also references a `comboImageFormat` combo box that doesn't exist in its own `.ui` file — dead
-code, not reproduced in `VideoGrabView.vue`.
+turns up. `videograbwidget.py` also references a `comboImageFormat` combo box that doesn't exist in
+its own `.ui` file — dead code, not reproduced in `VideoGrabView.vue`.
+
+**2026-09-13 — bearer-token open question resolved (mechanism found, fixture built, client work
+still open).** `pyobs.modules.camera.BaseVideo` (`DummyVideo`'s parent) already has exactly the
+mechanism this open question needed: a `token` param protects the module's built-in HTTP server via
+either `Authorization: Bearer <token>` (machine clients) **or** a same-origin, HMAC-signed session
+cookie a browser gets by visiting `/login` once (GET for the form, POST `{token: ...}` to log in) —
+solving the "an `<img>` tag can't carry a custom Authorization header" problem, since cookies ride
+along with `<img>` requests automatically. New fixture:
+`testing/pyobs-gui-configs/xmpp/video_token.yaml`, live-verified end to end (login form loads,
+correct token sets the cookie and redirects, the cookie then authenticates `/video.mjpg`, a wrong
+token is rejected). Also found and fixed a real, independent bug while doing this: `video.yaml`
+(and `full.yaml`'s embedded `video` submodule) used `port:`, which current `BaseVideo` doesn't
+accept at all (renamed to `http_port`) — both failed to start before this fix, unrelated to the
+`name:`/`label:` fix from earlier the same day. **Still open**: `VideoView.vue` itself doesn't yet
+drive this login flow — it still just shows the "can't stream a token-protected endpoint" message
+(see below). That's real client-side work, not done by the fixture alone.
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -77,7 +91,9 @@ since it's never been exercised with a duplicate-interface pair before.
 
 ## Open questions
 
-- Bearer-token auth for the `<img>`-tag stream (see above) — needs a real fixture to resolve against.
+- ~~Bearer-token auth for the `<img>`-tag stream~~ — resolved 2026-09-13, see Status line.
+  `VideoView.vue` implementing the `/login` cookie flow is tracked as its own follow-up, not yet
+  scheduled.
 - Whether any real `IVideo` module in the fleet also implements `IWindow`/`IBinning` — affects
   whether the FITS Image tab needs a settings panel at all.
 
