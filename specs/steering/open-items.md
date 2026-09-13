@@ -15,52 +15,6 @@ config, the expandable Dashboard, the Roof page, the `IMode`/`IWeather`/
 Camera page, the Telescope page) aren't re-listed here — see that index
 instead of this list for the completed-feature catalog.
 
-- **Module widget visual redesign — done 2026-09-08.** Plan at
-  `specs/plans/2026-09-07-widget-visual-redesign.md`: the 7 module widgets now apply the
-  mobile-first-redesign mockup's visual language (curated status rows, unified button/card design
-  system, full-width action rows, legible mobile charts). Landed, then corrected against a live
-  cross-check with `pyobs-gui`'s own widgets and further live-feedback fixes — see that plan's
-  "Corrections" section for the full list. No longer blocking new-feature work below.
-- **Reconnect on connection drop / background-foreground (issue #49) — code landed 2026-09-13
-  (PR #50), real-device verified 2026-09-13.** Design at
-  `specs/design/background-foreground-reconnect.md`, plan at
-  `specs/plans/2026-09-13-background-foreground-reconnect.md`. Fixes the general "no auto-reconnect
-  once connected" gap, not just backgrounding. Background/foreground cycling, screen-lock,
-  manual-logout, and ejabberd-restart-while-foregrounded all confirmed working; a hang bug found
-  during that verification (DISCONNECTED-without-CONNFAIL leaving `attemptReconnect()`'s retry loop
-  stuck) was fixed in the same pass — see the plan's Status line. Ready to close #49, pending
-  Tim confirming nothing else is outstanding on the issue itself.
-- **Linked external apps (web-admin/portal/weather) — auth design + implementation, issue #48 —
-  code landed 2026-09-13 (PR #51), real-device verified 2026-09-13.** Design at
-  `specs/design/embedded-app-auth.md`, plan at `specs/plans/2026-09-13-linked-apps.md`. Resolved to
-  plain external links (browser owns SSO), not the originally-proposed in-app overlay — a
-  `useLinkedApps.ts` composable seeds `weather./observe./admin.<domain>` defaults per account,
-  editable in Settings, surfaced as real rows in `MoreView.vue`/the desktop sidebar. `pyobs-pipeline`
-  intentionally excluded (no Keycloak integration there yet — in progress separately, no GitHub
-  issue tracking it as of 2026-09-13). Seeding-once behavior, shared reactive state between Settings
-  and `MoreView.vue`, icon fallback, and system-browser-not-in-app-view on tap all confirmed — ready
-  to close #48.
-- **`IVideo` (`specs/plans/2026-09-07-video-widget.md`), `ISpectrograph`
-  (`specs/plans/2026-09-07-spectrograph-widget.md`), `IRobotic`/`IRoboticScheduler`
-  (`specs/plans/2026-09-07-robotic-widgets.md` — flagged there as unusually high mobile value, not
-  just a completeness gap) — built 2026-09-08.** Live-verification against real modules is now
-  Tim's own testing pass, not an open web-client task tracked here; issues get filed as that
-  surfaces gaps (see e.g. issue #33, filed this way for the Camera page). **2026-09-13**: both
-  fixtures each plan's own "Open questions" flagged as missing now exist —
-  `testing/pyobs-gui-configs/xmpp/robotic.yaml` (new) and `.../video_token.yaml` (new, and its
-  mechanism — `BaseVideo`'s `token` param + `/login` cookie flow — resolves `IVideo`'s bearer-token
-  open question). Also found and fixed while building these: `video.yaml`/`full.yaml`'s `video`
-  submodule used `port:`, which current `BaseVideo` renamed to `http_port:` — both failed to start
-  before this, independent of the `name:`/`label:` fix below. `VideoView.vue` now drives the
-  `/login` flow itself, live-verified — see that plan's Status line for the same-site-only caveat
-  (won't work for a genuinely cross-site fleet, no client-side fix possible for that case).
-- **`IStructuredConfig` — done, all three phases, 2026-09-08.** Plan at
-  `specs/plans/2026-09-07-structured-config-widget.md`. Nested `object` fields and the basic/expert
-  toggle (Phases 2/3, previously deferred for lack of a fixture) landed via a new recursive
-  `StructConfigForm.vue`, verified against a newly-ported fixture
-  (`testing/pyobs-gui-configs/xmpp/structuredconfig.yaml`) — caught and fixed a real bug live
-  (`structuredClone()` throwing on a Vue-reactive object; see the plan's Status line). Full registry
-  + what's built vs. not: `specs/design/pyobs-gui-widget-parity.md`.
 - **`IDataSequence`** — plan at `specs/plans/2026-08-03-idatasequence.md`. Depends on
   the Camera page plan (shipped), open question there on how the client
   learns a new image is ready per-grab.
@@ -87,44 +41,22 @@ Smaller/technical items:
   upstream (pyobs-core doesn't publish struct field schemas on the wire); not
   blocking anything today, tracked because `IPointingOrbitalElements` (see
   the Telescope page plan) would hit it directly if implemented.
-- **pyobs-core 2.0 ACLs — implemented upstream** (`0d1c9929`, "Implement access control (ACLs)
-  for module RPC calls"). Reactive handling (what happens when a denied call is actually
-  attempted) needs no client change — see `specs/design/acl-reactive-error-handling.md`. The
-  proactive half (greying out denied methods before they're tried) is **done** — see
-  `specs/plans/2026-08-03-acl-aware-shell-forms.md`.
-- **Exception-handling rewrite upstream — no client change needed today, but
-  `findRpcFault` is reading a richer wire format than it uses** — plan at
-  `specs/plans/2026-08-03-rpc-fault-call-id.md`. Every fault now carries a `call_id`
-  (XEP-0009's own per-call IQ id) for correlating a caller-side error with the
-  module's origin-side log line; not surfaced on `RpcResult` today because
-  nothing consumes it yet.
-- **`testing/pyobs-gui-configs/xmpp/*.yaml` fixtures were stale against current `pyobs-core` —
-  fixed 2026-09-13.** `Module.__init__`'s `name` kwarg was renamed to `label` upstream at some point
-  after `testing/.venv`'s pinned `2.0.0.dev53`; every fixture still using `name:` failed to start
-  against a current `pyobs-core` (confirmed running against an editable install of `../pyobs-core`
-  at `2.8.1`, needed to live-verify `specs/plans/2026-08-03-acl-aware-shell-forms.md`). All fixtures
-  in this directory now use `label:`. Still tracked separately: `specs/plans/2026-08-04-vfs-token-auth.md`'s
-  "bump the `testing/.venv` pin" remaining action (same root cause, but the pin itself is untouched).
+- **`findRpcFault` reads a richer wire format than it uses** — plan at
+  `specs/plans/2026-08-03-rpc-fault-call-id.md`, issues filed pyobs/pyobs-web-client#54 and
+  pyobs/pyobs-gui#167 (2026-09-13, both assigned to Tim). Every fault carries a `call_id` (XEP-0009's
+  own per-call IQ id) for correlating a caller-side error with the module's origin-side log line —
+  confirmed it does reach the systemd journal (`pyobsd`'s `--syslog`, default on) as plain text in
+  the log message, and `pyobs-web-admin`'s existing "Filter text…" log search already works on it
+  once surfaced, no new work needed there. Not yet implemented on either client.
+- **`specs/plans/2026-08-04-vfs-token-auth.md`'s "bump the `testing/.venv` pin" remaining action** —
+  still pinned to `2.0.0.dev53`; every fixture verification so far has used an editable install of
+  `../pyobs-core` instead as a workaround.
 
 Unchecked risks (no dedicated plan, tracked here so they aren't lost):
 
-- **Saved-connections data model vs. `pyobs-polaris`** — compared 2026-09-13 against
-  `pyobs-polaris/specs/design/configuration-file-and-saved-accounts.md`. Two structural
-  differences, both consistent/non-bugs as currently used: (1) Polaris keys everything on a
-  generated UUID (so editing a JID never orphans its keychain entry); this app keys everything on
-  the bare JID directly, which is fine only because a saved connection's JID is never editable here
-  (`EditConnectionView.vue` shows it read-only — delete/re-add instead). (2) Polaris scopes
-  `host`/`port`/`insecureSkipTls` overrides per-account; this app scopes the equivalent
-  (`useServerConfig`) per-domain, so two saved connections on the same domain can't have different
-  overrides here. One real finding, fixed 2026-09-13 (issue #53, closed): this app's non-native
-  (plain web) build used to fall back to storing remembered passwords in plaintext localStorage,
-  where Polaris's `QtKeychain` never falls back and fails the save cleanly instead. Now matches
-  Polaris's stance: `useCredentialStore.ts`'s `setPassword()` refuses to persist anything at all
-  when `Capacitor.isNativePlatform()` is false, and `LoginView.vue`/`EditConnectionView.vue`/
-  `ConnectionsView.vue` all hide the "remember password" UI on web with an explanatory note instead
-  of silently doing nothing. Deliberately scoped to passwords only — VFS bearer tokens
-  (`setVfsToken()`) still use the plaintext web fallback, unchanged; not part of this fix. Polaris's
-  DNS-SRV/legacy-TLS-port hang bug doesn't apply here — this app connects straight to a fixed
-  WebSocket URL, no SRV-based discovery.
+- **VFS bearer tokens (`setVfsToken()`) still use a plaintext web fallback on non-native builds** —
+  found 2026-09-13 comparing against `pyobs-polaris` (see `specs/design/configuration-file-and-saved-accounts.md`
+  there), alongside the same gap for XMPP passwords (fixed, issue #53, closed). Deliberately left
+  out of #53's scope (passwords only); no issue filed yet for the token case.
 - **Does WebView feel "good enough"?** — still open, waiting on real use via
   `specs/plans/2026-09-06-mobile-first-redesign.md`.
