@@ -1,6 +1,9 @@
 # Auth for embedding other pyobs apps (web-admin, portal, weather)
 
-Status: proposed.
+Status: proposed. **Superseded by a simpler decision — see "Revised (2026-09-13): plain external
+links, no overlay" below.** The investigation that follows is kept because it's what established
+*why* the simple answer is actually correct (not just easier) — the more elaborate overlay design
+it originally proposed is now rejected, not built.
 
 Issue: pyobs/pyobs-web-client#48.
 
@@ -127,3 +130,49 @@ Confirmed with the user, 2026-09-13:
 - **Real-device verification of the iOS session-cookie-sharing behavior specifically** — Apple's own
   forums report inconsistency across iOS versions; must be confirmed on-device once the persistent-
   cookie realm change lands, not assumed from documentation alone.
+
+## Revised (2026-09-13): plain external links, no overlay
+
+Asked directly: is staying in-app for the embedded-app hop actually a requirement, or would a full
+app switch (leaving to the real system browser) be acceptable? **The user confirmed a full app
+switch is fine.** That changes the answer completely — the entire overlay mechanism above
+(`ASWebAuthenticationSession`/Custom Tabs, the plugin survey, the persistent-cookie realm change)
+was only needed to get SSO-reliable cookie sharing *without* leaving the app. Once leaving the app
+is acceptable, none of that machinery is needed: a link to the real system browser gets the real
+Safari/Chrome cookie jar directly, with no partial-sharing ambiguity to design around.
+
+**New design:**
+
+- **Every embedded-app entry point is a plain link** (`<a href="https://portal...">` or
+  equivalent) — identical on web and native, no platform branching.
+- **No plugin, no `Capacitor.isNativePlatform()` gating, no native code at all.** Confirmed against
+  this app's actual `capacitor.config.ts`: it sets no `server.allowNavigation` (empty/default), and
+  Capacitor's own documented default behavior is that any external-origin navigation not covered by
+  `allowNavigation` opens in the system browser automatically — so a plain link to web-admin/
+  portal/weather already does the right thing today, with zero config changes needed in this repo.
+- **Real Safari/Chrome cookie jar, no ambiguity.** This isn't `ASWebAuthenticationSession` or
+  `SFSafariViewController` — it's the literal browser app, so there's no session-vs-persistent-cookie
+  sharing question to worry about. Ordinary Keycloak session cookies work exactly as they would in
+  any normal browser, on any platform.
+- **The persistent/"Remember Me" realm cookie change is no longer required** by this design — it
+  was a mitigation for `ASWebAuthenticationSession`'s specific partial-sharing behavior, which no
+  longer applies. (Might still be worth doing for other reasons, e.g. long-lived sessions in
+  general — but that's a separate conversation, not something this feature needs.)
+- **Scope unchanged**: web-admin, portal, weather; `pyobs-pipeline` still excluded (no Keycloak
+  integration yet, "pipeline will follow later").
+
+**Now out of scope (rejected, not deferred):**
+
+- The `ASWebAuthenticationSession`/Custom Tabs overlay mechanism, the Capacitor-plugin survey, and
+  the Keycloak realm persistent-cookie change — all superseded by the plain-link approach.
+- True inline rendering — still rejected, same reasoning as before, now doubly so since there's no
+  overlay-based login step to bridge cookies from either.
+
+**Still genuinely open** (unaffected by this revision):
+
+- **Deep-linking into a specific page/section of an embedded app** vs. just its landing page/
+  wherever the post-login redirect lands.
+- **Logout propagation** — does logging out of pyobs-web-client end the shared Keycloak session
+  (affecting the other apps too), or just this app's own local state? Arguably less pressing now
+  that these are full external links rather than something living inside this app's own UI, but
+  still undecided.
