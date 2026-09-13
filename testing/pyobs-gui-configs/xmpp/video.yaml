@@ -17,7 +17,7 @@ vfs: &vfs
 modules:
   video:
     class: pyobs.modules.camera.dummyvideo.DummyVideo
-    name: video
+    label: video
     port: 37077
     vfs: *vfs
     comm:

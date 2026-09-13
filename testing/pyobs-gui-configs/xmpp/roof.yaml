@@ -9,9 +9,7 @@
 # Needs a current pyobs-core: this repo's pinned testing/.venv (2.0.0.dev53) predates
 # Module.__init__'s name -> label rename below; use an editable install of ../pyobs-core
 # instead (uv pip install --python testing/.venv -e ../pyobs-core[full]) until the pin is
-# bumped — see specs/plans/2026-08-04-vfs-token-auth.md's "Remaining action" note. Every
-# other config in this directory has the same stale `name:` key; not fixed here, tracked in
-# specs/steering/open-items.md.
+# bumped — see specs/plans/2026-08-04-vfs-token-auth.md's "Remaining action" note.
 class: pyobs.modules.MultiModule
 
 modules:

@@ -7,7 +7,7 @@ class: pyobs.modules.MultiModule
 modules:
   spectrograph:
     class: pyobs.modules.camera.DummySpectrograph
-    name: spectrograph
+    label: spectrograph
     comm:
       class: pyobs.comm.xmpp.XmppComm
       domain: localhost

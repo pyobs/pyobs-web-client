@@ -12,7 +12,7 @@ location:
 modules:
   telescope:
     class: pyobs.modules.telescope.DummyAltAzTelescope
-    name: telescope
+    label: telescope
     comm:
       class: pyobs.comm.xmpp.XmppComm
       domain: localhost

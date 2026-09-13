@@ -93,16 +93,13 @@ Smaller/technical items:
   (XEP-0009's own per-call IQ id) for correlating a caller-side error with the
   module's origin-side log line; not surfaced on `RpcResult` today because
   nothing consumes it yet.
-- **`testing/pyobs-gui-configs/xmpp/*.yaml` fixtures are stale against current `pyobs-core`** —
-  `Module.__init__`'s `name` kwarg was renamed to `label` upstream at some point after
-  `testing/.venv`'s pinned `2.0.0.dev53`; every fixture still using `name:` fails to start against
-  a current `pyobs-core` (confirmed running against an editable install of `../pyobs-core` at
-  `2.8.1`, needed to live-verify `specs/plans/2026-08-03-acl-aware-shell-forms.md`). Fixed so far:
-  `roof.yaml`, `telescope_acl.yaml`, `telescope_acl_denied.yaml`, `mode.yaml`, `autofocus.yaml`,
-  `camera.yaml`, `guiding.yaml`, `acquisition.yaml`; still stale: `full.yaml`, `spectrograph.yaml`,
-  `telescope.yaml`, `video.yaml`, `weather.yaml`. Same root cause as, and probably worth doing
-  together with, `specs/plans/2026-08-04-vfs-token-auth.md`'s already-tracked "bump the
-  `testing/.venv` pin" remaining action.
+- **`testing/pyobs-gui-configs/xmpp/*.yaml` fixtures were stale against current `pyobs-core` —
+  fixed 2026-09-13.** `Module.__init__`'s `name` kwarg was renamed to `label` upstream at some point
+  after `testing/.venv`'s pinned `2.0.0.dev53`; every fixture still using `name:` failed to start
+  against a current `pyobs-core` (confirmed running against an editable install of `../pyobs-core`
+  at `2.8.1`, needed to live-verify `specs/plans/2026-08-03-acl-aware-shell-forms.md`). All fixtures
+  in this directory now use `label:`. Still tracked separately: `specs/plans/2026-08-04-vfs-token-auth.md`'s
+  "bump the `testing/.venv` pin" remaining action (same root cause, but the pin itself is untouched).
 
 Unchecked risks (no dedicated plan, tracked here so they aren't lost):
 

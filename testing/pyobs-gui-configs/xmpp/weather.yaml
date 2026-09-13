@@ -13,7 +13,7 @@ class: pyobs.modules.MultiModule
 modules:
   weather:
     class: pyobs.modules.weather.MockWeather
-    name: weather
+    label: weather
     comm:
       class: pyobs.comm.xmpp.XmppComm
       domain: localhost

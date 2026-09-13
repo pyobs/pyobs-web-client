@@ -32,7 +32,7 @@ _comm_base: &comm
 modules:
   camera:
     class: pyobs.modules.camera.DummyCamera
-    name: camera
+    label: camera
     telescope: telescope
     vfs: *vfs
     comm:
@@ -42,7 +42,7 @@ modules:
 
   telescope:
     class: pyobs.modules.telescope.DummyAltAzTelescope
-    name: telescope
+    label: telescope
     comm:
       <<: *comm
       user: telescope
@@ -50,7 +50,7 @@ modules:
 
   roof:
     class: pyobs.modules.roof.DummyRoof
-    name: roof
+    label: roof
     comm:
       <<: *comm
       user: roof
@@ -58,7 +58,7 @@ modules:
 
   mode:
     class: pyobs.modules.utils.dummymode.DummyMode
-    name: mode
+    label: mode
     comm:
       <<: *comm
       user: mode
@@ -66,7 +66,7 @@ modules:
 
   video:
     class: pyobs.modules.camera.dummyvideo.DummyVideo
-    name: video
+    label: video
     port: 37077
     vfs: *vfs
     comm:
@@ -76,7 +76,7 @@ modules:
 
   autofocus:
     class: pyobs.modules.focus.DummyAutoFocus
-    name: autofocus
+    label: autofocus
     comm:
       <<: *comm
       user: autofocus
@@ -84,7 +84,7 @@ modules:
 
   acquisition:
     class: pyobs.modules.pointing.DummyAcquisition
-    name: acquisition
+    label: acquisition
     comm:
       <<: *comm
       user: acquisition
@@ -92,7 +92,7 @@ modules:
 
   guiding:
     class: pyobs.modules.pointing.DummyAutoGuiding
-    name: guiding
+    label: guiding
     comm:
       <<: *comm
       user: guiding
