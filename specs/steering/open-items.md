@@ -27,6 +27,15 @@ instead of this list for the completed-feature catalog.
   once connected" gap, not just backgrounding — issue #49 stays open until real-device verification
   (background/foreground cycling, ejabberd restart while foregrounded, confirming manual logout
   doesn't auto-reconnect) is done; see the plan's Verification section.
+- **Linked external apps (web-admin/portal/weather) — auth design + implementation, issue #48 —
+  code landed 2026-09-13 (PR #51).** Design at `specs/design/embedded-app-auth.md`, plan at
+  `specs/plans/2026-09-13-linked-apps.md`. Resolved to plain external links (browser owns SSO), not
+  the originally-proposed in-app overlay — a `useLinkedApps.ts` composable seeds
+  `weather./observe./admin.<domain>` defaults per account, editable in Settings, surfaced as real
+  rows in `MoreView.vue`/the desktop sidebar. `pyobs-pipeline` intentionally excluded (no Keycloak
+  integration there yet — in progress separately, no GitHub issue tracking it as of 2026-09-13).
+  Issue #48 stays open until real-account/real-device verification (seeding-once behavior, tapping
+  a row opens the system browser not an in-app view) is done; see the plan's Test plan checklist.
 - **`IVideo` (`specs/plans/2026-09-07-video-widget.md`), `ISpectrograph`
   (`specs/plans/2026-09-07-spectrograph-widget.md`), `IRobotic`/`IRoboticScheduler`
   (`specs/plans/2026-09-07-robotic-widgets.md` — flagged there as unusually high mobile value, not
