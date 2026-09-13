@@ -759,6 +759,16 @@ function connect(userJid: string, password: string, silent = false): Promise<voi
           if (!intentionalDisconnect && sessionStorage.getItem(SESSION_JID_KEY)) {
             attemptReconnect(userJid, password)
           }
+        } else {
+          // Never reached CONNECTED — e.g. a stream-level error (ejabberd shutting down
+          // mid-restart) reports DISCONNECTED directly, skipping CONNFAIL. Settle the
+          // pending promise the same way CONNFAIL does, or attemptReconnect()'s retry
+          // loop hangs forever awaiting a promise that never resolves or rejects.
+          if (!silent) {
+            status.value = 'error'
+            errorMessage.value = 'Connection failed. Check server address.'
+          }
+          reject(new Error('Disconnected before connecting'))
         }
       }
     })

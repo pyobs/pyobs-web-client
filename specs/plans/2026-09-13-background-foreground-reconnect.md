@@ -1,6 +1,15 @@
 # Plan: Reconnect on background/foreground and on any connection drop
 
-Status: implemented (code landed; real-device verification per below still pending)
+Status: done — implemented, real-device verified 2026-09-13 (background/foreground, screen-lock,
+manual-logout-must-not-reconnect, and ejabberd-restart-while-foregrounded all confirmed). One bug
+found and fixed during verification: `connect()`'s `DISCONNECTED` branch never settled its wrapping
+Promise when `DISCONNECTED` fired without a prior `CONNFAIL` (e.g. a stream-level error like
+ejabberd's `system-shutdown`), so `attemptReconnect()`'s retry loop could hang indefinitely on a
+never-resolving `await` — reproduced live (stuck on the connecting spinner until an unrelated
+lifecycle event, e.g. a screen lock/unlock, happened to call `attemptReconnect()` again
+independently and rescue it). Fixed in `useXmpp.ts`'s `DISCONNECTED` handler: reject the same way
+`CONNFAIL` does whenever `status.value !== 'connected'` at that point. Re-tested against a live
+ejabberd restart after the fix — resolves to the Connections screen promptly instead of hanging.
 
 Repos: pyobs-web-client (all implementation here)
 

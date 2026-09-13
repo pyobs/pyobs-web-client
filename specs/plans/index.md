@@ -41,20 +41,21 @@ Implementation plans, checklist-style.
 - [2026-08-03-struct-typed-command-params.md](2026-08-03-struct-typed-command-params.md) — `struct<Name>`-typed command
   params. **blocked on upstream**
 - [2026-09-09-safe-area-insets.md](2026-09-09-safe-area-insets.md) — status bar / gesture-nav inset
-  handling for the compact shell + FAB, split out of mobile-first-redesign Phase 3.
-  **implemented** 2026-09-09, real-device verification pending
+  handling for the compact shell + FAB, split out of mobile-first-redesign Phase 3. **done**,
+  real-device verified (gesture nav) 2026-09-13
 - [2026-09-09-keyboard-avoidance.md](2026-09-09-keyboard-avoidance.md) — keep focused text/number
-  inputs visible above the on-screen keyboard, split out of mobile-first-redesign Phase 3.
-  **implemented**, real-device verification pending
+  inputs visible above the on-screen keyboard, split out of mobile-first-redesign Phase 3. **done**,
+  real-device verified 2026-09-13
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** — Phase 1 done;
   Phase 2 done except `SettingsView` (still unmigrated, no responsive styling); Phase 3 done (both
-  scoped-out sub-plans, safe-area-insets and keyboard-avoidance, implemented, real-device
-  verification pending); Phase 4 not started (blocked on Mac access)
+  scoped-out sub-plans, safe-area-insets and keyboard-avoidance, implemented and real-device
+  verified); Phase 4 not started (blocked on Mac access)
 - [2026-09-13-background-foreground-reconnect.md](2026-09-13-background-foreground-reconnect.md) —
   auto-reconnect on any XMPP connection drop (not just backgrounding), plus `@capacitor/app`
-  lifecycle awareness to catch a dead socket on foreground resume. **implemented**, issue #49 —
-  real-device verification pending
+  lifecycle awareness to catch a dead socket on foreground resume. **done**, issue #49 —
+  real-device verified 2026-09-13, including a hang bug found and fixed during verification (see
+  plan's Status line)
 - [2026-09-13-linked-apps.md](2026-09-13-linked-apps.md) — editable list of external links
   (web-admin/portal/weather) with domain-guessed defaults, surfaced in Settings + compact/desktop
   nav. **implemented** (PR #51) 2026-09-13, issue #48 open pending real-device verification

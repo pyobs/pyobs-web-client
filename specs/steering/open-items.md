@@ -22,11 +22,14 @@ instead of this list for the completed-feature catalog.
   cross-check with `pyobs-gui`'s own widgets and further live-feedback fixes — see that plan's
   "Corrections" section for the full list. No longer blocking new-feature work below.
 - **Reconnect on connection drop / background-foreground (issue #49) — code landed 2026-09-13
-  (PR #50).** Design at `specs/design/background-foreground-reconnect.md`, plan at
+  (PR #50), real-device verified 2026-09-13.** Design at
+  `specs/design/background-foreground-reconnect.md`, plan at
   `specs/plans/2026-09-13-background-foreground-reconnect.md`. Fixes the general "no auto-reconnect
-  once connected" gap, not just backgrounding — issue #49 stays open until real-device verification
-  (background/foreground cycling, ejabberd restart while foregrounded, confirming manual logout
-  doesn't auto-reconnect) is done; see the plan's Verification section.
+  once connected" gap, not just backgrounding. Background/foreground cycling, screen-lock,
+  manual-logout, and ejabberd-restart-while-foregrounded all confirmed working; a hang bug found
+  during that verification (DISCONNECTED-without-CONNFAIL leaving `attemptReconnect()`'s retry loop
+  stuck) was fixed in the same pass — see the plan's Status line. Ready to close #49, pending
+  Tim confirming nothing else is outstanding on the issue itself.
 - **Linked external apps (web-admin/portal/weather) — auth design + implementation, issue #48 —
   code landed 2026-09-13 (PR #51).** Design at `specs/design/embedded-app-auth.md`, plan at
   `specs/plans/2026-09-13-linked-apps.md`. Resolved to plain external links (browser owns SSO), not
