@@ -1,7 +1,9 @@
 # Plan: Linked-apps list (reach web-admin/portal/weather from this app)
 
-Status: implemented (code landed, PR #51, 2026-09-13); real-account/real-device verification per
-below still pending — see issue #48
+Status: done — implemented (code landed, PR #51, 2026-09-13), real-account/real-device verified
+2026-09-13: seeding-once behavior confirmed (delete persists across reload, no re-seed), edits in
+Settings show up immediately in `MoreView.vue`, icon fallback glyph shows correctly for a
+domain with no favicon, and tapping a row opens the system browser (Chrome), not an in-app view.
 
 Repos: pyobs-web-client (all implementation here)
 

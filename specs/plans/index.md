@@ -58,4 +58,4 @@ Implementation plans, checklist-style.
   plan's Status line)
 - [2026-09-13-linked-apps.md](2026-09-13-linked-apps.md) — editable list of external links
   (web-admin/portal/weather) with domain-guessed defaults, surfaced in Settings + compact/desktop
-  nav. **implemented** (PR #51) 2026-09-13, issue #48 open pending real-device verification
+  nav. **done** (PR #51) 2026-09-13, real-device verified 2026-09-13
