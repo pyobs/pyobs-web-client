@@ -1,6 +1,7 @@
 # Plan: Linked-apps list (reach web-admin/portal/weather from this app)
 
-Status: proposed
+Status: implemented (code landed, PR #51, 2026-09-13); real-account/real-device verification per
+below still pending — see issue #48
 
 Repos: pyobs-web-client (all implementation here)
 

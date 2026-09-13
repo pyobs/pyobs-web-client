@@ -1,6 +1,6 @@
 # Plan: Safe-area inset handling (status bar / gesture nav)
 
-Status: proposed
+Status: implemented (`c1e529f`, 2026-09-09), real-device verification (gesture nav) pending
 
 Repos: pyobs-web-client (all implementation here)
 

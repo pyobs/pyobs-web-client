@@ -6,7 +6,9 @@ now implemented). **Corrected 2026-09-09**: Phase 2 is done except `SettingsView
 Roof/Mode/Weather/AutoFocus/AutoGuiding/Acquisition/Camera is done (all as `ModulePageView` tabs)
 and their compact-width visual pass landed via `2026-09-07-widget-visual-redesign.md`; only
 `SettingsView` remains unmigrated, still reached via `MoreView.vue`'s plain list, no responsive
-styling. Phase 3 and Phase 4 not started.
+styling. **Corrected 2026-09-13**: Phase 3 is done — both scoped-out sub-plans
+(`2026-09-09-safe-area-insets.md`, `2026-09-09-keyboard-avoidance.md`) are implemented, real-device
+verification pending on both. Phase 4 not started (blocked on Mac access).
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -132,12 +134,14 @@ Migrate incrementally, each view landing as its own reviewable change. Suggested
 real-world phone use first): ~~Dashboard~~ → ~~Connections/Login~~ → ~~the ModulePage rework~~ →
 ~~Roof/Mode/Weather~~ → ~~Logging/Events visual pass~~ → Settings → ~~AutoFocus/AutoGuiding/Acquisition~~.
 
-## Phase 3 — Cross-cutting polish
+## Phase 3 — Cross-cutting polish (done, real-device verification pending)
 
 - Safe-area inset handling (status bar / gesture nav) — an Android concern now, doubles as iOS
   prep for Phase 4. Scoped out as its own plan: `specs/plans/2026-09-09-safe-area-insets.md`.
+  **Implemented** `c1e529f` (2026-09-09).
 - Keyboard-avoidance check on every numeric/text form (exposure time, RA/Dec, filter selection) —
-  scoped out as its own plan: `specs/plans/2026-09-09-keyboard-avoidance.md`.
+  scoped out as its own plan: `specs/plans/2026-09-09-keyboard-avoidance.md`. **Implemented**,
+  2026-09-09.
 
 Decided 2026-09-09: no haptic feedback — not needed.
 
