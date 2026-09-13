@@ -27,6 +27,57 @@ const streamUrl = ref<string | undefined>(undefined)
 const streamTokenProtected = ref(false)
 const streamError = ref('')
 
+// ── Bearer-token auth for the <img>-tag stream ──────────────────────────────
+// An <img> tag's src can't carry a custom Authorization header, but
+// pyobs.modules.camera.BaseVideo (2026-09-13) already has the fix for that: a
+// same-origin, HMAC-signed session cookie a browser gets by visiting /login
+// once (GET for the form, POST {token} to log in) — see
+// testing/pyobs-gui-configs/xmpp/video_token.yaml and this plan's Status line.
+// The catch: BaseVideo's HTTP server sends no CORS headers at all, so a plain
+// fetch() to /login is blocked outright; a hidden <form>/<iframe> POST isn't
+// CORS-gated (forms never have been — that's how CSRF worked before tokens),
+// so that's what logInIframe/logInForm below drive. And the resulting cookie
+// is SameSite=Lax, which browsers refuse to attach to a genuinely cross-SITE
+// <img> request — only same-site (registrable domain) or same-host requests
+// get it. Comparing full eTLD+1 needs the public suffix list, which this repo
+// doesn't carry; comparing exact hostnames instead is conservative (some
+// legitimately same-site, different-subdomain deployments will be told "not
+// supported" that could actually work) but never wrongly claims a genuinely
+// cross-site stream will authenticate. Verified live against a real Chrome
+// tab: a hidden-iframe form POST across two localhost ports (same host,
+// different origin) does make the following <img> request carry the cookie.
+const loginIframe = ref<HTMLIFrameElement>()
+const loginForm = ref<HTMLFormElement>()
+const loginTokenInput = ref<HTMLInputElement>()
+
+function isSameHost(url: string): boolean {
+  try {
+    return new URL(url).hostname === window.location.hostname
+  } catch {
+    return false
+  }
+}
+
+// Resolves once the hidden iframe finishes loading the /login response (a 303
+// redirect to / on success, a 401 page on a wrong token — either way a
+// completed navigation, so `load` fires regardless of outcome). Wrong-token
+// failures surface via the <img>'s own @error handler below instead of here.
+function loginForStream(baseUrl: string, token: string): Promise<void> {
+  return new Promise((resolve) => {
+    const iframe = loginIframe.value
+    const form = loginForm.value
+    const input = loginTokenInput.value
+    if (!iframe || !form || !input) {
+      resolve()
+      return
+    }
+    iframe.onload = () => resolve()
+    form.action = new URL('/login', baseUrl).toString()
+    input.value = token
+    form.submit()
+  })
+}
+
 watch(
   currentModule,
   async (mod) => {
@@ -58,16 +109,25 @@ watch(
       return
     }
     if (resolved.endpoint.token) {
-      // An <img> tag's src can't carry a custom Authorization header — see this
-      // plan's open question. No token-protected IVideo fixture exists yet to
-      // resolve it against, so surface the limitation instead of guessing.
-      streamTokenProtected.value = true
-      return
+      if (!isSameHost(resolved.url)) {
+        streamTokenProtected.value = true
+        return
+      }
+      await loginForStream(resolved.url, resolved.endpoint.token)
     }
     streamUrl.value = resolved.url
   },
   { immediate: true },
 )
+
+// Covers both a wrong token (cookie login silently failed above) and any
+// other stream-load failure (network blip, module gone) — previously nothing
+// surfaced this at all, just a broken-image icon.
+const streamLoadError = ref(false)
+function onStreamError() {
+  streamLoadError.value = true
+}
+watch(streamUrl, () => (streamLoadError.value = false))
 
 // ── IExposureTime / IGain — shown only when the module implements them,
 // matching groupExposure/groupGain's visibility toggle in videowidget.py.
@@ -157,14 +217,32 @@ async function setGain() {
 
 <template>
   <div v-if="currentModule" class="d-flex flex-column gap-2">
+    <!-- Hidden — see loginForStream() above. Not user-visible, just the
+         auth handshake an <img> tag can't do on its own. -->
+    <iframe ref="loginIframe" name="pyobs-video-login" style="display:none" aria-hidden="true"></iframe>
+    <form ref="loginForm" target="pyobs-video-login" method="post" style="display:none">
+      <input ref="loginTokenInput" type="hidden" name="token" />
+    </form>
+
     <div class="pyobs-card p-0" style="overflow:hidden">
-      <img v-if="streamUrl" :src="streamUrl" alt="Live view" style="display:block; width:100%; height:auto" />
+      <img
+        v-if="streamUrl"
+        :src="streamUrl"
+        alt="Live view"
+        style="display:block; width:100%; height:auto"
+        @error="onStreamError"
+      />
+      <div v-if="streamUrl && streamLoadError" class="text-danger p-3" style="font-size:0.85rem">
+        Couldn't load the stream — if it's token-protected, check the VFS endpoint token in
+        Settings matches the module's own.
+      </div>
       <div v-else-if="streamTokenProtected" class="text-muted p-3" style="font-size:0.85rem">
-        This stream's VFS endpoint requires a bearer token, which an &lt;img&gt; tag can't send — live
-        view isn't supported for this connection yet.
+        This stream's VFS endpoint requires a bearer token, and the module isn't on this app's own
+        host — a browser won't carry the resulting login cookie across sites, so live view isn't
+        supported for this connection.
       </div>
       <div v-else-if="streamError" class="text-muted p-3" style="font-size:0.85rem">{{ streamError }}</div>
-      <div v-else class="text-muted p-3" style="font-size:0.85rem">No video stream available.</div>
+      <div v-else-if="!streamUrl" class="text-muted p-3" style="font-size:0.85rem">No video stream available.</div>
     </div>
 
     <div v-if="exposureTimeStateValue !== undefined" class="d-flex gap-2 align-items-end">

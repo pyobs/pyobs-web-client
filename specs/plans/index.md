@@ -29,7 +29,8 @@ Implementation plans, checklist-style.
   (Cooling/Filters/Temperatures/Focuser, `sidebar_preferred`-promoted or demoted to the shared
   section). **done** 2026-09-08 — all four widgets built and registered
 - [2026-09-07-video-widget.md](2026-09-07-video-widget.md) — `IVideo` widget (Live View via native
-  `<img>` MJPEG, FITS Image grab). **built** 2026-09-08
+  `<img>` MJPEG, FITS Image grab). **built** 2026-09-08; bearer-token login flow for
+  token-protected streams implemented and live-verified 2026-09-13 (same-site deployments only)
 - [2026-09-07-spectrograph-widget.md](2026-09-07-spectrograph-widget.md) — `ISpectrograph` widget
   (camera-lite: expose/abort/status, no settings panel). **built** 2026-09-08
 - [2026-09-07-structured-config-widget.md](2026-09-07-structured-config-widget.md) — `IStructuredConfig`

@@ -49,10 +49,11 @@ instead of this list for the completed-feature catalog.
   fixtures each plan's own "Open questions" flagged as missing now exist —
   `testing/pyobs-gui-configs/xmpp/robotic.yaml` (new) and `.../video_token.yaml` (new, and its
   mechanism — `BaseVideo`'s `token` param + `/login` cookie flow — resolves `IVideo`'s bearer-token
-  open question; `VideoView.vue` actually driving that login flow is separately still open, see
-  that plan). Also found and fixed while building these: `video.yaml`/`full.yaml`'s `video`
+  open question). Also found and fixed while building these: `video.yaml`/`full.yaml`'s `video`
   submodule used `port:`, which current `BaseVideo` renamed to `http_port:` — both failed to start
-  before this, independent of the `name:`/`label:` fix below.
+  before this, independent of the `name:`/`label:` fix below. `VideoView.vue` now drives the
+  `/login` flow itself, live-verified — see that plan's Status line for the same-site-only caveat
+  (won't work for a genuinely cross-site fleet, no client-side fix possible for that case).
 - **`IStructuredConfig` — done, all three phases, 2026-09-08.** Plan at
   `specs/plans/2026-09-07-structured-config-widget.md`. Nested `object` fields and the basic/expert
   toggle (Phases 2/3, previously deferred for lack of a fixture) landed via a new recursive

@@ -17,9 +17,23 @@ correct token sets the cookie and redirects, the cookie then authenticates `/vid
 token is rejected). Also found and fixed a real, independent bug while doing this: `video.yaml`
 (and `full.yaml`'s embedded `video` submodule) used `port:`, which current `BaseVideo` doesn't
 accept at all (renamed to `http_port`) — both failed to start before this fix, unrelated to the
-`name:`/`label:` fix from earlier the same day. **Still open**: `VideoView.vue` itself doesn't yet
-drive this login flow — it still just shows the "can't stream a token-protected endpoint" message
-(see below). That's real client-side work, not done by the fixture alone.
+`name:`/`label:` fix from earlier the same day.
+
+**2026-09-13 — client-side login flow implemented and live-verified.** `VideoView.vue` now drives
+the flow itself: a hidden `<iframe>`/`<form>` POSTs the VFS endpoint's already-configured token to
+`/login` (a real form submission, not `fetch()` — `BaseVideo`'s HTTP server sends no CORS headers
+at all, so a cross-origin `fetch()` is blocked outright; forms were never CORS-gated, that's how
+CSRF worked before tokens existed). The resulting `SameSite=Lax` cookie only rides a **same-site**
+`<img>` request, so this only works when the stream's host matches this app's own hostname exactly
+(deliberately conservative — no public-suffix-list to compute true eTLD+1 same-site, so some
+legitimately-same-site-different-subdomain deployments will still see the "not supported" message)
+— genuinely cross-site streams (this app hosted centrally, module on a different institution's own
+domain, the likely common case for a multi-site fleet) still can't work at all, no client trick gets
+around a browser dropping a cross-site `SameSite=Lax` cookie. Verified live end to end against
+`video_token.yaml` via `npm run dev`: correct token → stream loads (`naturalWidth`/`naturalHeight`
+confirmed via devtools, matching `DummyVideo`'s frame size); wrong token (after clearing the old
+session via the module's own `/login`'s sibling `/logout`) → the new `streamLoadError` message
+shows correctly instead of a silent broken image.
 
 Repos: pyobs-web-client (all implementation here)
 
