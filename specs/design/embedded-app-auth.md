@@ -22,7 +22,7 @@ other rather than independent:
   `docs/source/architecture.rst`: "every service trusts exactly one Keycloak realm"), with
   per-service *and* per-installation clients/groups inside it (e.g. weather gets a distinct client
   and group per site — `iag50srv-weather` / `/pyobs-weather-iag50srv` — not one shared group, which
-  would authorize every site's instance at once; see `pyobs-iag50/specs/design/keycloak-service-topology.md`
+  would authorize every site's instance at once; see `pyobs-iag50/specs/topology/keycloak-service-topology.md`
   and `pyobs-weather/specs/plans/2026-09-02-keycloak-login.md`). Confirmed clients: web-admin
   (`pyobs_web_admin/settings.py`), portal (`pyobs_portal/settings.py`), weather
   (`pyobs_weather/settings.py`, per-installation).
