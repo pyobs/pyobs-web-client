@@ -52,3 +52,6 @@ Implementation plans, checklist-style.
   auto-reconnect on any XMPP connection drop (not just backgrounding), plus `@capacitor/app`
   lifecycle awareness to catch a dead socket on foreground resume. **implemented**, issue #49 —
   real-device verification pending
+- [2026-09-13-linked-apps.md](2026-09-13-linked-apps.md) — editable list of external links
+  (web-admin/portal/weather) with domain-guessed defaults, surfaced in Settings + compact/desktop
+  nav. **proposed**, issue #48
