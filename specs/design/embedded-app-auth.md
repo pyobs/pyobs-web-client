@@ -45,6 +45,13 @@ other rather than independent:
 
 ## Design
 
+- **Web build: plain links, no special mechanism.** All of the cookie-jar-isolation problem this
+  doc works through is specific to the native app's embedded WebView — a normal browser tab has no
+  such isolation, so a plain `<a href="https://portal...">` (or `window.open`) gets ordinary
+  browser-native Keycloak SSO across sites for free via normal top-level navigation and the
+  browser's own shared cookie jar. Everything below (the overlay mechanism, the realm cookie
+  change, the plugin question) is native-only — gated the same way `usePushNotifications.ts` gates
+  native-only behavior (`Capacitor.isNativePlatform()`), not something the web build needs at all.
 - **Mechanism: every embedded-app open goes through the external-user-agent overlay**
   (`ASWebAuthenticationSession` on iOS, Chrome Custom Tabs on Android), not just as a one-time login
   step — decided with the user: no true inline rendering, an overlay/tab per app is acceptable UX.
@@ -101,6 +108,8 @@ Confirmed with the user, 2026-09-13:
 - **Persistent/"Remember Me" Keycloak session cookies: in scope as a required step**, not left as
   an unresolved risk.
 - **Login trigger: lazy (on first embedded-app tap), not proactive at startup.**
+- **Web build needs no special handling — plain links only.** Everything else in this doc (the
+  overlay mechanism, the realm cookie change, the plugin question) is native-only.
 
 ## Open questions
 
