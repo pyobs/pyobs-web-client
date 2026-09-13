@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useXmpp } from '@/composables/useXmpp'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useLinkedApps } from '@/composables/useLinkedApps'
 import { widgetsForModule } from '@/moduleWidgets'
 
 const router = useRouter()
 const route = useRoute()
 const { jid, disconnect, modules } = useXmpp()
 const { isCompact } = useBreakpoint()
+const { linkedApps } = useLinkedApps()
+// Same "swap to a fallback glyph on load failure" approach as SettingsView.vue's Linked Apps
+// section.
+const brokenLinkIcons = ref<Record<number, boolean>>({})
 
 // One nav entry per module (not per interface) — see
 // specs/plans/2026-09-06-module-page-rework.md. The icon shown is whichever
@@ -188,6 +193,25 @@ const appVersion = __APP_VERSION__
         >
           <i class="bi bi-gear" style="font-size:0.8rem"></i>
           Settings
+        </a>
+
+        <a
+          v-for="(app, index) in linkedApps"
+          :key="index"
+          class="sidebar-link d-flex align-items-center gap-2 px-2 py-2"
+          :href="app.url"
+        >
+          <img
+            v-if="app.icon && !brokenLinkIcons[index]"
+            :src="app.icon"
+            alt=""
+            width="14"
+            height="14"
+            style="border-radius:3px"
+            @error="brokenLinkIcons[index] = true"
+          />
+          <i v-else class="bi bi-link-45deg" style="font-size:0.8rem"></i>
+          {{ app.label }}
         </a>
 
         <template v-if="moduleNavEntries.length > 0">
