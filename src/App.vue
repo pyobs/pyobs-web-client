@@ -4,6 +4,7 @@ import AppLayout from '@/components/AppLayout.vue'
 import LoginView from '@/views/LoginView.vue'
 import { useXmpp } from '@/composables/useXmpp'
 import { usePushNotifications } from '@/composables/usePushNotifications'
+import { useAppLifecycle } from '@/composables/useAppLifecycle'
 import { useExitGuard } from '@/composables/useExitGuard'
 import { useKeyboardAvoidance } from '@/composables/useKeyboardAvoidance'
 
@@ -12,6 +13,7 @@ const { status } = useXmpp()
 // A no-op on the web (see usePushNotifications.ts) — safe to call
 // unconditionally regardless of login state.
 onMounted(() => usePushNotifications().initialize())
+onMounted(() => useAppLifecycle().initialize())
 
 const { showConfirmExit, cancelExit, confirmExit } = useExitGuard()
 useKeyboardAvoidance()

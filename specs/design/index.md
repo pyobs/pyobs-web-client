@@ -20,6 +20,10 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [roof-page.md](roof-page.md) — roof page status + Open/Close/Stop for `IRoof` modules.
   *implemented, closed* — routing since superseded by
   `specs/plans/2026-09-06-module-page-rework.md` (widget behavior itself still accurate)
+- [background-foreground-reconnect.md](background-foreground-reconnect.md) — reconnect
+  automatically on any connection drop (not just backgrounding) using stored credentials, plus
+  `@capacitor/app` lifecycle awareness to catch a dead socket on foreground resume.
+  *implemented*, issue #49 — real-device verification pending
 - [pyobs-2-0-wire-protocol-client.md](pyobs-2-0-wire-protocol-client.md) — this client's own
   implementation of the pyobs-core 2.0 wire protocol (codec, `useXmpp.ts`, generic
   capability/state rendering). *implemented, closed*
