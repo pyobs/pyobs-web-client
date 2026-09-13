@@ -21,6 +21,12 @@ instead of this list for the completed-feature catalog.
   system, full-width action rows, legible mobile charts). Landed, then corrected against a live
   cross-check with `pyobs-gui`'s own widgets and further live-feedback fixes — see that plan's
   "Corrections" section for the full list. No longer blocking new-feature work below.
+- **Reconnect on connection drop / background-foreground (issue #49) — code landed 2026-09-13
+  (PR #50).** Design at `specs/design/background-foreground-reconnect.md`, plan at
+  `specs/plans/2026-09-13-background-foreground-reconnect.md`. Fixes the general "no auto-reconnect
+  once connected" gap, not just backgrounding — issue #49 stays open until real-device verification
+  (background/foreground cycling, ejabberd restart while foregrounded, confirming manual logout
+  doesn't auto-reconnect) is done; see the plan's Verification section.
 - **`IVideo` (`specs/plans/2026-09-07-video-widget.md`), `ISpectrograph`
   (`specs/plans/2026-09-07-spectrograph-widget.md`), `IRobotic`/`IRoboticScheduler`
   (`specs/plans/2026-09-07-robotic-widgets.md` — flagged there as unusually high mobile value, not
