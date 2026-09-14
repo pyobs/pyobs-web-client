@@ -23,26 +23,21 @@ instead of this list for the completed-feature catalog.
   sanity bounds on count/delay (currently none — passes through, trusting server-side
   validation), and mobile layout not explicitly verified.
 - **Push notification alerting** — client-side spike done end-to-end (see
-  `specs/design/native-app-shell-capacitor.md`'s Goal 3), but nothing
-  server-side triggers a push yet for the events that matter (module
-  `ERROR` transitions, bad weather with the roof open, guiding lost,
-  `CRITICAL` log events). That logic has to live server-side or in a relay,
-  not in this client — see that doc's "Push notifications" section. 2026-09-09:
-  scoped as a new pyobs-core module (not XEP-0357/ejabberd), sketch at
-  `../pyobs-core/specs/design/push-notification-module.md` — v1 covers module
-  `ERROR` only; weather/CRITICAL-log alerts still deferred. 2026-09-14: the
-  server-side interface now exists — `IPushNotifications` (`register_device(token,
-  platform)`), implemented by a `PushNotifier` module — in progress by another
-  session in `../pyobs-core`, uncommitted as of this note. The one piece that
-  lands in this repo when that module ships: `usePushNotifications.ts`'s
-  `registration` listener needs a small addition to call `register_device` via
-  the standard interface-discovery path once a token is obtained (currently
-  the token only reaches `SettingsView.vue`'s diagnostic panel) — **watch
-  `useXmpp()`'s `modules` for one with `interfaces['IPushNotifications']`,
-  same "implements-it-or-not" conditional pattern as every other optional
-  interface in this app (e.g. `IDataSequence`). No module advertising that
-  interface in the roster → do nothing, no error, no assumption the module
-  exists.**
+  `specs/design/native-app-shell-capacitor.md`'s Goal 3); server-side relay
+  (`PushNotifier` module, `IPushNotifications` interface) implemented in
+  `../pyobs-core` (`5b688528`), landing in core 2.9.0 — v1 covers module
+  `ERROR` plus `ERROR`/`CRITICAL` log events; weather/roof-open alerts still
+  deferred, see `../pyobs-core/specs/design/push-notification-module.md`.
+  2026-09-14: this repo's side done — `usePushNotifications.ts` now watches
+  `useXmpp()`'s `modules` for one advertising `IPushNotifications` and calls
+  `register_device` once both it and a device token exist (same
+  "implements-it-or-not" conditional pattern as `IDataSequence`; no such
+  module in the roster → no-op, unit-tested in
+  `src/__tests__/usePushNotifications.spec.ts`). **Not live-verified against a
+  real device** — this environment has no Android/iOS hardware to obtain a
+  real FCM token, the one piece the original spike itself could only verify
+  on real hardware too. Worth a real-device check next time this app is
+  built and installed.
 - **iOS build + TestFlight distribution** — not started, blocked on Mac
   access. See `specs/design/native-app-shell-capacitor.md`'s Phasing.
 

@@ -134,6 +134,15 @@ only. The one change this repo will need once that module exists: `usePushNotifi
 its device-registration RPC once a token is obtained, closing the gap its own comment already
 flags ("associating a token with an account server-side is a later, not-yet-designed step").
 
+**2026-09-14: both sides done.** `PushNotifier`/`IPushNotifications` landed in `pyobs-core`
+(`5b688528`, releasing in 2.9.0). This repo's side: `usePushNotifications.ts` watches
+`useXmpp()`'s `modules` for one advertising `IPushNotifications` and calls `register_device`
+once it and a device token both exist — same conditional pattern as every other optional
+interface this client supports; no such module means no-op, never an error. Unit-tested
+(`src/__tests__/usePushNotifications.spec.ts`); not live-verified against a real device — no
+Android/iOS hardware in the environment this was built in, the same limitation the original
+spike above could only clear on real hardware.
+
 ## Handling flaky connections
 
 Not designed here — `pyobs-core`'s `specs/steering/rpc-timeout-command-idempotency.md` is the
