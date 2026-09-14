@@ -16,8 +16,8 @@ Camera page, the Telescope page) aren't re-listed here — see that index
 instead of this list for the completed-feature catalog.
 
 - **`IDataSequence`** — plan at `specs/plans/2026-08-03-idatasequence.md`. Depends on
-  the Camera page plan (shipped), open question there on how the client
-  learns a new image is ready per-grab.
+  the Camera page plan (shipped). 2026-09-14: the plan's open question (how the client
+  learns a new image is ready per-grab) is resolved — no implementation started yet.
 - **Push notification alerting** — client-side spike done end-to-end (see
   `specs/design/native-app-shell-capacitor.md`'s Goal 3), but nothing
   server-side triggers a push yet for the events that matter (module
