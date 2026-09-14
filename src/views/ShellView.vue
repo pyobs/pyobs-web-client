@@ -28,6 +28,7 @@ type LogEntry = {
   success: boolean
   value: unknown
   errorClass?: string
+  callId?: string
 }
 
 const log = ref<LogEntry[]>([])
@@ -138,6 +139,7 @@ async function execute() {
       success: result.success,
       value: result.value,
       errorClass: result.errorClass,
+      callId: result.callId,
     })
   } catch (e) {
     log.value.push({
@@ -191,7 +193,10 @@ async function execute() {
         </div>
         <div :class="entry.success ? 'text-success' : 'text-danger'" style="white-space:pre-wrap">
           <template v-if="entry.success">{{ formatResult(entry.value) }}</template>
-          <template v-else>{{ entry.errorClass ? `${entry.errorClass}: ` : '' }}{{ formatResult(entry.value) }}</template>
+          <template v-else
+            >{{ entry.errorClass ? `${entry.errorClass}: ` : '' }}{{ formatResult(entry.value)
+            }}{{ entry.callId ? ` (call_id=${entry.callId})` : '' }}</template
+          >
         </div>
       </div>
     </div>

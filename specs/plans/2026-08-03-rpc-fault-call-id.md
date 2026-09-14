@@ -1,7 +1,13 @@
 # Plan: surface `call_id` on RPC faults
 
-Status: proposed, small — no design questions, just not implemented yet
-because nothing currently consumes it.
+Status: done, 2026-09-14 (issue #54, closed). `RpcResult` now carries `callId?: string`
+(`useXmpp.ts`'s `findRpcFault`, populated from the fault IQ's own `id` attribute), surfaced in
+`ShellView.vue`'s command log as `(call_id=...)` next to the error. Live-verified end to end against
+a real `AltitudeLimitError` fault from `DummyAltAzTelescope.move_altaz()`: the client showed the
+same `call_id` the module's own log line stamped. Found along the way: ACL-denial faults
+(`ForbiddenError` raised by `Module.execute()`'s `_acl_denied()` check) don't carry a `call_id` at
+all and arrive as a raw XMPP-level error, not a proper RPC `<fault>` — a separate, real pyobs-core
+gap, not yet filed as its own issue.
 
 Repos: pyobs-web-client (all implementation here)
 

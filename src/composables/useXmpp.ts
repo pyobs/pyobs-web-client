@@ -35,6 +35,11 @@ export type RpcResult = {
   success: boolean
   value: unknown
   errorClass?: string
+  // XEP-0009's own per-call IQ id, reused by pyobs-core's exception-handling rewrite as a
+  // correlation id — lets an operator jump from this error straight to the matching
+  // "(call_id=...)" line in the target module's own log. Only present on a fault (see
+  // findRpcFault) — pyobs-core doesn't stamp anything on a successful reply.
+  callId?: string
 }
 
 export type PyobsEvent = {
@@ -477,7 +482,7 @@ function handlePubsubMessage(message: Element): boolean {
 
 // ── XEP-0009 RPC (urn:pyobs:rpc:1 payload encoding) ─────────────────────────
 
-function findRpcFault(result: Element): { exception: string; message: string } | null {
+function findRpcFault(result: Element): { exception: string; message: string; callId?: string } | null {
   const outerFault = result.getElementsByTagName('fault')[0]
   if (!outerFault) return null
   const outerValue = Array.from(outerFault.children).find((c) => localTag(c) === 'value')
@@ -487,6 +492,7 @@ function findRpcFault(result: Element): { exception: string; message: string } |
   return {
     exception: exceptionEl?.textContent ?? 'RemoteError',
     message: messageEl?.textContent ?? '',
+    callId: result.getAttribute('id') ?? undefined,
   }
 }
 
@@ -533,7 +539,7 @@ async function executeMethod(fullJid: string, methodName: string, params: unknow
 
   const fault = findRpcFault(result)
   if (fault) {
-    return { success: false, value: fault.message, errorClass: fault.exception }
+    return { success: false, value: fault.message, errorClass: fault.exception, callId: fault.callId }
   }
 
   return { success: true, value: parseRpcReturn(result) }
@@ -574,7 +580,7 @@ async function executeMethodRaw(fullJid: string, methodName: string, paramConten
 
   const fault = findRpcFault(result)
   if (fault) {
-    return { success: false, value: fault.message, errorClass: fault.exception }
+    return { success: false, value: fault.message, errorClass: fault.exception, callId: fault.callId }
   }
 
   return { success: true, value: parseRpcReturn(result) }

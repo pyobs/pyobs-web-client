@@ -43,13 +43,10 @@ Smaller/technical items:
   `BaseTelescope` (parent of `DummyAltAzTelescope`/`DummyRadecTelescope`, already in this repo's own
   test fixtures) implements `track_orbital_elements(elements: OrbitalElements)`. Interim raw-JSON
   fallback (see the plan) not yet implemented.
-- **`findRpcFault` reads a richer wire format than it uses** — plan at
-  `specs/plans/2026-08-03-rpc-fault-call-id.md`, issues filed pyobs/pyobs-web-client#54 and
-  pyobs/pyobs-gui#167 (2026-09-13, both assigned to Tim). Every fault carries a `call_id` (XEP-0009's
-  own per-call IQ id) for correlating a caller-side error with the module's origin-side log line —
-  confirmed it does reach the systemd journal (`pyobsd`'s `--syslog`, default on) as plain text in
-  the log message, and `pyobs-web-admin`'s existing "Filter text…" log search already works on it
-  once surfaced, no new work needed there. Not yet implemented on either client.
+- **ACL-denial faults (`ForbiddenError`) don't carry a `call_id`** — found 2026-09-14 live-verifying
+  `#54`'s fix: `Module.execute()`'s `_acl_denied()` check raises before the try/except that stamps
+  `call_id`, and the resulting error arrives client-side as a raw XMPP-level error, not a proper RPC
+  `<fault>` — a real pyobs-core gap, no issue filed yet.
 - **`specs/plans/2026-08-04-vfs-token-auth.md`'s "bump the `testing/.venv` pin" remaining action** —
   still pinned to `2.0.0.dev53`; every fixture verification so far has used an editable install of
   `../pyobs-core` instead as a workaround.
