@@ -11,6 +11,7 @@ import {
   type InterfaceSchema,
   type EventSchema,
   type CommandSchema,
+  type FieldSchema,
 } from '@/pyobs-codec'
 import { useServerConfig } from '@/composables/useServerConfig'
 
@@ -508,7 +509,17 @@ function parseRpcReturn(result: Element): unknown {
   return contentEl ? xmlToValue(contentEl) : null
 }
 
-async function executeMethod(fullJid: string, methodName: string, params: unknown[], schema: CommandSchema): Promise<RpcResult> {
+// `structs` (default {}) is the calling interface's own InterfaceSchema.structs — only ShellView's
+// generic command builder ever has a struct-typed param to worry about, so every other call site
+// omits it and gets today's exact behavior (valueToXml throws if a param actually needed it,
+// which none of their hardcoded commands do).
+async function executeMethod(
+  fullJid: string,
+  methodName: string,
+  params: unknown[],
+  schema: CommandSchema,
+  structs: Record<string, FieldSchema[]> = {},
+): Promise<RpcResult> {
   if (!connection) throw new Error('Not connected')
 
   const builder = $iq({ to: fullJid, type: 'set' })
@@ -520,7 +531,7 @@ async function executeMethod(fullJid: string, methodName: string, params: unknow
     .c('params')
 
   schema.params.forEach((paramSchema, i) => {
-    const contentEl = valueToXml(params[i], paramSchema.type)
+    const contentEl = valueToXml(params[i], paramSchema.type, structs)
     const pyobsValue = createNamespacedElement(NS_PYOBS_RPC, 'value')
     pyobsValue.appendChild(contentEl)
     builder.c('param').c('value').cnode(pyobsValue).up().up().up()

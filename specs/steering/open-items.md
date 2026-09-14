@@ -36,13 +36,6 @@ instead of this list for the completed-feature catalog.
 
 Smaller/technical items:
 
-- **`struct<Name>`-typed command params can't be form-built from schema alone**
-  — plan at `specs/plans/2026-08-03-struct-typed-command-params.md`, upstream issue
-  pyobs-core#898 (2026-09-14, assigned to Tim). Blocked on upstream (pyobs-core doesn't publish
-  struct field schemas on the wire). **2026-09-14**: this now genuinely blocks something —
-  `BaseTelescope` (parent of `DummyAltAzTelescope`/`DummyRadecTelescope`, already in this repo's own
-  test fixtures) implements `track_orbital_elements(elements: OrbitalElements)`. Interim raw-JSON
-  fallback (see the plan) not yet implemented.
 - **ACL-denial faults (`ForbiddenError`) don't carry a `call_id`** — found 2026-09-14 live-verifying
   `#54`'s fix: `Module.execute()`'s `_acl_denied()` check raises before the try/except that stamps
   `call_id`, and the resulting error arrives client-side as a raw XMPP-level error, not a proper RPC

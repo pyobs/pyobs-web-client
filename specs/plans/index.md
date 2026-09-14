@@ -40,7 +40,7 @@ Implementation plans, checklist-style.
 - [2026-08-03-idatasequence.md](2026-08-03-idatasequence.md) — `IDataSequence` support ("grab N images"). **proposed**
 - [2026-08-03-rpc-fault-call-id.md](2026-08-03-rpc-fault-call-id.md) — surface `call_id` on RPC faults. **proposed**
 - [2026-08-03-struct-typed-command-params.md](2026-08-03-struct-typed-command-params.md) — `struct<Name>`-typed command
-  params. **blocked on upstream**
+  params. **done** 2026-09-14, live-verified against `pyobs-core`#898
 - [2026-09-09-safe-area-insets.md](2026-09-09-safe-area-insets.md) — status bar / gesture-nav inset
   handling for the compact shell + FAB, split out of mobile-first-redesign Phase 3. **done**,
   real-device verified (gesture nav) 2026-09-13

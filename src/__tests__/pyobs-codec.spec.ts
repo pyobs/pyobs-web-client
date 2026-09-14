@@ -8,7 +8,12 @@ import {
   parseVersionedFeature,
   parseInterfaceSchema,
   parseEventSchema,
+  widgetKind,
+  hasUnsupportedField,
+  defaultParamValues,
+  paramValuesToObject,
   type WireType,
+  type FieldSchema,
 } from '../pyobs-codec'
 
 // Fixtures below are trimmed from real disco#info responses captured against a
@@ -198,6 +203,99 @@ describe('structValueToXml + xmlToValue round trip', () => {
   })
 })
 
+describe('struct<Name> param support (pyobs-core#898)', () => {
+  const orbitalElementsFields: FieldSchema[] = [
+    { name: 'epoch', type: 'datetime' },
+    { name: 'semi_major_axis', type: 'float64', unit: 'AU' },
+    { name: 'mean_anomaly', type: { kind: 'optional', inner: 'float64' } },
+  ]
+  const structs: Record<string, FieldSchema[]> = { OrbitalElements: orbitalElementsFields }
+  const orbitalElementsType: WireType = { kind: 'struct', name: 'OrbitalElements' }
+
+  it('valueToXml encodes a struct as one child element per field, named after the field', () => {
+    const encoded = valueToXml(
+      { epoch: '2026-01-01T00:00:00', semi_major_axis: 1.5, mean_anomaly: null },
+      orbitalElementsType,
+      structs,
+    )
+    expect(xmlToValue(encoded)).toEqual({ epoch: '2026-01-01T00:00:00', semi_major_axis: 1.5, mean_anomaly: null })
+    expect(localTag(encoded.querySelector('epoch')!.firstElementChild!)).toBe('string')
+    expect(localTag(encoded.querySelector('semi_major_axis')!.firstElementChild!)).toBe('double')
+    expect(localTag(encoded.querySelector('mean_anomaly')!.firstElementChild!)).toBe('nil')
+  })
+
+  it('valueToXml still throws for a struct type with no known field list (older server / unknown name)', () => {
+    expect(() => valueToXml({}, orbitalElementsType)).toThrow()
+    expect(() => valueToXml({}, { kind: 'struct', name: 'SomethingElse' }, structs)).toThrow()
+  })
+
+  it('widgetKind only resolves "struct" when the field list is actually known', () => {
+    expect(widgetKind(orbitalElementsType, structs)).toBe('struct')
+    expect(widgetKind(orbitalElementsType)).toBe('unsupported')
+    expect(widgetKind({ kind: 'struct', name: 'SomethingElse' }, structs)).toBe('unsupported')
+  })
+
+  it('hasUnsupportedField treats a fully-known struct field as supported', () => {
+    const fields: FieldSchema[] = [{ name: 'elements', type: orbitalElementsType }]
+    expect(hasUnsupportedField(fields, structs)).toBe(false)
+    expect(hasUnsupportedField(fields)).toBe(true) // no structs passed — falls back to unsupported
+  })
+
+  it('hasUnsupportedField recurses — a struct with its own unsupported field is unsupported too', () => {
+    const withArrayField: Record<string, FieldSchema[]> = {
+      Outer: [{ name: 'bad', type: { kind: 'array', item: 'int32' } }],
+    }
+    const fields: FieldSchema[] = [{ name: 'outer', type: { kind: 'struct', name: 'Outer' } }]
+    expect(hasUnsupportedField(fields, withArrayField)).toBe(true)
+  })
+
+  // ParamForm.vue's own model: one flat Record<string, string>, a struct param's fields keyed by
+  // dot-path (e.g. "elements.epoch") — see defaultParamValues/paramValuesToObject's own doc
+  // comments for why this replaced an earlier JSON-round-tripping design that lost keystrokes.
+  const elementsParam: FieldSchema = { name: 'elements', type: orbitalElementsType }
+
+  it('defaultParamValues seeds one flat, dot-path-keyed entry per leaf field of a struct param', () => {
+    expect(defaultParamValues([elementsParam], {}, structs)).toEqual({
+      'elements.epoch': '',
+      'elements.semi_major_axis': '0',
+      'elements.mean_anomaly': '', // optional — '' is the "unset" sentinel, same as any other optional field
+    })
+  })
+
+  it('a struct param with no known field list seeds a harmless placeholder, not its fields', () => {
+    // widgetKind() falls back to 'unsupported' for this param (see its own test above), so
+    // ParamForm.vue never renders an editable field for this key and hasUnsupportedField already
+    // keeps Execute disabled — nothing ever reads it back.
+    expect(defaultParamValues([elementsParam], {}, {})).toEqual({ elements: '' })
+  })
+
+  it('paramValuesToObject assembles a real nested object back from the flat model', () => {
+    const flat = { 'elements.epoch': '2026-01-01T00:00:00', 'elements.semi_major_axis': '1.5', 'elements.mean_anomaly': '' }
+    expect(paramValuesToObject([elementsParam], flat, structs)).toEqual([
+      { epoch: '2026-01-01T00:00:00', semi_major_axis: 1.5, mean_anomaly: null },
+    ])
+  })
+
+  it('defaultParamValues then paramValuesToObject then valueToXml round-trips end to end', () => {
+    const flat = defaultParamValues([elementsParam], {}, structs)
+    const [value] = paramValuesToObject([elementsParam], flat, structs)
+    const encoded = valueToXml(value, orbitalElementsType, structs)
+    expect(xmlToValue(encoded)).toEqual({ epoch: '', semi_major_axis: 0, mean_anomaly: null })
+  })
+
+  it('editing one flat key never disturbs another — the exact bug the old JSON design hit', () => {
+    // Simulates ParamForm.vue: every field writes straight to its own dot-path key in the one
+    // shared object, no per-field snapshot/copy that could go stale between edits.
+    const flat = defaultParamValues([elementsParam], {}, structs)
+    flat['elements.epoch'] = '2026-01-01T00:00:00.000'
+    flat['elements.semi_major_axis'] = '1.5'
+    flat['elements.mean_anomaly'] = '40'
+    expect(paramValuesToObject([elementsParam], flat, structs)).toEqual([
+      { epoch: '2026-01-01T00:00:00.000', semi_major_axis: 1.5, mean_anomaly: 40 },
+    ])
+  })
+})
+
 describe('parseWireType', () => {
   it('parses primitives', () => {
     expect(parseWireType('bool')).toBe('bool')
@@ -329,6 +427,38 @@ describe('parseInterfaceSchema', () => {
     const schema = parseInterfaceSchema(module)
     expect(schema.commands.reset_error!.params).toEqual([])
     expect(schema.state).toBeNull()
+  })
+
+  it('parses struct field schemas alongside enums (IPointingOrbitalElements shape, pyobs-core#898)', () => {
+    const orbital = el(
+      "<interface xmlns='urn:pyobs:interface:IPointingOrbitalElements:1' name='IPointingOrbitalElements'>" +
+        "<types><struct name='OrbitalElements'>" +
+        "<field name='epoch' type='datetime'/>" +
+        "<field name='semi_major_axis' type='float64' unit='AU'/>" +
+        "<field name='mean_anomaly' type='optional&lt;float64&gt;' unit='DEGREES'/>" +
+        '</struct></types>' +
+        "<command name='track_orbital_elements'><parameter name='elements' type='struct&lt;OrbitalElements&gt;'/></command>" +
+        '</interface>',
+    )
+    const schema = parseInterfaceSchema(orbital)
+    expect(schema.structs).toEqual({
+      OrbitalElements: [
+        { name: 'epoch', type: 'datetime', unit: undefined },
+        { name: 'semi_major_axis', type: 'float64', unit: 'AU' },
+        { name: 'mean_anomaly', type: { kind: 'optional', inner: 'float64' }, unit: 'DEGREES' },
+      ],
+    })
+    expect(schema.commands.track_orbital_elements!.params).toEqual([
+      { name: 'elements', type: { kind: 'struct', name: 'OrbitalElements' }, unit: undefined },
+    ])
+  })
+
+  it('is an empty structs map against a server that predates pyobs-core#898', () => {
+    // No <types><struct> block at all — the pre-#898 wire shape. widgetKind()/valueToXml() must
+    // fall back to their old "unsupported"/throw behavior against this, never crash on a missing
+    // entry.
+    const schema = parseInterfaceSchema(cooling)
+    expect(schema.structs).toEqual({})
   })
 })
 

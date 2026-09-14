@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { useXmpp } from '@/composables/useXmpp'
-import type { CommandSchema } from '@/pyobs-codec'
-import { hasUnsupportedField, defaultParamValue, paramValueFromString } from '@/pyobs-codec'
+import type { CommandSchema, FieldSchema } from '@/pyobs-codec'
+import { hasUnsupportedField, defaultParamValues, paramValuesToObject } from '@/pyobs-codec'
 import ParamForm from '@/components/ParamForm.vue'
 
 const { modules, executeMethod } = useXmpp()
@@ -60,7 +60,12 @@ const currentEnums = computed(
     (selectedModule.value?.interfaces[currentIfaceName.value]?.enums as Record<string, string[]> | undefined) ?? {},
 )
 
-const hasUnsupportedParam = computed(() => hasUnsupportedField(currentCommandSchema.value?.params ?? []))
+const currentStructs = computed(
+  (): Record<string, FieldSchema[]> =>
+    (selectedModule.value?.interfaces[currentIfaceName.value]?.structs as Record<string, FieldSchema[]> | undefined) ?? {},
+)
+
+const hasUnsupportedParam = computed(() => hasUnsupportedField(currentCommandSchema.value?.params ?? [], currentStructs.value))
 
 function selectModule(jid: string) {
   selectedJid.value = jid
@@ -86,12 +91,13 @@ watch(selectedJid, () => {
 })
 
 watch(currentCommandSchema, (schema) => {
-  paramValues.value = Object.fromEntries((schema?.params ?? []).map((p) => [p.name, defaultParamValue(p.type, currentEnums.value)]))
+  paramValues.value = defaultParamValues(schema?.params ?? [], currentEnums.value, currentStructs.value)
 })
 
 function formatParamForDisplay(value: unknown): string {
   if (value === null) return 'None'
   if (typeof value === 'string') return JSON.stringify(value)
+  if (typeof value === 'object') return JSON.stringify(value)
   return String(value)
 }
 
@@ -122,13 +128,13 @@ async function execute() {
   const iface = currentIfaceName.value
   const method = currentMethodName.value
 
-  const params = schema.params.map((p) => paramValueFromString(paramValues.value[p.name], p.type))
+  const params = paramValuesToObject(schema.params, paramValues.value, currentStructs.value)
 
   const paramsDisplay = schema.params.map((p, i) => `${p.name}=${formatParamForDisplay(params[i])}`).join(', ')
 
   running.value = true
   try {
-    const result = await executeMethod(module.fullJid, method, params, schema)
+    const result = await executeMethod(module.fullJid, method, params, schema, currentStructs.value)
     log.value.push({
       id: nextLogId++,
       timestamp: Date.now(),
@@ -276,6 +282,7 @@ async function execute() {
           v-model="paramValues"
           :fields="currentCommandSchema.params"
           :enums="currentEnums"
+          :structs="currentStructs"
           testid="shell-params"
         />
 
