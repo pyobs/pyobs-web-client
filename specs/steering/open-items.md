@@ -34,13 +34,6 @@ instead of this list for the completed-feature catalog.
 - **iOS build + TestFlight distribution** — not started, blocked on Mac
   access. See `specs/design/native-app-shell-capacitor.md`'s Phasing.
 
-Smaller/technical items:
-
-- **ACL-denial faults (`ForbiddenError`) don't carry a `call_id`** — found 2026-09-14 live-verifying
-  `#54`'s fix: `Module.execute()`'s `_acl_denied()` check raises before the try/except that stamps
-  `call_id`, and the resulting error arrives client-side as a raw XMPP-level error, not a proper RPC
-  `<fault>` — filed pyobs-core#899 (2026-09-14, assigned to Tim), not yet fixed upstream.
-
 Unchecked risks (no dedicated plan, tracked here so they aren't lost):
 
 - **VFS bearer tokens (`setVfsToken()`) still use a plaintext web fallback on non-native builds** —
