@@ -137,8 +137,7 @@ const brokenLinkIcons = ref<Record<number, boolean>>({})
     <div
       v-for="(endpoint, index) in vfsEndpoints"
       :key="endpoint.root"
-      class="rounded-3 p-3 mb-2"
-      style="background-color:#1a1d21; border:1px solid #2d3035"
+      class="pyobs-card mb-2"
     >
       <div class="d-flex align-items-start gap-2">
         <div class="flex-grow-1">
@@ -160,8 +159,7 @@ const brokenLinkIcons = ref<Record<number, boolean>>({})
     <!-- Add/edit form: stacked label-then-input, same mobile-friendly pattern as Shell's param inputs -->
     <div
       v-if="editingIndex !== null"
-      class="rounded-3 p-3 mt-3"
-      style="background-color:#1a1d21; border:1px solid #2d3035"
+      class="pyobs-card mt-3"
     >
       <div class="mb-2">
         <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Root name</label>
@@ -207,8 +205,7 @@ const brokenLinkIcons = ref<Record<number, boolean>>({})
     <div
       v-for="(app, index) in linkedApps"
       :key="index"
-      class="rounded-3 p-3 mb-2"
-      style="background-color:#1a1d21; border:1px solid #2d3035"
+      class="pyobs-card mb-2"
     >
       <div class="d-flex align-items-center gap-2">
         <img
@@ -236,8 +233,7 @@ const brokenLinkIcons = ref<Record<number, boolean>>({})
 
     <div
       v-if="editingLinkIndex !== null"
-      class="rounded-3 p-3 mt-3"
-      style="background-color:#1a1d21; border:1px solid #2d3035"
+      class="pyobs-card mt-3"
     >
       <div class="mb-2">
         <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Label</label>
@@ -261,7 +257,7 @@ const brokenLinkIcons = ref<Record<number, boolean>>({})
          specs/design/native-app-shell-capacitor.md) — not a user-facing
          setting, just visibility into registration outcome without logcat. -->
     <h6 class="text-light mb-2 mt-4" style="font-size:0.9rem">Push Notifications</h6>
-    <div class="rounded-3 p-3" style="background-color:#1a1d21; border:1px solid #2d3035; font-size:0.8rem">
+    <div class="pyobs-card" style="font-size:0.8rem">
       <div v-if="!isNativePlatform" class="text-muted">
         <i class="bi bi-info-circle me-1"></i>
         Native (Android/iOS) only — not available in the browser.

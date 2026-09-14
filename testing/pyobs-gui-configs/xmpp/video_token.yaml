@@ -1,0 +1,48 @@
+# Token-protected variant of video.yaml — see specs/steering/testing-against-live-backend.md for
+# the general XMPP-adaptation process, and specs/plans/2026-09-07-video-widget.md's Open questions
+# for why this exists: no token-protected IVideo fixture existed to resolve the "<img> tag can't
+# carry a custom Authorization header" question against.
+#
+# pyobs.modules.camera.BaseVideo (DummyVideo's parent) already solves this server-side: its `token`
+# param protects the built-in HTTP server (MJPEG stream, raw frame stream, cached FITS images) via
+# either "Authorization: Bearer <token>" (machine clients) OR a same-origin, HMAC-signed session
+# cookie a browser gets by visiting /login once (GET for the form, POST {token: <token>} to log in)
+# — exactly the mechanism an <img> tag needs, since it can't set a custom header but does send
+# cookies. See basevideo.py's class docstring and login_handler/login_post_handler.
+#
+# Requires an ejabberd account "video" on domain "localhost" (same account as video.yaml — not run
+# simultaneously). Run with:
+#   <pyobs-venv>/bin/pyobs testing/pyobs-gui-configs/xmpp/video_token.yaml
+#
+# Manual verification (module running):
+#   curl -i http://localhost:37077/video.mjpg                    # 401, no auth
+#   curl -i http://localhost:37077/video.mjpg -H "Authorization: Bearer secret123"  # 200
+#   curl -ic /tmp/pyobs-video-cookies.txt -d token=secret123 http://localhost:37077/login  # sets cookie, 303
+#   curl -i -b /tmp/pyobs-video-cookies.txt http://localhost:37077/video.mjpg        # 200, cookie-authed
+class: pyobs.modules.MultiModule
+
+vfs: &vfs
+  class: pyobs.vfs.VirtualFileSystem
+  roots:
+    cache:
+      class: pyobs.vfs.LocalFile
+      root: /tmp/pyobs-test/
+    webcam:
+      class: pyobs.vfs.HttpFile
+      download: http://localhost:37077/
+      token: secret123
+
+modules:
+  video:
+    class: pyobs.modules.camera.dummyvideo.DummyVideo
+    label: video
+    http_port: 37077
+    token: secret123
+    vfs: *vfs
+    comm:
+      class: pyobs.comm.xmpp.XmppComm
+      domain: localhost
+      use_tls: True
+      ignore_cert_errors: True
+      user: video
+      password: pyobs

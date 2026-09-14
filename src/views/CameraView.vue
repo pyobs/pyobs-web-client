@@ -1,8 +1,11 @@
 <script setup lang="ts">
 // Phase 2 of specs/plans/camera-page.md: CameraView.vue + Expose button,
 // wired to a live grab_data() call and the phase 1 FitsCanvas widget.
-// Single-shot only (no IDataSequence), own-triggered images only (no
-// NewImageEvent subscription) — see the plan's Phase 2 section for why.
+// Own-triggered images only for single-shot Expose (no NewImageEvent
+// subscription) — see the plan's Phase 2 section for why. IDataSequence
+// (specs/plans/2026-08-03-idatasequence.md) is the exception: it needs
+// per-grab images, resolved by that plan's "no new subscription needed"
+// finding (see below).
 //
 // Phase 3: dedicated IWindow/IBinning/IGain/IImageFormat/IExposureTime/
 // IImageType controls — reverses the plan's original call to leave these to
@@ -22,9 +25,10 @@
 // One tab on ModulePageView.vue now, not its own routed page — see
 // specs/plans/module-page-rework.md.
 import { ref, computed, watch, onUnmounted, type DeepReadonly } from 'vue'
+import { Strophe } from 'strophe.js'
 import { useXmpp, type PyobsModule } from '@/composables/useXmpp'
 import { useVfsConfig } from '@/composables/useVfsConfig'
-import { allMethodsPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
+import { allMethodsPermitted, isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import {
   defaultParamValue,
   hasUnsupportedField,
@@ -36,7 +40,7 @@ import FitsCanvas from '@/components/FitsCanvas.vue'
 import ParamForm from '@/components/ParamForm.vue'
 
 const props = defineProps<{ jid: string }>()
-const { modules, executeMethod, subscribeState } = useXmpp()
+const { modules, executeMethod, subscribeState, events } = useXmpp()
 const { resolveVfsEndpoint } = useVfsConfig()
 
 const currentModule = computed(() => modules.value.find((m) => m.jid === props.jid))
@@ -74,6 +78,76 @@ onUnmounted(() => stopExposureSubscription?.())
 const exposureStatusLabel = computed(() => {
   const status = exposureStateValue.value?.status
   return status ? status.charAt(0).toUpperCase() + status.slice(1) : undefined
+})
+
+// ── IDataSequence — specs/plans/2026-08-03-idatasequence.md ────────────────
+
+type DataSequenceState = { count_total: number; count_left: number }
+
+const dataSequenceStateValue = ref<DataSequenceState | undefined>(undefined)
+let stopSequenceStateSubscription: (() => void) | undefined
+
+watch(
+  currentModule,
+  (mod) => {
+    stopSequenceStateSubscription?.()
+    stopSequenceStateSubscription = undefined
+    dataSequenceStateValue.value = undefined
+
+    const version = mod?.interfaces['IDataSequence']?.version
+    if (!mod || version === undefined) return
+
+    const { value, unsubscribe } = subscribeState(mod.jid, 'IDataSequence', version)
+    const stopWatch = watch(value, (v) => (dataSequenceStateValue.value = v as DataSequenceState | undefined), { immediate: true })
+    stopSequenceStateSubscription = () => {
+      stopWatch()
+      unsubscribe()
+    }
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => stopSequenceStateSubscription?.())
+
+const sequenceCount = ref(1)
+const sequenceDelay = ref(0)
+const sequenceRunning = computed(() => (dataSequenceStateValue.value?.count_left ?? 0) > 0)
+
+// The plan's resolved open question: no new subscription needed.
+// useXmpp.ts's fetchModuleInfo() already subscribes to every event a module
+// declares with role:'send', session-wide — NewImageEvent from
+// grab_sequence()'s internal grab_data() calls is already flowing into the
+// shared `events` ref. Just filter it to this module while a sequence is
+// running (count_left > 0) and feed each match through the same
+// decode/render pipeline Expose uses. Dedup by uuid — the same event can
+// arrive twice (see upsertEvent's comment in useXmpp.ts) and re-fetching an
+// already-displayed image is wasted work, not just redundant.
+//
+// sequenceStartedAt guards against a stale NewImageEvent — fetchModuleInfo()
+// also pre-populates `events` with each node's last retained item on
+// subscribe (see fetchCurrentEventItem in useXmpp.ts), which could otherwise
+// be mistaken for a fresh grab if it happens to arrive while count_left > 0
+// (see specs/plans/2026-09-14-event-subscription-shared-pubsub.md's
+// staleness note). Only events timestamped at or after this sequence's own
+// grab_sequence() call are eligible; a few seconds of slack absorbs clock
+// skew between this browser and the module's host.
+const processedImageEventUuids = new Set<string>()
+let sequenceStartedAt = 0
+const CLOCK_SKEW_SLACK_MS = 5000
+
+watch(events, (evs) => {
+  const mod = currentModule.value
+  if (!mod) return
+  if ((dataSequenceStateValue.value?.count_left ?? 0) <= 0) return
+  const moduleUsername = Strophe.getNodeFromJid(mod.jid) ?? mod.jid
+  for (const ev of evs) {
+    if (ev.type !== 'NewImageEvent' || ev.module !== moduleUsername) continue
+    if (!ev.uuid || processedImageEventUuids.has(ev.uuid)) continue
+    if (ev.timestamp * 1000 < sequenceStartedAt - CLOCK_SKEW_SLACK_MS) continue
+    processedImageEventUuids.add(ev.uuid)
+    const filename = ev.data['filename']
+    if (typeof filename === 'string') void displayImageAt(mod, filename)
+  }
 })
 
 // ── Phase 3: per-interface settings, staged in one form and applied
@@ -259,8 +333,28 @@ const exposePermitted = computed(() =>
 )
 
 const exposing = ref<Record<string, boolean>>({}) // jid -> exposure in flight
+const startingSequence = ref<Record<string, boolean>>({}) // jid -> grab_sequence() RPC call in flight
 const errors = ref<Record<string, string>>({}) // jid -> last error, if any
-const images = ref<Record<string, Uint8Array>>({}) // jid -> last grabbed FITS bytes
+const images = ref<Record<string, Uint8Array>>({}) // jid -> last grabbed FITS bytes (single-shot or latest sequence grab)
+
+async function displayImageAt(mod: DeepReadonly<PyobsModule>, path: string): Promise<void> {
+  const resolved = await resolveVfsEndpoint(path)
+  if (!resolved) {
+    errors.value = { ...errors.value, [mod.jid]: `No VFS endpoint configured for "${path}" — add one in Settings.` }
+    return
+  }
+
+  const headers: HeadersInit = {}
+  if (resolved.endpoint.token) {
+    headers['Authorization'] = `Bearer ${resolved.endpoint.token}`
+  }
+  const response = await fetch(resolved.url, { headers })
+  if (!response.ok) {
+    errors.value = { ...errors.value, [mod.jid]: `Fetching image failed: HTTP ${response.status}` }
+    return
+  }
+  images.value = { ...images.value, [mod.jid]: new Uint8Array(await response.arrayBuffer()) }
+}
 
 async function expose(mod: DeepReadonly<PyobsModule>) {
   const schema = mod.interfaces['ICamera']?.commands['grab_data'] as CommandSchema | undefined
@@ -292,32 +386,78 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
       return
     }
 
-    const path = String(result.value)
-    const resolved = await resolveVfsEndpoint(path)
-    if (!resolved) {
-      errors.value = {
-        ...errors.value,
-        [mod.jid]: `No VFS endpoint configured for "${path}" — add one in Settings.`,
-      }
-      return
-    }
-
-    const headers: HeadersInit = {}
-    if (resolved.endpoint.token) {
-      headers['Authorization'] = `Bearer ${resolved.endpoint.token}`
-    }
-    const response = await fetch(resolved.url, { headers })
-    if (!response.ok) {
-      errors.value = { ...errors.value, [mod.jid]: `Fetching image failed: HTTP ${response.status}` }
-      return
-    }
-    images.value = { ...images.value, [mod.jid]: new Uint8Array(await response.arrayBuffer()) }
+    await displayImageAt(mod, String(result.value))
   } catch (e) {
     errors.value = { ...errors.value, [mod.jid]: String(e) }
   } finally {
     const next = { ...exposing.value }
     delete next[mod.jid]
     exposing.value = next
+  }
+}
+
+// grab_sequence() is fire-and-forget — this call just starts the sequence
+// (applying the same staged settings Expose does first) and returns once the
+// RPC round-trip completes; progress and per-grab images arrive separately
+// via dataSequenceStateValue and the NewImageEvent watcher above.
+const sequenceBatchMethods = computed(() => [
+  ...settingsGroups.value.flatMap((g) => g.schemas.map((s) => s.name)),
+  'grab_sequence',
+])
+const sequencePermitted = computed(() =>
+  allMethodsPermitted(currentModule.value?.permittedMethods, sequenceBatchMethods.value),
+)
+const abortSequencePermitted = computed(() => isMethodPermitted(currentModule.value?.permittedMethods, 'abort_sequence'))
+
+async function grabSequence(mod: DeepReadonly<PyobsModule>) {
+  const schema = mod.interfaces['IDataSequence']?.commands['grab_sequence'] as CommandSchema | undefined
+  if (!schema) return
+
+  startingSequence.value = { ...startingSequence.value, [mod.jid]: true }
+  errors.value = { ...errors.value, [mod.jid]: '' }
+  try {
+    for (const group of settingsGroups.value) {
+      for (const cmdSchema of group.schemas) {
+        const params = cmdSchema.params.map((p) => paramValueFromString(settingsParams.value[p.name], p.type))
+        const setResult = await executeMethod(mod.fullJid, cmdSchema.name, params, cmdSchema)
+        if (!setResult.success) {
+          errors.value = {
+            ...errors.value,
+            [mod.jid]: `${group.title}: ${setResult.errorClass ? `${setResult.errorClass}: ` : ''}${String(setResult.value)}`,
+          }
+          return
+        }
+      }
+    }
+
+    const values: Record<string, unknown> = { count: sequenceCount.value, broadcast: true, delay: sequenceDelay.value }
+    const params = schema.params.map((p) => values[p.name] ?? null)
+    sequenceStartedAt = Date.now()
+    const result = await executeMethod(mod.fullJid, 'grab_sequence', params, schema)
+    if (!result.success) {
+      errors.value = {
+        ...errors.value,
+        [mod.jid]: `${result.errorClass ? `${result.errorClass}: ` : ''}${String(result.value)}`,
+      }
+    }
+  } catch (e) {
+    errors.value = { ...errors.value, [mod.jid]: String(e) }
+  } finally {
+    const next = { ...startingSequence.value }
+    delete next[mod.jid]
+    startingSequence.value = next
+  }
+}
+
+async function abortSequence(mod: DeepReadonly<PyobsModule>) {
+  const schema = mod.interfaces['IDataSequence']?.commands['abort_sequence'] as CommandSchema | undefined
+  if (!schema) return
+  const result = await executeMethod(mod.fullJid, 'abort_sequence', [], schema)
+  if (!result.success) {
+    errors.value = {
+      ...errors.value,
+      [mod.jid]: `${result.errorClass ? `${result.errorClass}: ` : ''}${String(result.value)}`,
+    }
   }
 }
 </script>
@@ -357,13 +497,70 @@ async function expose(mod: DeepReadonly<PyobsModule>) {
       <button
         type="button"
         class="btn btn-primary btn-sm flex-fill"
-        :disabled="!!exposing[currentModule.jid] || hasUnsupportedSettingsField || !exposePermitted"
+        :disabled="!!exposing[currentModule.jid] || hasUnsupportedSettingsField || !exposePermitted || sequenceRunning"
         :title="exposePermitted ? undefined : NOT_PERMITTED_TITLE"
         @click="expose(currentModule)"
       >
         <span v-if="exposing[currentModule.jid]" class="spinner-border spinner-border-sm me-1" role="status"></span>
         Expose
       </button>
+    </div>
+
+    <div v-if="currentModule.interfaces['IDataSequence']" class="pyobs-card">
+      <div class="d-flex gap-2">
+        <div class="flex-fill">
+          <label class="text-muted d-block" style="font-size:0.7rem">Count</label>
+          <input
+            v-model.number="sequenceCount"
+            type="number"
+            min="1"
+            step="1"
+            class="form-control form-control-sm"
+            data-testid="camera-sequence-count"
+          />
+        </div>
+        <div class="flex-fill">
+          <label class="text-muted d-block" style="font-size:0.7rem">Delay (s)</label>
+          <input
+            v-model.number="sequenceDelay"
+            type="number"
+            min="0"
+            step="0.1"
+            class="form-control form-control-sm"
+            data-testid="camera-sequence-delay"
+          />
+        </div>
+      </div>
+
+      <div v-if="sequenceRunning" class="d-flex justify-content-between gap-2 mt-2" style="font-size:0.8rem">
+        <span class="text-secondary">Sequence progress</span>
+        <span class="text-light">{{ dataSequenceStateValue!.count_total - dataSequenceStateValue!.count_left }} / {{ dataSequenceStateValue!.count_total }}</span>
+      </div>
+
+      <div class="d-flex gap-2 mt-2">
+        <button
+          type="button"
+          class="btn btn-primary btn-sm flex-fill"
+          :disabled="!!exposing[currentModule.jid] || !!startingSequence[currentModule.jid] || hasUnsupportedSettingsField || !sequencePermitted || sequenceRunning"
+          :title="sequencePermitted ? undefined : NOT_PERMITTED_TITLE"
+          data-testid="camera-sequence-grab"
+          @click="grabSequence(currentModule)"
+        >
+          <span v-if="startingSequence[currentModule.jid]" class="spinner-border spinner-border-sm me-1" role="status"></span>
+          Grab sequence
+        </button>
+        <button
+          v-if="sequenceRunning"
+          type="button"
+          class="btn btn-outline-danger btn-sm flex-fill"
+          :disabled="!abortSequencePermitted"
+          :title="abortSequencePermitted ? undefined : NOT_PERMITTED_TITLE"
+          data-testid="camera-sequence-abort"
+          @click="abortSequence(currentModule)"
+        >
+          Abort sequence
+        </button>
+      </div>
     </div>
 
     <div v-if="errors[currentModule.jid]" class="alert alert-danger py-1 px-2 mb-0" style="font-size:0.8rem">

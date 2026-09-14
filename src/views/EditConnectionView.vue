@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import { Strophe } from 'strophe.js'
 import { useXmpp } from '@/composables/useXmpp'
 import { useServerConfig } from '@/composables/useServerConfig'
@@ -43,6 +44,8 @@ function saveAndConnect() {
 // "Forget saved password" is shown.
 const hasStoredPassword = ref(false)
 const passwordInput = ref('')
+// No Keychain/Keystore on the web build — see useCredentialStore.ts and issue #53.
+const canRememberPassword = Capacitor.isNativePlatform()
 
 async function refreshPasswordFlag() {
   hasStoredPassword.value = (await getPassword(bareJid.value)) !== null
@@ -183,7 +186,10 @@ function removeConnection() {
       </div>
     </div>
 
-    <div class="mb-4">
+    <!-- Not offered on the web build at all — see canRememberPassword above;
+         hidden entirely there rather than shown disabled/explained, since
+         there's nothing the operator can do about it from this screen. -->
+    <div v-if="canRememberPassword" class="mb-4">
       <div class="text-muted mb-2" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em">Password</div>
       <div class="rounded-3 p-3" style="background-color:#1a1d21; border:1px solid #2d3035">
         <input

@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { Capacitor } from '@capacitor/core'
 import {
   PushNotifications,
@@ -6,6 +6,8 @@ import {
   type PushNotificationSchema,
   type ActionPerformed,
 } from '@capacitor/push-notifications'
+import { useXmpp } from '@/composables/useXmpp'
+import type { CommandSchema } from '@/pyobs-codec'
 
 // Native-only (Android/iOS) — push notifications need a real device
 // registration (FCM/APNs), no meaningful web equivalent for this app; a
@@ -27,6 +29,40 @@ const registrationError = ref<string | null>(null)
 const lastReceived = ref<PushNotificationSchema | null>(null)
 
 let initialized = false
+
+// Associates this device's token with a server-side IPushNotifications module
+// (PushNotifier, pyobs-core#902/specs/design/push-notification-module.md),
+// once both exist. Same "implements-it-or-not" conditional pattern as every
+// other optional interface in this app (e.g. IDataSequence) — no module
+// advertising IPushNotifications in the connected roster means this never
+// fires, no error, no assumption the module exists. Registration is
+// idempotent server-side (upserted, keyed by caller JID + token), so
+// re-firing on every reconnect is harmless; registeredWith dedupes it anyway
+// to avoid redundant RPCs. A failed attempt is evicted so a later reconnect
+// (the next time `modules` changes) retries it — no dedicated retry loop,
+// matching the "small addition" scope this was designed as.
+const registeredWith = new Set<string>()
+const { modules: pushModules, executeMethod: pushExecuteMethod } = useXmpp()
+watch(
+  [pushModules, token],
+  ([mods, t]) => {
+    if (!t) return
+    for (const mod of mods) {
+      const schema = mod.interfaces['IPushNotifications']?.commands['register_device'] as CommandSchema | undefined
+      if (!schema) continue
+      const key = `${mod.jid}:${t}`
+      if (registeredWith.has(key)) continue
+      registeredWith.add(key)
+      const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android'
+      const values: Record<string, unknown> = { token: t, platform }
+      const params = schema.params.map((p) => values[p.name] ?? null)
+      void pushExecuteMethod(mod.fullJid, 'register_device', params, schema).then((result) => {
+        if (!result.success) registeredWith.delete(key)
+      })
+    }
+  },
+  { immediate: true },
+)
 
 export function usePushNotifications() {
   async function initialize(): Promise<void> {

@@ -2,10 +2,38 @@
 
 Status: built (`VideoView.vue`, `VideoGrabView.vue`) — 2026-09-08. Live-verification is now Tim's
 own testing pass rather than an open web-client task tracked here; file an issue for anything it
-turns up. No token-protected `IVideo` fixture exists yet, so the bearer-token open question below
-is still unresolved (surfaced as a message in the UI rather than guessed at). `videograbwidget.py`
-also references a `comboImageFormat` combo box that doesn't exist in its own `.ui` file — dead
-code, not reproduced in `VideoGrabView.vue`.
+turns up. `videograbwidget.py` also references a `comboImageFormat` combo box that doesn't exist in
+its own `.ui` file — dead code, not reproduced in `VideoGrabView.vue`.
+
+**2026-09-13 — bearer-token open question resolved (mechanism found, fixture built, client work
+still open).** `pyobs.modules.camera.BaseVideo` (`DummyVideo`'s parent) already has exactly the
+mechanism this open question needed: a `token` param protects the module's built-in HTTP server via
+either `Authorization: Bearer <token>` (machine clients) **or** a same-origin, HMAC-signed session
+cookie a browser gets by visiting `/login` once (GET for the form, POST `{token: ...}` to log in) —
+solving the "an `<img>` tag can't carry a custom Authorization header" problem, since cookies ride
+along with `<img>` requests automatically. New fixture:
+`testing/pyobs-gui-configs/xmpp/video_token.yaml`, live-verified end to end (login form loads,
+correct token sets the cookie and redirects, the cookie then authenticates `/video.mjpg`, a wrong
+token is rejected). Also found and fixed a real, independent bug while doing this: `video.yaml`
+(and `full.yaml`'s embedded `video` submodule) used `port:`, which current `BaseVideo` doesn't
+accept at all (renamed to `http_port`) — both failed to start before this fix, unrelated to the
+`name:`/`label:` fix from earlier the same day.
+
+**2026-09-13 — client-side login flow implemented and live-verified.** `VideoView.vue` now drives
+the flow itself: a hidden `<iframe>`/`<form>` POSTs the VFS endpoint's already-configured token to
+`/login` (a real form submission, not `fetch()` — `BaseVideo`'s HTTP server sends no CORS headers
+at all, so a cross-origin `fetch()` is blocked outright; forms were never CORS-gated, that's how
+CSRF worked before tokens existed). The resulting `SameSite=Lax` cookie only rides a **same-site**
+`<img>` request, so this only works when the stream's host matches this app's own hostname exactly
+(deliberately conservative — no public-suffix-list to compute true eTLD+1 same-site, so some
+legitimately-same-site-different-subdomain deployments will still see the "not supported" message)
+— genuinely cross-site streams (this app hosted centrally, module on a different institution's own
+domain, the likely common case for a multi-site fleet) still can't work at all, no client trick gets
+around a browser dropping a cross-site `SameSite=Lax` cookie. Verified live end to end against
+`video_token.yaml` via `npm run dev`: correct token → stream loads (`naturalWidth`/`naturalHeight`
+confirmed via devtools, matching `DummyVideo`'s frame size); wrong token (after clearing the old
+session via the module's own `/login`'s sibling `/logout`) → the new `streamLoadError` message
+shows correctly instead of a silent broken image.
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -77,7 +105,9 @@ since it's never been exercised with a duplicate-interface pair before.
 
 ## Open questions
 
-- Bearer-token auth for the `<img>`-tag stream (see above) — needs a real fixture to resolve against.
+- ~~Bearer-token auth for the `<img>`-tag stream~~ — resolved 2026-09-13, see Status line.
+  `VideoView.vue` implementing the `/login` cookie flow is tracked as its own follow-up, not yet
+  scheduled.
 - Whether any real `IVideo` module in the fleet also implements `IWindow`/`IBinning` — affects
   whether the FITS Image tab needs a settings panel at all.
 

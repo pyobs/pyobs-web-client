@@ -111,9 +111,9 @@ export function parseWireType(typeStr: string): WireType {
 
 // ── encode: JS value + WireType -> value element (RPC call params only) ────
 
-export function valueToXml(value: unknown, type: WireType): Element {
+export function valueToXml(value: unknown, type: WireType, structs: Record<string, FieldSchema[]> = {}): Element {
   if (typeof type === 'object' && type.kind === 'optional') {
-    return value === null || value === undefined ? createElement('nil') : valueToXml(value, type.inner)
+    return value === null || value === undefined ? createElement('nil') : valueToXml(value, type.inner, structs)
   }
   if (value === null || value === undefined) {
     return createElement('nil')
@@ -142,13 +142,28 @@ export function valueToXml(value: unknown, type: WireType): Element {
     const el = createElement('items')
     for (const item of value as unknown[]) {
       const itemEl = createElement('item')
-      itemEl.appendChild(valueToXml(item, type.item))
+      itemEl.appendChild(valueToXml(item, type.item, structs))
       el.appendChild(itemEl)
     }
     return el
   }
-  // struct<Name>/any/void params can't be built from schema alone (pyobs-core
-  // doesn't publish struct field lists) — no real command takes one today.
+  // struct<Name> — mirrors pyobs-core's own _dataclass_to_xml exactly: one child element per
+  // field, named after the field (not wrapped in a <dict>/<entry> like structValueToXml below —
+  // that shape is for IStructuredConfig's genuinely-a-dict set_config, this one is a real
+  // dataclass). Only buildable when the caller passed the struct's field list — see
+  // parseStructs()/InterfaceSchema.structs, published in disco#info's <types> block since
+  // pyobs-core#898. Falls through to the throw below against an older server that doesn't
+  // publish it — same as before this existed.
+  if (typeof type === 'object' && type.kind === 'struct' && structs[type.name]) {
+    const el = createElement('state')
+    for (const field of structs[type.name]!) {
+      const fieldEl = createElement(field.name)
+      fieldEl.appendChild(valueToXml((value as Record<string, unknown> | null | undefined)?.[field.name], field.type, structs))
+      el.appendChild(fieldEl)
+    }
+    return el
+  }
+  // struct<Name> with no known field list/any/void params can't be built from schema alone.
   throw new Error(`Cannot encode a value for wire type ${JSON.stringify(type)}`)
 }
 
@@ -261,7 +276,7 @@ function opaqueValueToXml(value: unknown): Element {
 // with exactly one implementation of "what does this wire type look like as
 // a widget, and how does a string back out of it".
 
-export type WidgetKind = 'bool' | 'number' | 'string' | 'enum' | 'unsupported'
+export type WidgetKind = 'bool' | 'number' | 'string' | 'enum' | 'struct' | 'unsupported'
 
 export function unwrapOptional(type: WireType): { inner: WireType; optional: boolean } {
   return typeof type === 'object' && type.kind === 'optional'
@@ -269,12 +284,18 @@ export function unwrapOptional(type: WireType): { inner: WireType; optional: boo
     : { inner: type, optional: false }
 }
 
-export function widgetKind(type: WireType): WidgetKind {
+// `structs` is the enclosing interface/event's own InterfaceSchema.structs (or {} from a caller
+// that never has struct-typed fields to worry about) — a struct type only renders as a real
+// nested form when its field list is actually known; against an older server that never
+// published it, or a struct nested deeper than the one level pyobs-core#898 publishes, this
+// falls back to 'unsupported' exactly like before that existed.
+export function widgetKind(type: WireType, structs: Record<string, FieldSchema[]> = {}): WidgetKind {
   if (type === 'bool') return 'bool'
   if (type === 'int32' || type === 'float64') return 'number'
   if (type === 'string' || type === 'datetime') return 'string'
   if (typeof type === 'object' && type.kind === 'enum') return 'enum'
-  return 'unsupported' // array/struct/any — pyobs-core doesn't publish enough schema to build these
+  if (typeof type === 'object' && type.kind === 'struct' && structs[type.name]) return 'struct'
+  return 'unsupported' // array/any, or a struct with no known field list
 }
 
 export function enumOptions(type: WireType, enums: Record<string, string[]>): string[] {
@@ -290,8 +311,15 @@ export function formatWireType(type: WireType): string {
   return `optional<${formatWireType(type.inner)}>`
 }
 
-export function hasUnsupportedField(fields: FieldSchema[]): boolean {
-  return fields.some((f) => widgetKind(unwrapOptional(f.type).inner) === 'unsupported')
+export function hasUnsupportedField(fields: FieldSchema[], structs: Record<string, FieldSchema[]> = {}): boolean {
+  return fields.some((f) => {
+    const inner = unwrapOptional(f.type).inner
+    const kind = widgetKind(inner, structs)
+    if (kind === 'unsupported') return true
+    // A struct field is only really supported if every one of its own fields is — otherwise
+    // ParamForm's nested form would silently drop an unsupported inner field's value.
+    return typeof inner === 'object' && inner.kind === 'struct' && hasUnsupportedField(structs[inner.name] ?? [], structs)
+  })
 }
 
 // A <select> whose bound value doesn't match any of its <option>s renders
@@ -306,6 +334,11 @@ export function hasUnsupportedField(fields: FieldSchema[]): boolean {
 // "'' is not a valid ImageFormat"), so it needs its first real option.
 // Optional params of any kind default to '' regardless — that's the one
 // value paramValueFromString maps to null, the correct default for "unset".
+// Scalar-only — a struct-typed param's own fields are seeded by
+// defaultParamValues below instead, never by calling this on the struct field
+// itself (kept this function free of a structs parameter deliberately: a
+// caller reaching for the struct branch here would be a sign the flattening
+// step was skipped, not a case to silently handle).
 export function defaultParamValue(type: WireType, enums: Record<string, string[]> = {}): string {
   const { inner, optional } = unwrapOptional(type)
   if (optional) return ''
@@ -319,7 +352,9 @@ export function defaultParamValue(type: WireType, enums: Record<string, string[]
 // Converts a raw string form value into a plain JS value matching its
 // WireType — the counterpart to defaultParamValue. Callers that need it on
 // the wire as XML (RPC params) still pass the result through valueToXml;
-// callers that need plain JSON (event data) can use it directly.
+// callers that need plain JSON (event data) can use it directly. Scalar-only,
+// same reasoning as defaultParamValue above — see paramValuesToObject for the
+// struct-assembling counterpart.
 export function paramValueFromString(raw: string | undefined, type: WireType): unknown {
   const { inner, optional } = unwrapOptional(type)
   if (optional && (raw === undefined || raw === '')) return null
@@ -329,6 +364,63 @@ export function paramValueFromString(raw: string | undefined, type: WireType): u
   // non-optional number must always resolve to a real number, never nil.
   if (kind === 'number') return Number(raw || 0)
   return raw ?? ''
+}
+
+// ── flat, dot-path-keyed struct forms (ParamForm.vue's struct branch) ──────
+// Mirrors StructConfigForm.vue's own convention exactly: every nesting level
+// shares one flat Record<string, string> model, keyed by dot-path (e.g.
+// "elements.epoch"), rather than an actual nested object — the same object
+// reference threads through every recursion level, so a mutation at any depth
+// is visible everywhere immediately, no JSON round-trip, no per-render copy
+// to go stale. (An earlier version of this file round-tripped a struct
+// param's value through JSON.stringify/parse on every keystroke instead —
+// that lost input on the first couple of fields typed into quickly, a real
+// bug found live-testing against pyobs-core#898's actual wire shape; this
+// flat-key approach doesn't have that failure mode at all.)
+
+// Seeds every leaf field of a param list, including recursively through a
+// struct-typed param's own fields, as flat dot-path keys — the counterpart to
+// ShellView.vue's old one-entry-per-top-level-param seeding, extended for
+// nesting. A struct field with no known field list (pre-#898 server, or
+// nested past the one-level cap) seeds nothing under its own prefix, matching
+// widgetKind's "unsupported" fallback — hasUnsupportedField already keeps the
+// Execute button disabled in that case, so nothing ever reads those keys back.
+export function defaultParamValues(
+  fields: FieldSchema[],
+  enums: Record<string, string[]>,
+  structs: Record<string, FieldSchema[]> = {},
+  prefix = '',
+): Record<string, string> {
+  const result: Record<string, string> = {}
+  for (const f of fields) {
+    const key = `${prefix}${f.name}`
+    const { inner, optional } = unwrapOptional(f.type)
+    if (!optional && typeof inner === 'object' && inner.kind === 'struct' && structs[inner.name]) {
+      Object.assign(result, defaultParamValues(structs[inner.name]!, enums, structs, `${key}.`))
+    } else {
+      result[key] = defaultParamValue(f.type, enums)
+    }
+  }
+  return result
+}
+
+// Assembles one param's plain-JS value from the flat dot-path-keyed model —
+// the read-side counterpart to defaultParamValues, called once per top-level
+// param at execute time. A struct field recurses, building a real nested
+// object (valueToXml needs an actual object per field.name, not a further
+// flat map) from the same flat storage the form was editing directly. `key`
+// is the field's own full dot-path (e.g. "elements" at the top,
+// "elements.epoch" one level in) — never a trailing-dot prefix.
+export function paramValueFromFlat(type: WireType, flat: Record<string, string>, structs: Record<string, FieldSchema[]>, key: string): unknown {
+  const { inner, optional } = unwrapOptional(type)
+  if (!optional && typeof inner === 'object' && inner.kind === 'struct' && structs[inner.name]) {
+    return Object.fromEntries(structs[inner.name]!.map((f) => [f.name, paramValueFromFlat(f.type, flat, structs, `${key}.${f.name}`)]))
+  }
+  return paramValueFromString(flat[key], type)
+}
+
+export function paramValuesToObject(fields: FieldSchema[], flat: Record<string, string>, structs: Record<string, FieldSchema[]> = {}): unknown[] {
+  return fields.map((f) => paramValueFromFlat(f.type, flat, structs, f.name))
 }
 
 // ── versioned feature/namespace strings: urn:pyobs:{kind}:{name}:{version} ─
@@ -360,6 +452,11 @@ export type InterfaceSchema = {
   name: string
   version: number
   enums: Record<string, string[]>
+  // Keyed by struct name, same as enums — see parseStructs(). Published in disco#info's <types>
+  // block since pyobs-core#898; empty on an older server that predates it (never a parse error,
+  // just fewer entries — widgetKind()/hasUnsupportedField() fall back to 'unsupported' for any
+  // struct<Name> not present here).
+  structs: Record<string, FieldSchema[]>
   commands: Record<string, CommandSchema>
   state: StateSchema | null
 }
@@ -379,6 +476,7 @@ export type EventSchema = {
   version: number
   role: EventRole
   enums: Record<string, string[]>
+  structs: Record<string, FieldSchema[]>
   fields: FieldSchema[]
 }
 
@@ -392,6 +490,18 @@ function parseEnums(typesEl: Element): Record<string, string[]> {
       .map((v) => v.textContent ?? '')
   }
   return enums
+}
+
+// <struct name="OrbitalElements"><field name="epoch" type="datetime"/>...</struct>, sibling to
+// <enum> inside the same <types> block — see specs/plans/2026-08-03-struct-typed-command-params.md.
+function parseStructs(typesEl: Element): Record<string, FieldSchema[]> {
+  const structs: Record<string, FieldSchema[]> = {}
+  for (const structEl of Array.from(typesEl.children)) {
+    if (localTag(structEl) !== 'struct') continue
+    const name = structEl.getAttribute('name') ?? ''
+    structs[name] = parseFields(structEl, 'field')
+  }
+  return structs
 }
 
 function parseFields(parent: Element, childTag: string): FieldSchema[] {
@@ -410,6 +520,7 @@ export function parseInterfaceSchema(el: Element): InterfaceSchema {
   const version = ref?.version ?? 1
 
   let enums: Record<string, string[]> = {}
+  let structs: Record<string, FieldSchema[]> = {}
   const commands: Record<string, CommandSchema> = {}
   let state: StateSchema | null = null
 
@@ -417,6 +528,7 @@ export function parseInterfaceSchema(el: Element): InterfaceSchema {
     const tag = localTag(child)
     if (tag === 'types') {
       enums = parseEnums(child)
+      structs = parseStructs(child)
     } else if (tag === 'command') {
       const cmdName = child.getAttribute('name') ?? ''
       commands[cmdName] = { name: cmdName, params: parseFields(child, 'parameter') }
@@ -425,7 +537,7 @@ export function parseInterfaceSchema(el: Element): InterfaceSchema {
     }
   }
 
-  return { name, version, enums, commands, state }
+  return { name, version, enums, structs, commands, state }
 }
 
 function parseEventRole(raw: string | null): EventRole {
@@ -445,10 +557,14 @@ export function parseEventSchema(el: Element): EventSchema {
   const role = parseEventRole(el.getAttribute('role'))
 
   let enums: Record<string, string[]> = {}
+  let structs: Record<string, FieldSchema[]> = {}
   const typesEl = Array.from(el.children).find((c) => localTag(c) === 'types')
-  if (typesEl) enums = parseEnums(typesEl)
+  if (typesEl) {
+    enums = parseEnums(typesEl)
+    structs = parseStructs(typesEl)
+  }
 
-  return { name, version, role, enums, fields: parseFields(el, 'field') }
+  return { name, version, role, enums, structs, fields: parseFields(el, 'field') }
 }
 
 // ── IStructuredConfig's ConfigSchema/ConfigFieldSchema (capabilities) ──────

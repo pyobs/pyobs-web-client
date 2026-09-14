@@ -31,9 +31,11 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
 - [pyobs-2-0-wire-protocol-client.md](pyobs-2-0-wire-protocol-client.md) — this client's own
   implementation of the pyobs-core 2.0 wire protocol (codec, `useXmpp.ts`, generic
   capability/state rendering). *implemented, closed*
-- [acl-reactive-error-handling.md](acl-reactive-error-handling.md) — ACL denial reaches the client
-  as a plain XMPP-level IQ error, not through `findRpcFault`; no client change needed today.
-  *implemented, closed*
+- [acl-reactive-error-handling.md](acl-reactive-error-handling.md) — ACL denial's reactive error
+  path; no client change needed either way. *implemented, closed* — mechanics changed under it as
+  of `pyobs-core#899`/2.8.9 (ACL denial now flows through the normal `fault_to_xml`/`findRpcFault`
+  path with a real `call_id`, not the raw XMPP-level IQ error this doc originally found); see the
+  doc's own 2026-09-14 update section
 - [pyobs-gui-widget-parity.md](pyobs-gui-widget-parity.md) — `pyobs-gui`'s full `MAIN_WIDGETS`
   registry and its main/sidebar (`sidebar_preferred`+promotion) mechanism, cross-referenced against
   what this client has and hasn't built; check before curating any interface's fields. *living

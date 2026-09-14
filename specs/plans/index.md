@@ -29,29 +29,40 @@ Implementation plans, checklist-style.
   (Cooling/Filters/Temperatures/Focuser, `sidebar_preferred`-promoted or demoted to the shared
   section). **done** 2026-09-08 — all four widgets built and registered
 - [2026-09-07-video-widget.md](2026-09-07-video-widget.md) — `IVideo` widget (Live View via native
-  `<img>` MJPEG, FITS Image grab). **built** 2026-09-08
+  `<img>` MJPEG, FITS Image grab). **built** 2026-09-08; bearer-token login flow for
+  token-protected streams implemented and live-verified 2026-09-13 (same-site deployments only)
 - [2026-09-07-spectrograph-widget.md](2026-09-07-spectrograph-widget.md) — `ISpectrograph` widget
   (camera-lite: expose/abort/status, no settings panel). **built** 2026-09-08
 - [2026-09-07-structured-config-widget.md](2026-09-07-structured-config-widget.md) — `IStructuredConfig`
   widget (schema-driven module config form). **done** 2026-09-08 — all three phases built and live-verified
 - [2026-09-07-robotic-widgets.md](2026-09-07-robotic-widgets.md) — `IRobotic` + `IRoboticScheduler`
   widgets (current/next task, countdown, upcoming schedule). **built** 2026-09-08
-- [2026-08-03-idatasequence.md](2026-08-03-idatasequence.md) — `IDataSequence` support ("grab N images"). **proposed**
+- [2026-08-03-idatasequence.md](2026-08-03-idatasequence.md) — `IDataSequence` support ("grab N images"). **done**
+  2026-09-14, live-verified against `pyobs-core` 2.8.9 — per-grab image display needed a separate
+  transport fix, see `2026-09-14-event-subscription-shared-pubsub.md` and issue #56
+- [2026-09-14-event-subscription-shared-pubsub.md](2026-09-14-event-subscription-shared-pubsub.md) —
+  event subscription targeted the wrong pubsub host and node id, silently breaking live event
+  delivery (`EventsView.vue`, `LoggingView.vue`'s live tail, `IDataSequence`'s per-grab images).
+  **done** 2026-09-14, issue #56, live-verified against `pyobs-core` 2.8.9
 - [2026-08-03-rpc-fault-call-id.md](2026-08-03-rpc-fault-call-id.md) — surface `call_id` on RPC faults. **proposed**
 - [2026-08-03-struct-typed-command-params.md](2026-08-03-struct-typed-command-params.md) — `struct<Name>`-typed command
-  params. **blocked on upstream**
+  params. **done** 2026-09-14, live-verified against `pyobs-core`#898
 - [2026-09-09-safe-area-insets.md](2026-09-09-safe-area-insets.md) — status bar / gesture-nav inset
-  handling for the compact shell + FAB, split out of mobile-first-redesign Phase 3. **proposed**
+  handling for the compact shell + FAB, split out of mobile-first-redesign Phase 3. **done**,
+  real-device verified (gesture nav) 2026-09-13
 - [2026-09-09-keyboard-avoidance.md](2026-09-09-keyboard-avoidance.md) — keep focused text/number
-  inputs visible above the on-screen keyboard, split out of mobile-first-redesign Phase 3.
-  **implemented**, real-device verification pending
+  inputs visible above the on-screen keyboard, split out of mobile-first-redesign Phase 3. **done**,
+  real-device verified 2026-09-13
 - [2026-09-06-mobile-first-redesign.md](2026-09-06-mobile-first-redesign.md) — mobile-first app shell + per-view
   redesign, breakpoint-adaptive (compact nav vs. existing sidebar). **in progress** — Phase 1 done;
-  Phase 2 done except `SettingsView` (still unmigrated, no responsive styling); Phases 3-4 not started
+  Phase 2 now fully done (`SettingsView` migrated 2026-09-13, real-device verified); Phase 3 done
+  (both scoped-out sub-plans, safe-area-insets and keyboard-avoidance, implemented and real-device
+  verified); Phase 4 not started (blocked on Mac access)
 - [2026-09-13-background-foreground-reconnect.md](2026-09-13-background-foreground-reconnect.md) —
   auto-reconnect on any XMPP connection drop (not just backgrounding), plus `@capacitor/app`
-  lifecycle awareness to catch a dead socket on foreground resume. **implemented**, issue #49 —
-  real-device verification pending
+  lifecycle awareness to catch a dead socket on foreground resume. **done**, issue #49 —
+  real-device verified 2026-09-13, including a hang bug found and fixed during verification (see
+  plan's Status line)
 - [2026-09-13-linked-apps.md](2026-09-13-linked-apps.md) — editable list of external links
   (web-admin/portal/weather) with domain-guessed defaults, surfaced in Settings + compact/desktop
-  nav. **proposed**, issue #48
+  nav. **done** (PR #51) 2026-09-13, real-device verified 2026-09-13

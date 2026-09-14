@@ -4,9 +4,11 @@ Status: in progress — Phase 1 implemented; Dashboard, the Connections/Login fl
 ModulePage-style drill-down migrated (Phase 2 — see `specs/plans/2026-09-06-module-page-rework.md`,
 now implemented). **Corrected 2026-09-09**: Phase 2 is done except `SettingsView` — routing for
 Roof/Mode/Weather/AutoFocus/AutoGuiding/Acquisition/Camera is done (all as `ModulePageView` tabs)
-and their compact-width visual pass landed via `2026-09-07-widget-visual-redesign.md`; only
-`SettingsView` remains unmigrated, still reached via `MoreView.vue`'s plain list, no responsive
-styling. Phase 3 and Phase 4 not started.
+and their compact-width visual pass landed via `2026-09-07-widget-visual-redesign.md`. **Corrected
+2026-09-13**: Phase 2 is now fully done — `SettingsView` migrated (see its own bullet below) — and
+Phase 3 is done too: both scoped-out sub-plans (`2026-09-09-safe-area-insets.md`,
+`2026-09-09-keyboard-avoidance.md`) are implemented and real-device verified. Only Phase 4 remains,
+not started (blocked on Mac access).
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -123,21 +125,28 @@ breakpoint switch, redesign for the compact shell, or descope from primary mobil
   landed via `specs/plans/2026-09-07-widget-visual-redesign.md` (done 2026-09-08): shared
   `.pyobs-card`/`StatusRow.vue` design, mobile chart-legibility fix, full-width action-button/input
   rows, applied to all 8 module widgets, live-verified.
-- **`SettingsView` — still unmigrated.** Separate from the above (it isn't per-module), never
-  folded into ModulePage, still reached via `MoreView.vue`'s plain list on the same route the old
-  sidebar used. No responsive/compact styling in the file at all as of 2026-09-09 — the one
-  remaining Phase 2 item.
+- **`SettingsView` — done 2026-09-13.** Separate from the above (it isn't per-module), never folded
+  into ModulePage, still reached via `MoreView.vue`'s plain list on the same route the old sidebar
+  used. Investigated the "no responsive/compact styling" complaint and found no actual mobile
+  layout bug — its stacked label-then-input forms and `btn-sm` icon buttons already matched
+  `EditConnectionView.vue`'s own (already live-verified) VFS section exactly. The real gap was
+  code hygiene: 5 copy-pasted inline `background-color:#1a1d21; border:1px solid #2d3035` card
+  blocks, now the shared `.pyobs-card` class the rest of the app's widgets use. Real-device
+  verified on a live phone (Motorola Edge 50 Neo) — full-width cards, no overflow, header rows fit
+  on one line.
 
 Migrate incrementally, each view landing as its own reviewable change. Suggested order (highest
 real-world phone use first): ~~Dashboard~~ → ~~Connections/Login~~ → ~~the ModulePage rework~~ →
 ~~Roof/Mode/Weather~~ → ~~Logging/Events visual pass~~ → Settings → ~~AutoFocus/AutoGuiding/Acquisition~~.
 
-## Phase 3 — Cross-cutting polish
+## Phase 3 — Cross-cutting polish (done, both sub-plans real-device verified)
 
 - Safe-area inset handling (status bar / gesture nav) — an Android concern now, doubles as iOS
   prep for Phase 4. Scoped out as its own plan: `specs/plans/2026-09-09-safe-area-insets.md`.
+  **Implemented** `c1e529f` (2026-09-09), **real-device verified** (gesture nav) 2026-09-13.
 - Keyboard-avoidance check on every numeric/text form (exposure time, RA/Dec, filter selection) —
-  scoped out as its own plan: `specs/plans/2026-09-09-keyboard-avoidance.md`.
+  scoped out as its own plan: `specs/plans/2026-09-09-keyboard-avoidance.md`. **Implemented**
+  2026-09-09, **real-device verified** 2026-09-13.
 
 Decided 2026-09-09: no haptic feedback — not needed.
 

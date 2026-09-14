@@ -1,9 +1,26 @@
 # Plan: `struct<Name>`-typed command params
 
-Status: blocked on upstream — not actionable in this repo alone until
-`../pyobs-core` publishes struct field schemas on the wire. Captured as a plan
-so the dependency and its trigger condition are tracked, not because there's
-client-side design work to do yet.
+Status: done, 2026-09-14. `../pyobs-core`#898 landed the upstream schema publishing (a `<struct
+name="...">` block sibling to `<enum>` inside `<types>`, one field element per struct field,
+capped at one level of struct-in-struct nesting) while it was in progress in a parallel session —
+the client side landed the same day against that draft shape. `InterfaceSchema`/`EventSchema` gain
+a `structs: Record<string, FieldSchema[]>` (`pyobs-codec.ts`'s `parseStructs`, mirroring
+`parseEnums`); `ParamForm.vue` recurses into a nested `<ParamForm>` for a `struct<Name>` param
+whose fields are known, one level deep, matching the upstream depth cap. The nested form shares one
+flat, dot-path-keyed model by reference at every level (e.g. `"elements.epoch"`) — the exact
+convention `StructConfigForm.vue` already established for `IStructuredConfig` — rather than a
+JSON-stringified sub-object with manual `:model-value`/`@update` wiring, which an earlier version
+of this change used and which lost keystrokes on the first field or two typed into quickly (a
+stale-snapshot race, found live-testing, not caught by unit tests since it only manifests under
+real DOM/reactivity timing). `valueToXml` gained a struct branch mirroring pyobs-core's own
+`_dataclass_to_xml` shape exactly (one child element named after each field, not a
+`<dict>`/`<entry>` — that shape is `structValueToXml`'s, for a genuinely-a-dict `set_config` param,
+not this). Live-verified end to end against `telescope.yaml`'s `DummyAltAzTelescope`: filled in a
+full `OrbitalElements` nested form (7 fields + 1 optional), executed `track_orbital_elements`, and
+got a real `AltitudeLimitError` back (not a decode crash) — the server actually propagated the
+orbital elements and checked the resulting Alt/Az against the altitude limit — with `call_id`
+matching the module's own log line exactly. Unit tests: `pyobs-codec.spec.ts`'s "struct<Name> param
+support (pyobs-core#898)" describe block.
 
 Repos: pyobs-web-client (consumer); `../pyobs-core` (wire-format change this
 actually depends on, not yet proposed or implemented there)

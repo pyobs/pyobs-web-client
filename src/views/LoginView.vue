@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { Capacitor } from '@capacitor/core'
 import { Strophe } from 'strophe.js'
 import { useXmpp } from '@/composables/useXmpp'
 import { useServerConfig } from '@/composables/useServerConfig'
@@ -28,6 +29,10 @@ const jid = ref('')
 const password = ref('')
 const rememberPassword = ref(false)
 const loading = ref(false)
+// No Keychain/Keystore on the web build — see useCredentialStore.ts — so remembering a
+// password there would mean a plaintext localStorage fallback. Refused entirely rather
+// than silently degrading; see issue #53.
+const canRememberPassword = Capacitor.isNativePlatform()
 
 // Two-step flow (JID + WS override, then password) so a password manager can
 // still correlate the two: both fields live in one <form>, submitted once at the
@@ -291,8 +296,11 @@ async function handleLogin() {
           </div>
 
           <!-- Opt-in password storage (step 2 only) — off by default, see
-               useCredentialStore.ts for where this ends up. -->
-          <div v-if="step === 'password'" class="mb-4 form-check">
+               useCredentialStore.ts for where this ends up. Not offered on the
+               web build at all — see canRememberPassword above; hidden
+               entirely there rather than shown disabled/explained, since
+               there's nothing the operator can do about it from this screen. -->
+          <div v-if="step === 'password' && canRememberPassword" class="mb-4 form-check">
             <input
               id="rememberPassword"
               v-model="rememberPassword"

@@ -17,8 +17,8 @@ vfs: &vfs
 modules:
   video:
     class: pyobs.modules.camera.dummyvideo.DummyVideo
-    name: video
-    port: 37077
+    label: video
+    http_port: 37077
     vfs: *vfs
     comm:
       class: pyobs.comm.xmpp.XmppComm

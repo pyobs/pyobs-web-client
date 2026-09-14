@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { Strophe } from 'strophe.js'
 import { useXmpp } from '@/composables/useXmpp'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useLinkedApps } from '@/composables/useLinkedApps'
@@ -8,7 +9,7 @@ import { widgetsForModule } from '@/moduleWidgets'
 
 const router = useRouter()
 const route = useRoute()
-const { jid, disconnect, modules } = useXmpp()
+const { jid, disconnect, modules, recentLogins } = useXmpp()
 const { isCompact } = useBreakpoint()
 const { linkedApps } = useLinkedApps()
 // Same "swap to a fallback glyph on load failure" approach as SettingsView.vue's Linked Apps
@@ -59,6 +60,16 @@ function goBack() {
 }
 
 const appVersion = __APP_VERSION__
+
+// Shown in both shells' header so it's always visible which server/account this
+// session is talking to — see issue #52. Prefers the user's own connection label
+// (set in Connections/Edit Connection) over the bare domain, since that's the name
+// the user actually chose to recognize this connection by.
+const serverLabel = computed(() => {
+  if (!jid.value) return ''
+  const label = recentLogins.value.find((entry) => entry.jid === jid.value)?.label
+  return label || Strophe.getDomainFromJid(jid.value) || ''
+})
 </script>
 
 <template>
@@ -83,10 +94,18 @@ const appVersion = __APP_VERSION__
       >
         <i class="bi bi-arrow-left" style="font-size:1.3rem"></i>
       </button>
-      <img src="/pyobs-logo-dark.gif" alt="pyobs" style="height:22px" />
+      <img src="/pyobs-logo-dark.gif" alt="pyobs" style="height:22px; flex-shrink:0" />
+      <span
+        v-if="serverLabel"
+        class="text-truncate ms-2"
+        style="color:#adb5bd; font-size:0.95rem; min-width:0"
+        :title="jid"
+      >
+        {{ serverLabel }}
+      </span>
       <button
         type="button"
-        class="btn ms-auto p-0 d-flex align-items-center justify-content-center"
+        class="btn ms-auto p-0 d-flex align-items-center justify-content-center flex-shrink-0"
         style="width:40px; height:40px; color:#adb5bd"
         aria-label="Settings"
         @click="navigate('/settings')"
@@ -136,9 +155,10 @@ const appVersion = __APP_VERSION__
       <div class="p-3 border-bottom border-secondary-subtle">
         <div class="d-flex align-items-center gap-2">
           <i class="bi bi-telescope fs-5 text-primary"></i>
-          <div>
+          <div class="text-truncate">
             <div class="fw-semibold text-light lh-1">pyobs</div>
             <div class="text-muted" style="font-size:0.7rem">Web Client v{{ appVersion }}</div>
+            <div class="text-muted text-truncate" style="font-size:0.78rem" :title="jid">{{ serverLabel }}</div>
           </div>
         </div>
       </div>

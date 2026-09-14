@@ -1,10 +1,10 @@
 # Plan: Keyboard-avoidance on text/number forms
 
-Status: implemented, not yet live-verified. **2026-09-09: Step 0 confirmed real** by Tim
-(keyboard does hide focused inputs) — went straight to option A (global `focusin` listener,
-`useKeyboardAvoidance.ts`, wired into `App.vue`). Type-checks and builds clean. Real-device
-verification (per "Verification" below) still pending; fall back to option B
-(`@capacitor/keyboard`) only if A doesn't hold up on-device.
+Status: done. **2026-09-09: Step 0 confirmed real** by Tim (keyboard does hide focused inputs) —
+went straight to option A (global `focusin` listener, `useKeyboardAvoidance.ts`, wired into
+`App.vue`). Type-checks and builds clean. **Real-device verified 2026-09-13**: focused inputs stay
+visible above the keyboard, including near the bottom of a form; option A holds up, no need for
+the `@capacitor/keyboard` fallback (option B).
 
 Repos: pyobs-web-client (all implementation here)
 

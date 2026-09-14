@@ -11,6 +11,7 @@ import {
   type InterfaceSchema,
   type EventSchema,
   type CommandSchema,
+  type FieldSchema,
 } from '@/pyobs-codec'
 import { useServerConfig } from '@/composables/useServerConfig'
 
@@ -35,6 +36,11 @@ export type RpcResult = {
   success: boolean
   value: unknown
   errorClass?: string
+  // XEP-0009's own per-call IQ id, reused by pyobs-core's exception-handling rewrite as a
+  // correlation id — lets an operator jump from this error straight to the matching
+  // "(call_id=...)" line in the target module's own log. Only present on a fault (see
+  // findRpcFault) — pyobs-core doesn't stamp anything on a successful reply.
+  callId?: string
 }
 
 export type PyobsEvent = {
@@ -241,32 +247,30 @@ function pubsubServiceFor(bareJid: string): string {
   return `pubsub.${Strophe.getDomainFromJid(bareJid)}`
 }
 
-// Adds an event to the ring buffer, or — if the same uuid is already present
-// — keeps whichever copy has a real module identity. Needed because ejabberd
-// resends an event node's last-published item on every (re)subscribe (e.g.
-// every reconnect), and that resend arrives with `from` set to the pubsub
-// service itself rather than the original publisher's JID, unlike a genuine
-// live push (which does carry the correct `from`) — see
-// specs/steering/testing-against-live-backend.md's "Known limitation".
-// Confirmed live: the exact same uuid can arrive twice, once correctly
-// attributed (a live push) and once not (retained-item replay), racing in
-// either order — this makes the outcome order-independent.
+// Event pubsub node id: `pyobs:event:<module>:<Name>:<version>`, hosted on
+// the shared pubsub service — matches XmppComm._event_node() exactly
+// (pyobs-core's own xmppcomm.py), not the `urn:pyobs:event:<Name>:<version>`
+// disco#info *feature* name that a schema's own namespace uses (a different,
+// unrelated namespace — see specs/plans/2026-09-14-event-subscription-shared-pubsub.md).
+function eventNode(moduleUsername: string, name: string, version: number): string {
+  return `pyobs:event:${moduleUsername}:${name}:${version}`
+}
+
+// Every notification on this node arrives "from" the shared pubsub service
+// itself, never from the publishing module (true for both a live push and a
+// resend-on-subscribe replay) — so the publishing module has to be recovered
+// from the node id, mirroring XmppComm._event_node_module() exactly.
+function eventNodeModule(node: string): string | null {
+  const parts = node.split(':')
+  return parts.length === 5 && parts[0] === 'pyobs' && parts[1] === 'event' ? parts[2]! : null
+}
+
+// Adds an event to the ring buffer, deduping by uuid — ejabberd resends an
+// event node's last-published item on every (re)subscribe (e.g. every
+// reconnect), which can otherwise show up as a duplicate of a live push.
 function upsertEvent(ev: PyobsEvent): void {
-  if (!ev.uuid) {
-    events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
-    return
-  }
-  const pubsubHost = pubsubServiceFor(jid.value)
-  const idx = events.value.findIndex((e) => e.uuid === ev.uuid)
-  if (idx === -1) {
-    events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
-    return
-  }
-  if (events.value[idx]!.module === pubsubHost && ev.module !== pubsubHost) {
-    const next = [...events.value]
-    next[idx] = ev
-    events.value = next
-  }
+  if (ev.uuid && events.value.some((e) => e.uuid === ev.uuid)) return
+  events.value = [...events.value.slice(-(MAX_EVENTS - 1)), ev]
 }
 
 // ── module discovery: one disco#info query returns everything ──────────────
@@ -336,37 +340,38 @@ async function fetchModuleInfo(bareJid: string, fullJid: string): Promise<void> 
     { jid: bareJid, fullJid, name, interfaces, events: eventSchemas, capabilities, permittedMethods },
   ]
 
-  // Subscribe to every event this module actually publishes (PEP — hosted on
-  // the module's own bare JID, not a separate pubsub service, unlike state
-  // below) — role.includes('send') excludes subscribe-only entries (e.g. a
+  // Subscribe to every event this module actually publishes, on the shared
+  // pubsub service under pyobs:event:<module>:<Name>:<version> — same
+  // service and node shape as state (see stateNode/subscribeWithRetry) and
+  // XmppComm._event_node() server-side; not a PEP node on the module's own
+  // JID. role.includes('send') excludes subscribe-only entries (e.g. a
   // camera module's BadWeatherEvent, which it only reacts to and never
   // publishes on its own node); subscribing to those would just be a
   // guaranteed-empty subscription against a node the module never publishes
   // to. See ../pyobs-core/specs/plans/event-role-advertising.md.
+  const moduleUsername = Strophe.getNodeFromJid(bareJid) ?? bareJid
+  const pubsubService = pubsubServiceFor(bareJid)
   const myBareJid = Strophe.getBareJidFromJid(jid.value) ?? jid.value
   for (const schema of Object.values(eventSchemas)) {
     if (!schema.role.includes('send')) continue
-    const node = `urn:pyobs:event:${schema.name}:${schema.version}`
+    const node = eventNode(moduleUsername, schema.name, schema.version)
     sendIQ(
-      $iq({ to: bareJid, type: 'set' })
+      $iq({ to: pubsubService, type: 'set' })
         .c('pubsub', { xmlns: NS_PUBSUB })
         .c('subscribe', { node, jid: myBareJid })
         .tree(),
     ).catch(() => {})
-    // Also actively fetch the current item via a targeted IQ-get, addressed
-    // to bareJid directly — rather than relying on ejabberd's own
-    // resend-on-subscribe push, whose `from` is wrong (see upsertEvent's
-    // comment). We already know which module this is since we're the one
-    // asking, so the module identity here is never in question — this races
-    // harmlessly against the (possibly mis-attributed) auto-push, resolved
-    // by upsertEvent whichever order they arrive in.
-    fetchCurrentEventItem(bareJid, name, node, schema).catch(() => {})
+    // Also actively fetch the current item via a targeted IQ-get — rather
+    // than relying on ejabberd's own resend-on-subscribe push, which races
+    // this and may arrive first or not at all depending on server timing;
+    // upsertEvent's uuid dedup resolves whichever order they land in.
+    fetchCurrentEventItem(pubsubService, node, schema).catch(() => {})
   }
 }
 
-async function fetchCurrentEventItem(bareJid: string, moduleName: string, node: string, schema: EventSchema): Promise<void> {
+async function fetchCurrentEventItem(pubsubService: string, node: string, schema: EventSchema): Promise<void> {
   const result = await sendIQ(
-    $iq({ to: bareJid, type: 'get' })
+    $iq({ to: pubsubService, type: 'get' })
       .c('pubsub', { xmlns: NS_PUBSUB })
       .c('items', { node, max_items: '1' })
       .tree(),
@@ -377,9 +382,11 @@ async function fetchCurrentEventItem(bareJid: string, moduleName: string, node: 
   const payloadEl = itemEl?.firstElementChild
   if (!payloadEl) return // nothing published on this node yet — normal, not every event has fired
   const raw = JSON.parse(payloadEl.textContent ?? '{}')
+  const module = eventNodeModule(node)
+  if (!module) return
   upsertEvent({
     type: raw.type ?? schema.name,
-    module: moduleName,
+    module,
     timestamp: raw.timestamp ?? Date.now() / 1000,
     uuid: raw.uuid ?? '',
     data: raw.data ?? {},
@@ -452,17 +459,19 @@ function handlePubsubMessage(message: Element): boolean {
     return true
   }
 
-  if (!node.startsWith('urn:pyobs:event:')) return true
+  if (!node.startsWith('pyobs:event:')) return true
+
+  const module = eventNodeModule(node)
+  if (!module) return true
 
   const payloadEl = Array.from(itemsEl.children).find((c) => localTag(c) === 'item')?.firstElementChild
   if (!payloadEl) return true
 
   try {
     const raw = JSON.parse(payloadEl.textContent ?? '{}')
-    const ref = parseVersionedFeature('event', node)
     const ev: PyobsEvent = {
-      type: raw.type ?? ref?.name ?? node,
-      module: Strophe.getNodeFromJid(message.getAttribute('from') ?? '') ?? message.getAttribute('from') ?? '?',
+      type: raw.type ?? node.split(':')[3] ?? node,
+      module,
       timestamp: raw.timestamp ?? Date.now() / 1000,
       uuid: raw.uuid ?? '',
       data: raw.data ?? {},
@@ -477,7 +486,7 @@ function handlePubsubMessage(message: Element): boolean {
 
 // ── XEP-0009 RPC (urn:pyobs:rpc:1 payload encoding) ─────────────────────────
 
-function findRpcFault(result: Element): { exception: string; message: string } | null {
+function findRpcFault(result: Element): { exception: string; message: string; callId?: string } | null {
   const outerFault = result.getElementsByTagName('fault')[0]
   if (!outerFault) return null
   const outerValue = Array.from(outerFault.children).find((c) => localTag(c) === 'value')
@@ -487,6 +496,7 @@ function findRpcFault(result: Element): { exception: string; message: string } |
   return {
     exception: exceptionEl?.textContent ?? 'RemoteError',
     message: messageEl?.textContent ?? '',
+    callId: result.getAttribute('id') ?? undefined,
   }
 }
 
@@ -502,7 +512,17 @@ function parseRpcReturn(result: Element): unknown {
   return contentEl ? xmlToValue(contentEl) : null
 }
 
-async function executeMethod(fullJid: string, methodName: string, params: unknown[], schema: CommandSchema): Promise<RpcResult> {
+// `structs` (default {}) is the calling interface's own InterfaceSchema.structs — only ShellView's
+// generic command builder ever has a struct-typed param to worry about, so every other call site
+// omits it and gets today's exact behavior (valueToXml throws if a param actually needed it,
+// which none of their hardcoded commands do).
+async function executeMethod(
+  fullJid: string,
+  methodName: string,
+  params: unknown[],
+  schema: CommandSchema,
+  structs: Record<string, FieldSchema[]> = {},
+): Promise<RpcResult> {
   if (!connection) throw new Error('Not connected')
 
   const builder = $iq({ to: fullJid, type: 'set' })
@@ -514,7 +534,7 @@ async function executeMethod(fullJid: string, methodName: string, params: unknow
     .c('params')
 
   schema.params.forEach((paramSchema, i) => {
-    const contentEl = valueToXml(params[i], paramSchema.type)
+    const contentEl = valueToXml(params[i], paramSchema.type, structs)
     const pyobsValue = createNamespacedElement(NS_PYOBS_RPC, 'value')
     pyobsValue.appendChild(contentEl)
     builder.c('param').c('value').cnode(pyobsValue).up().up().up()
@@ -533,7 +553,7 @@ async function executeMethod(fullJid: string, methodName: string, params: unknow
 
   const fault = findRpcFault(result)
   if (fault) {
-    return { success: false, value: fault.message, errorClass: fault.exception }
+    return { success: false, value: fault.message, errorClass: fault.exception, callId: fault.callId }
   }
 
   return { success: true, value: parseRpcReturn(result) }
@@ -574,7 +594,7 @@ async function executeMethodRaw(fullJid: string, methodName: string, paramConten
 
   const fault = findRpcFault(result)
   if (fault) {
-    return { success: false, value: fault.message, errorClass: fault.exception }
+    return { success: false, value: fault.message, errorClass: fault.exception, callId: fault.callId }
   }
 
   return { success: true, value: parseRpcReturn(result) }
@@ -759,6 +779,16 @@ function connect(userJid: string, password: string, silent = false): Promise<voi
           if (!intentionalDisconnect && sessionStorage.getItem(SESSION_JID_KEY)) {
             attemptReconnect(userJid, password)
           }
+        } else {
+          // Never reached CONNECTED — e.g. a stream-level error (ejabberd shutting down
+          // mid-restart) reports DISCONNECTED directly, skipping CONNFAIL. Settle the
+          // pending promise the same way CONNFAIL does, or attemptReconnect()'s retry
+          // loop hangs forever awaiting a promise that never resolves or rejects.
+          if (!silent) {
+            status.value = 'error'
+            errorMessage.value = 'Connection failed. Check server address.'
+          }
+          reject(new Error('Disconnected before connecting'))
         }
       }
     })

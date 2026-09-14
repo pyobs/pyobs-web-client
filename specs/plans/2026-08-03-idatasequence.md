@@ -1,9 +1,18 @@
 # Plan: `IDataSequence` support — "grab N images"
 
-Status: proposed, not yet designed in detail. Depends on
-`specs/plans/2026-08-03-camera-page.md` shipping first (single-shot `grab_data()` +
-FITS decode/render pipeline) — this plan only adds the counted-sequence
-mechanic on top of that already-working display path, not a second one.
+Status: **done**, implemented and live-verified 2026-09-14 against `pyobs-core` 2.8.9
+(`testing/.venv`, camera module). Count/delay inputs, `DataSequenceState` progress,
+`abort_sequence()`, and per-grab image display all built in `CameraView.vue`. The
+per-grab image display needed a separate fix first — the resolved open question below
+turned out to rely on a generic event-subscription mechanism that was itself broken
+(wrong pubsub host/node id, silently dropping every live event in the app); see
+`specs/plans/2026-09-14-event-subscription-shared-pubsub.md` (issue #56). Two smaller
+open questions from below remain unresolved: client-side sanity bounds on count/delay
+(currently none), and mobile layout not explicitly verified.
+
+Depended on `specs/plans/2026-08-03-camera-page.md` shipping first (single-shot
+`grab_data()` + FITS decode/render pipeline) — this plan only added the
+counted-sequence mechanic on top of that already-working display path, not a second one.
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -55,21 +64,33 @@ pushed state, same as every other live-state interface in this app.
 ## Open questions
 
 - **How does the client learn a new image is ready after each grab in the
-  sequence, to fetch and display it?** `DataSequenceState` only reports counts
-  and time, not a path. Options, not yet decided:
-  - Subscribe to `NewImageEvent` for the duration of an active sequence only
-    (narrower than the general "own-triggered only" decision in the Camera
-    page plan, which deferred a *permanent* `NewImageEvent` subscription —
-    this would be a temporary, sequence-scoped one instead, arguably a
-    different, smaller decision).
-  - Poll `count_left` transitions and re-derive/guess a path pattern — fragile,
-    probably wrong, not a real option, listed only to rule it out explicitly.
-  - Show only the *last* image once `count_left` reaches 0, not each
-    intermediate one — simplest, but loses the "watch it happen" value a
-    counted sequence mostly exists to provide.
-  This needs an answer before implementation — it's the actual hard part of
-  this plan, everything else is straightforward composition of the Camera
-  page's existing pieces.
+  sequence, to fetch and display it?** — Answered 2026-09-14: **no new
+  subscription needed.** `fetchModuleInfo()` (`src/composables/useXmpp.ts:345-370`)
+  already subscribes to every event a module declares with `role: 'send'`,
+  unconditionally, for every online module in the roster, session-wide —
+  triggered from `handlePresence` (line 428), not scoped to any particular
+  page being open. `BaseCamera` declares `NewImageEvent`, and `grab_sequence`'s
+  internal loop (`../pyobs-core/pyobs/modules/camera/basecamera.py:433-445`)
+  just calls `grab_data()` repeatedly, which emits the exact same
+  `NewImageEvent` (line 354) a single-shot grab does. So those events are
+  already flowing into the shared `events` ref (the same one `EventsView.vue`
+  reads) whether or not a sequence is running. This supersedes the Camera
+  page plan's "own-triggered only, no `NewImageEvent` subscription" phase-2
+  note at the transport level — the subscription already exists generically,
+  that decision was only ever about the Camera page choosing not to *consume*
+  it for auto-refresh.
+
+  Implementation: while `count_left > 0`, filter the existing `events` array
+  for `module === <this camera's name> && type === 'NewImageEvent'`, and feed
+  each match into the Camera page's existing decode/render pipeline in arrival
+  order. No subscribe/unsubscribe lifecycle to manage.
+
+  Known accepted edge case, not worth building correlation logic for:
+  `NewImageEvent` carries no sequence ID, and `grab_sequence`'s inter-image
+  `delay` window returns the camera to `ExposureStatus.IDLE` between grabs, so
+  another client's own `grab_data()` call during that window would emit an
+  indistinguishable stray event. Same single-operator trust assumption this
+  app already makes elsewhere (e.g. `specs/design/acl-reactive-error-handling.md`).
 - Whether `count`/`delay` need client-side sanity bounds (e.g. a max count) or
   should just pass through whatever the operator types, trusting the module's
   own validation/`ForbiddenError`-via-ACL path to reject anything unreasonable.

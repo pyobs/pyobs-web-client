@@ -2,10 +2,14 @@
 
 Status: built (`RoboticView.vue`, `ScheduleView.vue`) — 2026-09-08. Live-verification is now Tim's
 own testing pass rather than an open web-client task tracked here; file an issue for anything it
-turns up. No test fixture for either interface exists yet (open question below still open).
-`ScheduleView.vue` also picked up `schedulewidget.py`'s Reschedule button (`IRunnable.run`,
+turns up. `ScheduleView.vue` also picked up `schedulewidget.py`'s Reschedule button (`IRunnable.run`,
 re-fetching the schedule afterward) — present in the actual widget source but not called out in
 this plan's own summary above.
+
+**2026-09-13**: test fixture added, `testing/pyobs-gui-configs/xmpp/robotic.yaml` (ported from
+`pyobs-gui`'s own `test/robotic.yaml`), live-verified — both `mastermind` (`DummyMastermind`,
+`IRobotic`) and `scheduler` (`DummyScheduler`, `IRoboticScheduler`) connect, generate a dummy
+8-task schedule, and reach ready state cleanly.
 
 Repos: pyobs-web-client (all implementation here)
 
@@ -66,10 +70,7 @@ scheduler+executor) gets two tabs, per the standard multi-match rule; neither is
 
 ## Open questions
 
-- No test fixture for either interface exists in `testing/pyobs-gui-configs/xmpp/` — port one from
-  `pyobs-gui`'s own `test/*.yaml` (per the established adaptation process in
-  `specs/steering/testing-against-live-backend.md`) before implementing, so the countdown/schedule
-  list logic has real data to verify against instead of hand-invented fixtures.
+- ~~No test fixture for either interface exists~~ — resolved 2026-09-13, see Status line.
 - Whether `get_schedule`'s polling should pause when the tab/page isn't visible (this app has no
   existing precedent for visibility-gated polling — check whether it needs one here, or whether 30s
   regardless of visibility is an acceptable cost).
