@@ -30,11 +30,19 @@ instead of this list for the completed-feature catalog.
   not in this client — see that doc's "Push notifications" section. 2026-09-09:
   scoped as a new pyobs-core module (not XEP-0357/ejabberd), sketch at
   `../pyobs-core/specs/design/push-notification-module.md` — v1 covers module
-  `ERROR` only; weather/CRITICAL-log alerts still deferred. The one piece that
-  lands in this repo when that module exists: `usePushNotifications.ts` needs
-  a small addition to call its device-registration RPC once a token is
-  obtained (currently the token only reaches `SettingsView.vue`'s diagnostic
-  panel).
+  `ERROR` only; weather/CRITICAL-log alerts still deferred. 2026-09-14: the
+  server-side interface now exists — `IPushNotifications` (`register_device(token,
+  platform)`), implemented by a `PushNotifier` module — in progress by another
+  session in `../pyobs-core`, uncommitted as of this note. The one piece that
+  lands in this repo when that module ships: `usePushNotifications.ts`'s
+  `registration` listener needs a small addition to call `register_device` via
+  the standard interface-discovery path once a token is obtained (currently
+  the token only reaches `SettingsView.vue`'s diagnostic panel) — **watch
+  `useXmpp()`'s `modules` for one with `interfaces['IPushNotifications']`,
+  same "implements-it-or-not" conditional pattern as every other optional
+  interface in this app (e.g. `IDataSequence`). No module advertising that
+  interface in the roster → do nothing, no error, no assumption the module
+  exists.**
 - **iOS build + TestFlight distribution** — not started, blocked on Mac
   access. See `specs/design/native-app-shell-capacitor.md`'s Phasing.
 
