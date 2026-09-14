@@ -36,9 +36,5 @@ instead of this list for the completed-feature catalog.
 
 Unchecked risks (no dedicated plan, tracked here so they aren't lost):
 
-- **VFS bearer tokens (`setVfsToken()`) still use a plaintext web fallback on non-native builds** —
-  found 2026-09-13 comparing against `pyobs-polaris` (see `specs/design/configuration-file-and-saved-accounts.md`
-  there), alongside the same gap for XMPP passwords (fixed, issue #53, closed). Deliberately left
-  out of #53's scope (passwords only); no issue filed yet for the token case.
 - **Does WebView feel "good enough"?** — still open, waiting on real use via
   `specs/plans/2026-09-06-mobile-first-redesign.md`.

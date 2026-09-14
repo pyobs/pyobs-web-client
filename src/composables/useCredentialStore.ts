@@ -67,7 +67,7 @@ export function useCredentialStore() {
   }
 
   async function setVfsToken(bareJid: string, root: string, token: string): Promise<void> {
-    if (!bareJid || !root) return
+    if (!bareJid || !root || !Capacitor.isNativePlatform()) return
     try {
       await SecureStorage.set(vfsKey(bareJid, root), token)
     } catch {
