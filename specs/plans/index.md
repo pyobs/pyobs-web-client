@@ -37,7 +37,13 @@ Implementation plans, checklist-style.
   widget (schema-driven module config form). **done** 2026-09-08 — all three phases built and live-verified
 - [2026-09-07-robotic-widgets.md](2026-09-07-robotic-widgets.md) — `IRobotic` + `IRoboticScheduler`
   widgets (current/next task, countdown, upcoming schedule). **built** 2026-09-08
-- [2026-08-03-idatasequence.md](2026-08-03-idatasequence.md) — `IDataSequence` support ("grab N images"). **proposed**
+- [2026-08-03-idatasequence.md](2026-08-03-idatasequence.md) — `IDataSequence` support ("grab N images"). **done**
+  2026-09-14, live-verified against `pyobs-core` 2.8.9 — per-grab image display needed a separate
+  transport fix, see `2026-09-14-event-subscription-shared-pubsub.md` and issue #56
+- [2026-09-14-event-subscription-shared-pubsub.md](2026-09-14-event-subscription-shared-pubsub.md) —
+  event subscription targeted the wrong pubsub host and node id, silently breaking live event
+  delivery (`EventsView.vue`, `LoggingView.vue`'s live tail, `IDataSequence`'s per-grab images).
+  **done** 2026-09-14, issue #56, live-verified against `pyobs-core` 2.8.9
 - [2026-08-03-rpc-fault-call-id.md](2026-08-03-rpc-fault-call-id.md) — surface `call_id` on RPC faults. **proposed**
 - [2026-08-03-struct-typed-command-params.md](2026-08-03-struct-typed-command-params.md) — `struct<Name>`-typed command
   params. **done** 2026-09-14, live-verified against `pyobs-core`#898

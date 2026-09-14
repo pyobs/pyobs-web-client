@@ -4,7 +4,7 @@ Status: implemented and live-verified 2026-09-14 against `pyobs-core` 2.8.9
 (`testing/.venv`, camera + httpfilecache modules). `grab_sequence(3)`'s three
 `NewImageEvent`s all arrived live and rendered in `CameraView.vue` as they
 completed; `EventsView.vue` showed the fresh events with today's filenames
-instead of the old 2026-07-12 retained item.
+instead of the old 2026-07-12 retained item. Issue #56, closed.
 
 Repos: pyobs-web-client (all implementation here)
 

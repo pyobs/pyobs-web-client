@@ -1,9 +1,18 @@
 # Plan: `IDataSequence` support — "grab N images"
 
-Status: proposed, not yet designed in detail. Depends on
-`specs/plans/2026-08-03-camera-page.md` shipping first (single-shot `grab_data()` +
-FITS decode/render pipeline) — this plan only adds the counted-sequence
-mechanic on top of that already-working display path, not a second one.
+Status: **done**, implemented and live-verified 2026-09-14 against `pyobs-core` 2.8.9
+(`testing/.venv`, camera module). Count/delay inputs, `DataSequenceState` progress,
+`abort_sequence()`, and per-grab image display all built in `CameraView.vue`. The
+per-grab image display needed a separate fix first — the resolved open question below
+turned out to rely on a generic event-subscription mechanism that was itself broken
+(wrong pubsub host/node id, silently dropping every live event in the app); see
+`specs/plans/2026-09-14-event-subscription-shared-pubsub.md` (issue #56). Two smaller
+open questions from below remain unresolved: client-side sanity bounds on count/delay
+(currently none), and mobile layout not explicitly verified.
+
+Depended on `specs/plans/2026-08-03-camera-page.md` shipping first (single-shot
+`grab_data()` + FITS decode/render pipeline) — this plan only added the
+counted-sequence mechanic on top of that already-working display path, not a second one.
 
 Repos: pyobs-web-client (all implementation here)
 
