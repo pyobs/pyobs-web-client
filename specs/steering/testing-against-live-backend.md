@@ -79,7 +79,7 @@ pick it up.
   not committed), created with:
   ```sh
   uv venv --python 3.13 testing/.venv
-  uv pip install --python testing/.venv 'pyobs-core[full]==2.0.0.dev53'
+  uv pip install --python testing/.venv 'pyobs-core[full]==2.8.8'
   ```
   Recreate it the same way if it's missing or you need a newer pinned
   version. Every verification in this doc used it:

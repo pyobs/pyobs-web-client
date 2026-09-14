@@ -71,6 +71,6 @@ blocked, just not yet implemented on the client.
 ## Blocked on
 
 Resolved: the `pyobs-core` release containing commit `9bb4314b` has shipped (now at `2.0.0.dev76`).
-Remaining action: `specs/steering/testing-against-live-backend.md`'s pinned
-`pyobs-core[full]==2.0.0.dev53` needs bumping to that release, for `testing/.venv` to pick it up
-normally instead of the editable-install workaround.
+2026-09-14: `specs/steering/testing-against-live-backend.md`'s pin bumped from `2.0.0.dev53` to
+the current PyPI release, `2.8.8` — `testing/.venv` now installs it normally, no more editable-install
+workaround.

@@ -40,9 +40,6 @@ Smaller/technical items:
   `#54`'s fix: `Module.execute()`'s `_acl_denied()` check raises before the try/except that stamps
   `call_id`, and the resulting error arrives client-side as a raw XMPP-level error, not a proper RPC
   `<fault>` — filed pyobs-core#899 (2026-09-14, assigned to Tim), not yet fixed upstream.
-- **`specs/plans/2026-08-04-vfs-token-auth.md`'s "bump the `testing/.venv` pin" remaining action** —
-  still pinned to `2.0.0.dev53`; every fixture verification so far has used an editable install of
-  `../pyobs-core` instead as a workaround.
 
 Unchecked risks (no dedicated plan, tracked here so they aren't lost):
 
