@@ -37,10 +37,12 @@ instead of this list for the completed-feature catalog.
 Smaller/technical items:
 
 - **`struct<Name>`-typed command params can't be form-built from schema alone**
-  — plan at `specs/plans/2026-08-03-struct-typed-command-params.md`. Blocked on
-  upstream (pyobs-core doesn't publish struct field schemas on the wire); not
-  blocking anything today, tracked because `IPointingOrbitalElements` (see
-  the Telescope page plan) would hit it directly if implemented.
+  — plan at `specs/plans/2026-08-03-struct-typed-command-params.md`, upstream issue
+  pyobs-core#898 (2026-09-14, assigned to Tim). Blocked on upstream (pyobs-core doesn't publish
+  struct field schemas on the wire). **2026-09-14**: this now genuinely blocks something —
+  `BaseTelescope` (parent of `DummyAltAzTelescope`/`DummyRadecTelescope`, already in this repo's own
+  test fixtures) implements `track_orbital_elements(elements: OrbitalElements)`. Interim raw-JSON
+  fallback (see the plan) not yet implemented.
 - **`findRpcFault` reads a richer wire format than it uses** — plan at
   `specs/plans/2026-08-03-rpc-fault-call-id.md`, issues filed pyobs/pyobs-web-client#54 and
   pyobs/pyobs-gui#167 (2026-09-13, both assigned to Tim). Every fault carries a `call_id` (XEP-0009's

@@ -5,6 +5,15 @@ Status: blocked on upstream — not actionable in this repo alone until
 so the dependency and its trigger condition are tracked, not because there's
 client-side design work to do yet.
 
+**2026-09-14**: re-checked — the upstream gap is still there (`serializer.py`'s `_wire_type()`
+still only emits `struct<Name>`, no field-list collection the way `enums[hint.__name__] = hint`
+gives enums their `<types>` block entry). But this plan's own "Current status: not actually
+blocking anything" is now false: `BaseTelescope` (parent of `DummyAltAzTelescope`/
+`DummyRadecTelescope`, both already used in this repo's own `telescope.yaml`/`telescope_acl.yaml`
+fixtures) now implements `track_orbital_elements(elements: OrbitalElements)` — Trigger to revisit
+condition 2 below is met. Filed pyobs-core#898 requesting the upstream schema publishing (Trigger
+condition 1); the interim raw-JSON-textarea fallback is not yet implemented client-side.
+
 Repos: pyobs-web-client (consumer); `../pyobs-core` (wire-format change this
 actually depends on, not yet proposed or implemented there)
 
