@@ -211,7 +211,12 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
 
 - **Does WebView feel "good enough"?** Still open. The mobile-first redesign (see that plan) is
   the real-use test this was waiting on, but it hasn't produced a verdict either way yet — it's
-  been about layout and information architecture, not a judgment on WebView feel itself.
+  been about layout and information architecture, not a judgment on WebView feel itself. If this
+  turns from hypothetical into a real recurring complaint, see
+  `specs/design/kotlin-multiplatform-native-alternative.md` — KMP/Compose Multiplatform is now a
+  more viable full-native alternative than RN was when this doc was written (Android/iOS/Desktop
+  all mature or stable as of 2026-09-14), also covering the Windows/Linux desktop gap this doc
+  doesn't address.
 - **Saved-connections data model vs. `pyobs-polaris`** — still unchecked; the screen shipped
   without this comparison ever happening.
 
