@@ -7,6 +7,15 @@ vi.mock('@/composables/useXmpp', () => ({
   useXmpp: () => ({ jid }),
 }))
 
+// useCredentialStore's setVfsToken() refuses to persist anything on a
+// non-native platform (see its own header comment) — jsdom isn't native, so
+// without this mock every token-round-trip test below would silently no-op.
+// Simulates a native build so this suite still exercises the actual
+// resolveVfsEndpoint/token-lookup logic it's testing, not the platform gate.
+vi.mock('@capacitor/core', () => ({
+  Capacitor: { isNativePlatform: () => true },
+}))
+
 // Imported after the mock so useVfsConfig picks up the mocked useXmpp.
 const { useVfsConfig } = await import('../composables/useVfsConfig')
 

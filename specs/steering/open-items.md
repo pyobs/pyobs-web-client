@@ -16,8 +16,12 @@ Camera page, the Telescope page) aren't re-listed here — see that index
 instead of this list for the completed-feature catalog.
 
 - **`IDataSequence`** — plan at `specs/plans/2026-08-03-idatasequence.md`. Depends on
-  the Camera page plan (shipped). 2026-09-14: the plan's open question (how the client
-  learns a new image is ready per-grab) is resolved — no implementation started yet.
+  the Camera page plan (shipped). Fully implemented and live-verified 2026-09-14 against
+  `pyobs-core` 2.8.9: count/delay/progress/abort, and per-grab image display (needed a
+  separate fix, `specs/plans/2026-09-14-event-subscription-shared-pubsub.md`, see below).
+  Two smaller open questions remain from the plan doc: client-side sanity bounds on
+  count/delay (currently none — passes through, trusting server-side validation), and
+  mobile layout not explicitly verified.
 - **Push notification alerting** — client-side spike done end-to-end (see
   `specs/design/native-app-shell-capacitor.md`'s Goal 3), but nothing
   server-side triggers a push yet for the events that matter (module

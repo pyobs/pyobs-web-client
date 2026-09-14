@@ -297,7 +297,9 @@ async function handleLogin() {
 
           <!-- Opt-in password storage (step 2 only) — off by default, see
                useCredentialStore.ts for where this ends up. Not offered on the
-               web build at all — see canRememberPassword above. -->
+               web build at all — see canRememberPassword above; hidden
+               entirely there rather than shown disabled/explained, since
+               there's nothing the operator can do about it from this screen. -->
           <div v-if="step === 'password' && canRememberPassword" class="mb-4 form-check">
             <input
               id="rememberPassword"
@@ -309,10 +311,6 @@ async function handleLogin() {
             <label class="form-check-label text-muted" for="rememberPassword" style="font-size:0.8rem">
               Remember password on this device
             </label>
-          </div>
-          <div v-else-if="step === 'password'" class="mb-4 text-muted" style="font-size:0.75rem">
-            <i class="bi bi-info-circle me-1"></i>
-            Remembering passwords needs the native app — not available in the browser.
           </div>
 
           <!-- Submit (step 2 only) -->
