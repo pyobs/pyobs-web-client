@@ -2,9 +2,10 @@
 
 Status: in progress. Goals 1 (icon/splash/no browser chrome), 2 (XMPP password and VFS endpoint
 tokens both secure-storage-backed now, see Credential storage), and 4 (offline saved-connections
-screen, built further than described below) are done. Goal 3 (push) is **done**: end-to-end
-delivery confirmed on a real device against a real Firebase project (see "Push notifications"
-below).
+screen, built further than described below) are done. Goal 3 (push) is **done**, including the
+full alerting chain (not just the device-registration spike): a real module alert relayed by
+`PushNotifier` on `monet.saao.ac.za` was received on a real device 2026-09-15 (see "Push
+notifications" below).
 Forward evolution of the
 UI built here — the compact shell, Dashboard, and the Connections/Add/Edit split — is tracked in
 `specs/plans/2026-09-06-mobile-first-redesign.md`, not this doc.
@@ -139,9 +140,13 @@ flags ("associating a token with an account server-side is a later, not-yet-desi
 `useXmpp()`'s `modules` for one advertising `IPushNotifications` and calls `register_device`
 once it and a device token both exist — same conditional pattern as every other optional
 interface this client supports; no such module means no-op, never an error. Unit-tested
-(`src/__tests__/usePushNotifications.spec.ts`); not live-verified against a real device — no
-Android/iOS hardware in the environment this was built in, the same limitation the original
-spike above could only clear on real hardware.
+(`src/__tests__/usePushNotifications.spec.ts`).
+
+**2026-09-15: real-device end-to-end confirmed.** Tim deployed `PushNotifier` on
+`monet.saao.ac.za` and tested against it on a real phone: device registered (token +
+`register_device` both fired), and two real push notifications were received overnight —
+the whole chain (module `ERROR`/log alert → `PushNotifier` → FCM → device) works in
+production, not just the spike-level manual test from Phase 3 below.
 
 ## Handling flaky connections
 
