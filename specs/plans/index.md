@@ -69,4 +69,4 @@ Implementation plans, checklist-style.
 - [2026-09-18-push-notification-preferences.md](2026-09-18-push-notification-preferences.md) —
   per-account push-notification type toggles (Settings) + the `get_push_preferences` /
   `set_push_preferences` calls, closing pyobs-web-client#57's client half against pyobs-core's
-  `PushNotifier` v2. **proposed**
+  `PushNotifier` v2. **done** 2026-09-18, type-check + 158 unit tests green

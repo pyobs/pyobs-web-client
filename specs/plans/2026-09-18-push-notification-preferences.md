@@ -1,6 +1,9 @@
 # Plan: per-user push notification type preferences (web-client)
 
-Status: proposed.
+Status: implemented (2026-09-18) — type-check clean, 158 unit tests pass (12 in the push
+composable's spec, 7 of them new). Built as written, with one deviation: a failed
+`set_push_preferences` write re-reads `get_push_preferences` to roll the optimistic UI update
+back, rather than just returning (see `setTypeEnabled`).
 
 Repos: pyobs-web-client (all implementation here). pyobs-core half is done — `PushNotificationType`
 (StrEnum) + `IPushNotifications.register_push_device` / `get_push_preferences` /

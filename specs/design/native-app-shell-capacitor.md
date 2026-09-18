@@ -148,6 +148,14 @@ interface this client supports; no such module means no-op, never an error. Unit
 the whole chain (module `ERROR`/log alert → `PushNotifier` → FCM → device) works in
 production, not just the spike-level manual test from Phase 3 below.
 
+**2026-09-18: per-user type preferences landed.** `usePushNotifications.ts` now reads the
+account's selection with `get_push_preferences` on connect and writes it on toggle with
+`set_push_preferences` — surfaced as a "Notification types" checkbox list in `SettingsView.vue`
+(all-on by default, read-on-connect/write-on-toggle so a second device isn't clobbered; hidden
+against a v1 `PushNotifier` that only has `register_push_device`). pyobs-core side:
+`specs/plans/2026-09-18-pushnotifier-per-user-preferences.md` + `push-notification-module.md` §6;
+this repo's plan `specs/plans/2026-09-18-push-notification-preferences.md`.
+
 ## Handling flaky connections
 
 Not designed here — `pyobs-core`'s `specs/steering/rpc-timeout-command-idempotency.md` is the

@@ -26,8 +26,29 @@ watch(
 // registration outcome be checked without digging through logcat. App.vue
 // already calls initialize() on mount; this just reads the same shared
 // state.
-const { token: pushToken, registrationError: pushError, lastReceived: pushLastReceived } = usePushNotifications()
+const {
+  token: pushToken,
+  registrationError: pushError,
+  lastReceived: pushLastReceived,
+  notificationTypes: pushTypes,
+  preferences: pushPreferences,
+  setTypeEnabled: setPushTypeEnabled,
+} = usePushNotifications()
 const isNativePlatform = Capacitor.isNativePlatform()
+
+// Human-readable labels for the wire enum values (pyobs-core's
+// PushNotificationType). Not humanizeParamName() — these are enum values, not
+// snake_case param names (see #44) — so it's a hand-written map, matching
+// utils/weatherSensorLabel.ts, with the raw value as the fallback so a future
+// server-side kind still renders.
+const PUSH_TYPE_LABELS: Record<string, string> = {
+  module_error: 'Module errors',
+  log_error: 'Error log events',
+  log_critical: 'Critical log events',
+}
+function pushTypeLabel(type: string): string {
+  return PUSH_TYPE_LABELS[type] ?? type
+}
 
 const editingIndex = ref<number | null>(null) // null while the form is closed
 const isNew = ref(false)
@@ -257,6 +278,30 @@ const brokenLinkIcons = ref<Record<number, boolean>>({})
          specs/design/native-app-shell-capacitor.md) — not a user-facing
          setting, just visibility into registration outcome without logcat. -->
     <h6 class="text-light mb-2 mt-4" style="font-size:0.9rem">Push Notifications</h6>
+
+    <!-- Per-account notification-type toggles (pyobs-web-client#57) — read on connect and
+         written on toggle via PushNotifier's get/set_push_preferences. Only rendered when a v2
+         module advertises them; a v1 PushNotifier (register only) shows nothing here. -->
+    <div
+      v-if="isNativePlatform && pushTypes.length > 0"
+      class="pyobs-card mb-2"
+      style="font-size:0.8rem"
+    >
+      <div class="text-muted text-uppercase mb-2" style="font-size:0.65rem; letter-spacing:.06em">
+        Notification types
+      </div>
+      <div v-for="type in pushTypes" :key="type" class="form-check">
+        <input
+          :id="`push-type-${type}`"
+          class="form-check-input"
+          type="checkbox"
+          :checked="pushPreferences.includes(type)"
+          @change="setPushTypeEnabled(type, ($event.target as HTMLInputElement).checked)"
+        />
+        <label class="form-check-label text-light" :for="`push-type-${type}`">{{ pushTypeLabel(type) }}</label>
+      </div>
+    </div>
+
     <div class="pyobs-card" style="font-size:0.8rem">
       <div v-if="!isNativePlatform" class="text-muted">
         <i class="bi bi-info-circle me-1"></i>
