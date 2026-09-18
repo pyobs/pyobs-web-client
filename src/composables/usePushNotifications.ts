@@ -48,7 +48,7 @@ watch(
   ([mods, t]) => {
     if (!t) return
     for (const mod of mods) {
-      const schema = mod.interfaces['IPushNotifications']?.commands['register_device'] as CommandSchema | undefined
+      const schema = mod.interfaces['IPushNotifications']?.commands['register_push_device'] as CommandSchema | undefined
       if (!schema) continue
       const key = `${mod.jid}:${t}`
       if (registeredWith.has(key)) continue
@@ -56,7 +56,7 @@ watch(
       const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android'
       const values: Record<string, unknown> = { token: t, platform }
       const params = schema.params.map((p) => values[p.name] ?? null)
-      void pushExecuteMethod(mod.fullJid, 'register_device', params, schema).then((result) => {
+      void pushExecuteMethod(mod.fullJid, 'register_push_device', params, schema).then((result) => {
         if (!result.success) registeredWith.delete(key)
       })
     }

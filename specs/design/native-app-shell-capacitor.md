@@ -137,14 +137,14 @@ flags ("associating a token with an account server-side is a later, not-yet-desi
 
 **2026-09-14: both sides done.** `PushNotifier`/`IPushNotifications` landed in `pyobs-core`
 (`5b688528`, releasing in 2.9.0). This repo's side: `usePushNotifications.ts` watches
-`useXmpp()`'s `modules` for one advertising `IPushNotifications` and calls `register_device`
+`useXmpp()`'s `modules` for one advertising `IPushNotifications` and calls `register_push_device`
 once it and a device token both exist — same conditional pattern as every other optional
 interface this client supports; no such module means no-op, never an error. Unit-tested
 (`src/__tests__/usePushNotifications.spec.ts`).
 
 **2026-09-15: real-device end-to-end confirmed.** Tim deployed `PushNotifier` on
 `monet.saao.ac.za` and tested against it on a real phone: device registered (token +
-`register_device` both fired), and two real push notifications were received overnight —
+`register_push_device` both fired), and two real push notifications were received overnight —
 the whole chain (module `ERROR`/log alert → `PushNotifier` → FCM → device) works in
 production, not just the spike-level manual test from Phase 3 below.
 

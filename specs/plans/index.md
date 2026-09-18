@@ -66,3 +66,7 @@ Implementation plans, checklist-style.
 - [2026-09-13-linked-apps.md](2026-09-13-linked-apps.md) — editable list of external links
   (web-admin/portal/weather) with domain-guessed defaults, surfaced in Settings + compact/desktop
   nav. **done** (PR #51) 2026-09-13, real-device verified 2026-09-13
+- [2026-09-18-push-notification-preferences.md](2026-09-18-push-notification-preferences.md) —
+  per-account push-notification type toggles (Settings) + the `get_push_preferences` /
+  `set_push_preferences` calls, closing pyobs-web-client#57's client half against pyobs-core's
+  `PushNotifier` v2. **proposed**

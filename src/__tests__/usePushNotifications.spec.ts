@@ -26,7 +26,7 @@ vi.mock('@capacitor/push-notifications', () => ({
 // same pattern as useVfsConfig.spec.ts.
 const { usePushNotifications } = await import('../composables/usePushNotifications')
 
-// register_device()'s real schema shape (pyobs-core's IPushNotifications interface) — enough
+// register_push_device()'s real schema shape (pyobs-core's IPushNotifications interface) — enough
 // of PyobsModule for the registration watcher to act on, not a full fixture.
 function moduleWithPushNotifications(jid: string): PyobsModule {
   return {
@@ -40,8 +40,8 @@ function moduleWithPushNotifications(jid: string): PyobsModule {
         enums: {},
         structs: {},
         commands: {
-          register_device: {
-            name: 'register_device',
+          register_push_device: {
+            name: 'register_push_device',
             params: [
               { name: 'token', type: 'string' },
               { name: 'platform', type: 'string' },
@@ -91,9 +91,9 @@ describe('usePushNotifications — server-side device registration', () => {
     expect(executeMethod).toHaveBeenCalledTimes(1)
     expect(executeMethod).toHaveBeenCalledWith(
       'pushnotifier@localhost/pyobs',
-      'register_device',
+      'register_push_device',
       ['device-token-2', 'android'],
-      expect.objectContaining({ name: 'register_device' }),
+      expect.objectContaining({ name: 'register_push_device' }),
     )
   })
 
