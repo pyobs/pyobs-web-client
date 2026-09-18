@@ -1,5 +1,6 @@
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Capacitor } from '@capacitor/core'
+import { Strophe } from 'strophe.js'
 import {
   PushNotifications,
   type Token,
@@ -42,13 +43,13 @@ let initialized = false
 // (the next time `modules` changes) retries it — no dedicated retry loop,
 // matching the "small addition" scope this was designed as.
 const registeredWith = new Set<string>()
-const { modules: pushModules, executeMethod: pushExecuteMethod } = useXmpp()
+const { modules: pushModules, executeMethod: pushExecuteMethod, jid: xmppJid } = useXmpp()
 watch(
   [pushModules, token],
   ([mods, t]) => {
     if (!t) return
     for (const mod of mods) {
-      const schema = mod.interfaces['IPushNotifications']?.commands['register_device'] as CommandSchema | undefined
+      const schema = mod.interfaces['IPushNotifications']?.commands['register_push_device'] as CommandSchema | undefined
       if (!schema) continue
       const key = `${mod.jid}:${t}`
       if (registeredWith.has(key)) continue
@@ -56,13 +57,134 @@ watch(
       const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android'
       const values: Record<string, unknown> = { token: t, platform }
       const params = schema.params.map((p) => values[p.name] ?? null)
-      void pushExecuteMethod(mod.fullJid, 'register_device', params, schema).then((result) => {
+      void pushExecuteMethod(mod.fullJid, 'register_push_device', params, schema).then((result) => {
         if (!result.success) registeredWith.delete(key)
       })
     }
   },
   { immediate: true },
 )
+
+// ── per-user notification-type preferences (pyobs-web-client#57) ─────────────
+//
+// Filtering has to happen server-side (pyobs-core's PushNotifier,
+// specs/design/push-notification-module.md §6) — the app runs no code while
+// closed, so the system tray shows whatever FCM delivered regardless of what
+// this composable thinks. This side reads the account's selection on connect
+// and writes it on toggle. Keyed by bare JID: one account's preference applies
+// to every device it registered, so reading get_push_preferences on connect is
+// what keeps a second device in sync (a local-only copy could not see it).
+
+const PUSH_PREFS_KEY = 'pyobs_push_preferences'
+
+// localStorage cache of the last-known selection, per account — only a seed, so the toggles
+// don't flash all-on while the getter round-trip is in flight. The authoritative value always
+// comes from get_push_preferences.
+type PushPrefsStore = Record<string, string[]>
+
+function loadPrefsStore(): PushPrefsStore {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PUSH_PREFS_KEY) ?? '{}')
+    return raw && typeof raw === 'object' ? raw : {}
+  } catch {
+    return {}
+  }
+}
+
+const prefsStore = ref<PushPrefsStore>(loadPrefsStore())
+
+const bareJid = computed(() => (xmppJid.value ? (Strophe.getBareJidFromJid(xmppJid.value) ?? '') : ''))
+
+// Full set of kinds the connected PushNotifier advertises, or [] when there's no v2 module
+// (a v1 module has register_push_device but no preference commands / enum).
+const notificationTypes = computed<string[]>(() => {
+  for (const mod of pushModules.value) {
+    const iface = mod.interfaces['IPushNotifications']
+    if (!iface?.commands['set_push_preferences']) continue
+    const types = iface.enums['PushNotificationType']
+    if (types?.length) return [...types] // copy: `modules` is DeepReadonly
+  }
+  return []
+})
+
+// A v2 module exposing get_push_preferences, or undefined when none is connected yet.
+const pushPrefsModule = computed(() =>
+  pushModules.value.find((m) => m.interfaces['IPushNotifications']?.commands['get_push_preferences']),
+)
+
+// The selection read back from the server (or set optimistically on toggle) for the current
+// account. null until either happens; `preferences` then falls back to the cache, then all-on.
+const fetchedPreferences = ref<string[] | null>(null)
+watch(bareJid, () => {
+  fetchedPreferences.value = null // a different account's value comes from its own getter
+})
+
+const preferences = computed<string[]>(() => {
+  if (fetchedPreferences.value !== null) return fetchedPreferences.value
+  const cached = bareJid.value ? prefsStore.value[bareJid.value] : undefined
+  return cached ?? notificationTypes.value
+})
+
+function cachePreferences(jid: string, types: string[]): void {
+  prefsStore.value = { ...prefsStore.value, [jid]: types }
+  localStorage.setItem(PUSH_PREFS_KEY, JSON.stringify(prefsStore.value))
+}
+
+// Read the account's current selection. Guarded so a reply that lands after an account switch
+// can't write into the wrong account's state. Takes the RPC pieces rather than the module
+// because `modules` is DeepReadonly (see useXmpp); the schema is cast the same way the
+// register watcher above does.
+async function refreshPreferences(fullJid: string, schema: CommandSchema): Promise<void> {
+  const jid = bareJid.value
+  if (!jid) return
+  const result = await pushExecuteMethod(fullJid, 'get_push_preferences', [], schema)
+  if (!result.success || !Array.isArray(result.value) || jid !== bareJid.value) return
+  const list = result.value as string[]
+  fetchedPreferences.value = list
+  cachePreferences(jid, list)
+}
+
+// Read on connect (and whenever the account changes) — deliberately never a write, so a fresh
+// launch can't clobber a preference another device of the same account set.
+watch(
+  [pushPrefsModule, bareJid],
+  ([mod]) => {
+    const schema = mod?.interfaces['IPushNotifications']?.commands['get_push_preferences'] as
+      | CommandSchema
+      | undefined
+    if (mod && schema) void refreshPreferences(mod.fullJid, schema)
+  },
+  { immediate: true },
+)
+
+// Write on toggle. Only ever called from the UI, so unlike register_push_device's watcher there
+// is nothing to dedupe against module-list churn.
+function setTypeEnabled(type: string, enabled: boolean): void {
+  const mod = pushPrefsModule.value
+  const schema = mod?.interfaces['IPushNotifications']?.commands['set_push_preferences'] as
+    | CommandSchema
+    | undefined
+  const jid = bareJid.value
+  if (!mod || !schema || !jid) return
+
+  const current = new Set(preferences.value)
+  if (enabled) current.add(type)
+  else current.delete(type)
+  const next = notificationTypes.value.filter((t) => current.has(t)) // preserve advertised order
+
+  fetchedPreferences.value = next // optimistic
+  cachePreferences(jid, next)
+
+  // schema.params[0].type is array<enum(PushNotificationType)>; params = [next]
+  void pushExecuteMethod(mod.fullJid, 'set_push_preferences', [next], schema).then((result) => {
+    // A failed write must not leave the UI claiming a selection the server never took.
+    if (result.success) return
+    const getSchema = mod.interfaces['IPushNotifications']?.commands['get_push_preferences'] as
+      | CommandSchema
+      | undefined
+    if (getSchema) void refreshPreferences(mod.fullJid, getSchema)
+  })
+}
 
 export function usePushNotifications() {
   async function initialize(): Promise<void> {
@@ -114,5 +236,5 @@ export function usePushNotifications() {
     }
   }
 
-  return { token, registrationError, lastReceived, initialize }
+  return { token, registrationError, lastReceived, initialize, notificationTypes, preferences, setTypeEnabled }
 }

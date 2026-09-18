@@ -47,3 +47,7 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   saved-connections/push all done; forward UI evolution tracked in
   `specs/plans/2026-09-06-mobile-first-redesign.md` (issue #884;
   Repos: pyobs-core (superseded ADRs 0016–0018 + design doc), pyobs-web-client)
+- [kotlin-multiplatform-native-alternative.md](kotlin-multiplatform-native-alternative.md) — KMP +
+  Compose Multiplatform as a from-scratch native alternative to the Capacitor shell, covering
+  Android/iOS/Windows/Linux (web stays Vue). *not proposed, not started* — a considered option with
+  revisit triggers, not a plan

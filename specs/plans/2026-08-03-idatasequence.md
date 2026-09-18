@@ -6,9 +6,13 @@ Status: **done**, implemented and live-verified 2026-09-14 against `pyobs-core` 
 per-grab image display needed a separate fix first — the resolved open question below
 turned out to rely on a generic event-subscription mechanism that was itself broken
 (wrong pubsub host/node id, silently dropping every live event in the app); see
-`specs/plans/2026-09-14-event-subscription-shared-pubsub.md` (issue #56). Two smaller
-open questions from below remain unresolved: client-side sanity bounds on count/delay
-(currently none), and mobile layout not explicitly verified.
+`specs/plans/2026-09-14-event-subscription-shared-pubsub.md` (issue #56). Both smaller
+open questions from below are now closed: mobile layout confirmed good (Tim, real-device
+check 2026-09-14); client-side sanity bounds on count/delay deliberately left as-is —
+the `min` HTML attributes already on those inputs plus the server's own
+`InvalidArgumentError` (already surfaced as a visible error) match how every other
+numeric input in this app is handled (exposure time, gain, window/binning), no special
+case warranted.
 
 Depended on `specs/plans/2026-08-03-camera-page.md` shipping first (single-shot
 `grab_data()` + FITS decode/render pipeline) — this plan only added the

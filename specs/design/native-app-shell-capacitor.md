@@ -2,9 +2,10 @@
 
 Status: in progress. Goals 1 (icon/splash/no browser chrome), 2 (XMPP password and VFS endpoint
 tokens both secure-storage-backed now, see Credential storage), and 4 (offline saved-connections
-screen, built further than described below) are done. Goal 3 (push) is **done**: end-to-end
-delivery confirmed on a real device against a real Firebase project (see "Push notifications"
-below).
+screen, built further than described below) are done. Goal 3 (push) is **done**, including the
+full alerting chain (not just the device-registration spike): a real module alert relayed by
+`PushNotifier` on `monet.saao.ac.za` was received on a real device 2026-09-15 (see "Push
+notifications" below).
 Forward evolution of the
 UI built here — the compact shell, Dashboard, and the Connections/Add/Edit split — is tracked in
 `specs/plans/2026-09-06-mobile-first-redesign.md`, not this doc.
@@ -136,12 +137,24 @@ flags ("associating a token with an account server-side is a later, not-yet-desi
 
 **2026-09-14: both sides done.** `PushNotifier`/`IPushNotifications` landed in `pyobs-core`
 (`5b688528`, releasing in 2.9.0). This repo's side: `usePushNotifications.ts` watches
-`useXmpp()`'s `modules` for one advertising `IPushNotifications` and calls `register_device`
+`useXmpp()`'s `modules` for one advertising `IPushNotifications` and calls `register_push_device`
 once it and a device token both exist — same conditional pattern as every other optional
 interface this client supports; no such module means no-op, never an error. Unit-tested
-(`src/__tests__/usePushNotifications.spec.ts`); not live-verified against a real device — no
-Android/iOS hardware in the environment this was built in, the same limitation the original
-spike above could only clear on real hardware.
+(`src/__tests__/usePushNotifications.spec.ts`).
+
+**2026-09-15: real-device end-to-end confirmed.** Tim deployed `PushNotifier` on
+`monet.saao.ac.za` and tested against it on a real phone: device registered (token +
+`register_push_device` both fired), and two real push notifications were received overnight —
+the whole chain (module `ERROR`/log alert → `PushNotifier` → FCM → device) works in
+production, not just the spike-level manual test from Phase 3 below.
+
+**2026-09-18: per-user type preferences landed.** `usePushNotifications.ts` now reads the
+account's selection with `get_push_preferences` on connect and writes it on toggle with
+`set_push_preferences` — surfaced as a "Notification types" checkbox list in `SettingsView.vue`
+(all-on by default, read-on-connect/write-on-toggle so a second device isn't clobbered; hidden
+against a v1 `PushNotifier` that only has `register_push_device`). pyobs-core side:
+`specs/plans/2026-09-18-pushnotifier-per-user-preferences.md` + `push-notification-module.md` §6;
+this repo's plan `specs/plans/2026-09-18-push-notification-preferences.md`.
 
 ## Handling flaky connections
 
@@ -211,7 +224,12 @@ makes hitting the ambiguous case more frequent, it doesn't change the correct ha
 
 - **Does WebView feel "good enough"?** Still open. The mobile-first redesign (see that plan) is
   the real-use test this was waiting on, but it hasn't produced a verdict either way yet — it's
-  been about layout and information architecture, not a judgment on WebView feel itself.
+  been about layout and information architecture, not a judgment on WebView feel itself. If this
+  turns from hypothetical into a real recurring complaint, see
+  `specs/design/kotlin-multiplatform-native-alternative.md` — KMP/Compose Multiplatform is now a
+  more viable full-native alternative than RN was when this doc was written (Android/iOS/Desktop
+  all mature or stable as of 2026-09-14), also covering the Windows/Linux desktop gap this doc
+  doesn't address.
 - **Saved-connections data model vs. `pyobs-polaris`** — still unchecked; the screen shipped
   without this comparison ever happening.
 

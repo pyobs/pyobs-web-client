@@ -15,29 +15,6 @@ config, the expandable Dashboard, the Roof page, the `IMode`/`IWeather`/
 Camera page, the Telescope page) aren't re-listed here — see that index
 instead of this list for the completed-feature catalog.
 
-- **`IDataSequence`** — plan at `specs/plans/2026-08-03-idatasequence.md`. Depends on
-  the Camera page plan (shipped). Fully implemented and live-verified 2026-09-14 against
-  `pyobs-core` 2.8.9: count/delay/progress/abort, and per-grab image display (needed a
-  separate transport fix, `specs/plans/2026-09-14-event-subscription-shared-pubsub.md`,
-  issue #56, closed). Two smaller open questions remain from the plan doc: client-side
-  sanity bounds on count/delay (currently none — passes through, trusting server-side
-  validation), and mobile layout not explicitly verified.
-- **Push notification alerting** — client-side spike done end-to-end (see
-  `specs/design/native-app-shell-capacitor.md`'s Goal 3); server-side relay
-  (`PushNotifier` module, `IPushNotifications` interface) implemented in
-  `../pyobs-core` (`5b688528`), landing in core 2.9.0 — v1 covers module
-  `ERROR` plus `ERROR`/`CRITICAL` log events; weather/roof-open alerts still
-  deferred, see `../pyobs-core/specs/design/push-notification-module.md`.
-  2026-09-14: this repo's side done — `usePushNotifications.ts` now watches
-  `useXmpp()`'s `modules` for one advertising `IPushNotifications` and calls
-  `register_device` once both it and a device token exist (same
-  "implements-it-or-not" conditional pattern as `IDataSequence`; no such
-  module in the roster → no-op, unit-tested in
-  `src/__tests__/usePushNotifications.spec.ts`). **Not live-verified against a
-  real device** — this environment has no Android/iOS hardware to obtain a
-  real FCM token, the one piece the original spike itself could only verify
-  on real hardware too. Worth a real-device check next time this app is
-  built and installed.
 - **iOS build + TestFlight distribution** — not started, blocked on Mac
   access. See `specs/design/native-app-shell-capacitor.md`'s Phasing.
 
