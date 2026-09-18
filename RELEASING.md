@@ -39,22 +39,22 @@ start recording from the next release.)*
 Android `versionName` (the raw version) and `versionCode` (major·10000 + minor·100 + patch) from
 it, so there is no second Android version to bump. `package-lock.json` also carries the version
 twice (root `version` and `packages[""].version`), and `npm ci` requires the lockfile to be in
-sync — so bump them together, not by hand-editing `package.json` alone:
+sync — so bump them together, not by hand-editing `package.json` alone.
+
+`npm version` bumps both files. By default it *also* commits and tags; the tag belongs on `main`,
+so skip both and make the commit yourself:
 
 ```sh
 git checkout develop
 git pull
-npm version patch   # or minor / major, per SemVer
+npm version patch --no-git-tag-version   # or minor / major, per SemVer
+git add package.json package-lock.json
+git commit -m "vX.Y.Z"
 ```
 
-`npm version` updates both files and creates a `vX.Y.Z` commit. It **also tags** by default;
-since the tag belongs on `main`, use `--no-git-tag-version` and tag later in step 5:
-
-```sh
-npm version patch --no-git-tag-version
-```
-
-`npm version` needs a clean working tree, so commit or stash anything else first.
+(`--no-git-tag-version` disables *both* the commit and the tag — it leaves the bumped files in the
+working tree for you. `npm version` also needs a clean tree, so commit or stash anything else
+first.)
 
 ### 4. Merge into `main`
 
