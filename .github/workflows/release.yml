@@ -37,6 +37,12 @@ jobs:
           java-version: "21"
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's default `packages` is `tools platform-tools`, but `tools` is no longer a
+          # valid sdkmanager package (removed upstream) and makes the step fail with
+          # "Failed to find package 'tools'". The build itself only needs platform-tools here;
+          # platforms/build-tools are installed by the explicit sdkmanager step below.
+          packages: platform-tools
 
       - run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
