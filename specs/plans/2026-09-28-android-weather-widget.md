@@ -1,6 +1,6 @@
 # Plan: Android home-screen widgets for pyobs-weather instances
 
-Status: proposed (2026-09-28).
+Status: in progress. Phase 1 done 2026-09-28 (unit-tested, checked on device).
 
 Repos: pyobs-web-client only. No pyobs-weather changes (Tim, 2026-09-28).
 
@@ -105,12 +105,12 @@ Live values:
 
 ### Phase 1: linked apps get a `kind`
 
-- [ ] `LinkedApp` gets `kind?: 'weather' | 'other'`
-- [ ] `seedDefaults()` sets `kind: 'weather'` on the weather entry
-- [ ] one-time migration in `loadStore()`: entries without `kind` whose host starts with
+- [x] `LinkedApp` gets `kind?: 'weather' | 'other'`
+- [x] `seedDefaults()` sets `kind: 'weather'` on the weather entry
+- [x] one-time migration in `loadStore()`: entries without `kind` whose host starts with
   `weather.` get `kind: 'weather'`, the rest `'other'`. Runs once, then the stored value wins
-- [ ] link editor in `SettingsView.vue`: a "Weather instance" toggle (or kind select)
-- [ ] unit tests for the migration and the seed
+- [x] link editor in `SettingsView.vue`: a "Weather instance" toggle (or kind select)
+- [x] unit tests for the migration and the seed
 
 ### Phase 2: bridge the instance list to native
 

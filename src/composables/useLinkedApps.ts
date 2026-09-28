@@ -11,7 +11,13 @@ export type LinkedApp = {
   label: string
   url: string
   icon?: string
+  // 'weather' marks a pyobs-weather instance, the candidate list for the Android home-screen
+  // widgets (specs/plans/2026-09-28-android-weather-widget.md). An explicit field rather than
+  // matching the label, which the user can edit freely.
+  kind?: LinkedAppKind
 }
+
+export type LinkedAppKind = 'weather' | 'other'
 
 const LINKED_APPS_KEY = 'pyobs_linked_apps'
 
@@ -19,13 +25,42 @@ const LINKED_APPS_KEY = 'pyobs_linked_apps'
 // want different links (different fleet, different domain).
 type LinkedAppsStore = Record<string, LinkedApp[]>
 
-function loadStore(): LinkedAppsStore {
+// Best guess for entries stored before `kind` existed: the seeded weather link, and any site
+// following the same `weather.<domain>` naming, is a pyobs-weather instance.
+export function guessKind(url: string): LinkedAppKind {
   try {
-    const raw = JSON.parse(localStorage.getItem(LINKED_APPS_KEY) ?? '{}')
-    return raw && typeof raw === 'object' ? raw : {}
+    return new URL(url).hostname.startsWith('weather.') ? 'weather' : 'other'
+  } catch {
+    return 'other'
+  }
+}
+
+// One-time backfill of `kind` for entries stored before it existed. Every entry comes out with a
+// `kind`, so once written back this never guesses again and the user's choice wins.
+export function migrateLinkedApps(store: LinkedAppsStore): { store: LinkedAppsStore; changed: boolean } {
+  let changed = false
+  const next: LinkedAppsStore = {}
+  for (const [bareJid, apps] of Object.entries(store)) {
+    next[bareJid] = apps.map((app) => {
+      if (app.kind) return app
+      changed = true
+      return { ...app, kind: guessKind(app.url) }
+    })
+  }
+  return { store: next, changed }
+}
+
+function loadStore(): LinkedAppsStore {
+  let raw: unknown
+  try {
+    raw = JSON.parse(localStorage.getItem(LINKED_APPS_KEY) ?? '{}')
   } catch {
     return {}
   }
+  if (!raw || typeof raw !== 'object') return {}
+  const { store, changed } = migrateLinkedApps(raw as LinkedAppsStore)
+  if (changed) localStorage.setItem(LINKED_APPS_KEY, JSON.stringify(store))
+  return store
 }
 
 const store = ref<LinkedAppsStore>(loadStore())
@@ -40,9 +75,9 @@ function persist(bareJid: string, apps: LinkedApp[]): void {
 // every one of these like any other entry the moment they're seeded.
 function seedDefaults(bareJid: string, domain: string): void {
   persist(bareJid, [
-    { label: 'Weather', url: `https://weather.${domain}`, icon: `https://weather.${domain}/favicon.ico` },
-    { label: 'Portal', url: `https://observe.${domain}`, icon: `https://observe.${domain}/favicon.ico` },
-    { label: 'Web Admin', url: `https://admin.${domain}`, icon: `https://admin.${domain}/favicon.ico` },
+    { label: 'Weather', url: `https://weather.${domain}`, icon: `https://weather.${domain}/favicon.ico`, kind: 'weather' },
+    { label: 'Portal', url: `https://observe.${domain}`, icon: `https://observe.${domain}/favicon.ico`, kind: 'other' },
+    { label: 'Web Admin', url: `https://admin.${domain}`, icon: `https://admin.${domain}/favicon.ico`, kind: 'other' },
   ])
 }
 
