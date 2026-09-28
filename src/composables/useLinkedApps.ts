@@ -1,6 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { Strophe } from 'strophe.js'
 import { useXmpp } from '@/composables/useXmpp'
+import { syncWeatherInstances } from '@/native/weatherWidget'
 
 // Plain external links to other pyobs web apps (web-admin/portal/weather, or anything a site
 // wants to add) — see specs/design/embedded-app-auth.md (issue #48). No auth mechanism of its
@@ -23,7 +24,7 @@ const LINKED_APPS_KEY = 'pyobs_linked_apps'
 
 // Keyed by bare JID — same reasoning as VFS endpoints: different accounts on the same install may
 // want different links (different fleet, different domain).
-type LinkedAppsStore = Record<string, LinkedApp[]>
+export type LinkedAppsStore = Record<string, LinkedApp[]>
 
 // Best guess for entries stored before `kind` existed: the seeded weather link, and any site
 // following the same `weather.<domain>` naming, is a pyobs-weather instance.
@@ -68,6 +69,13 @@ const store = ref<LinkedAppsStore>(loadStore())
 function persist(bareJid: string, apps: LinkedApp[]): void {
   store.value = { ...store.value, [bareJid]: apps }
   localStorage.setItem(LINKED_APPS_KEY, JSON.stringify(store.value))
+  void syncWeatherInstances(store.value)
+}
+
+// Called once at app start (main.ts), so the widgets get the current list after an install or
+// upgrade without the user having to touch a link first.
+export function syncWeatherWidgets(): Promise<void> {
+  return syncWeatherInstances(store.value)
 }
 
 // Domain-guessed defaults, confirmed against real fleet deployments (see the design doc's

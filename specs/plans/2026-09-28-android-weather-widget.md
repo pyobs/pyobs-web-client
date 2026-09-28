@@ -1,6 +1,7 @@
 # Plan: Android home-screen widgets for pyobs-weather instances
 
-Status: in progress. Phase 1 done 2026-09-28 (unit-tested, checked on device).
+Status: in progress. Phases 1 and 2 done 2026-09-28 (unit-tested; phase 1 checked on device, phase 2's
+start-up sync checked on device).
 
 Repos: pyobs-web-client only. No pyobs-weather changes (Tim, 2026-09-28).
 
@@ -117,14 +118,14 @@ Live values:
 The widgets can't read WebView `localStorage`, so the app pushes the candidate list to native
 storage.
 
-- [ ] local Capacitor plugin `WeatherWidgetPlugin` (Java, registered in `MainActivity.onCreate`
+- [x] local Capacitor plugin `WeatherWidgetPlugin` (Java, registered in `MainActivity.onCreate`
   via `registerPlugin(...)` before `super.onCreate`): `setInstances({instances: [{url, label}]})`
-  writes JSON to `SharedPreferences` and triggers a refresh of all widgets
-- [ ] TS side (`src/native/weatherWidget.ts`): `registerPlugin('WeatherWidget')`, no-op unless
+  writes JSON to `SharedPreferences` (refreshing the widgets from here comes with phase 5)
+- [x] TS side (`src/native/weatherWidget.ts`): `registerPlugin('WeatherWidget')`, no-op unless
   `Capacitor.getPlatform() === 'android'`
-- [ ] call it whenever the linked-apps store changes (watch in `useLinkedApps.ts`, or wherever
+- [x] call it whenever the linked-apps store changes (watch in `useLinkedApps.ts`, or wherever
   `persist()` runs), with all `kind: 'weather'` entries across every JID, deduped by URL
-- [ ] also call it once on app start, so a fresh install / upgrade gets populated without editing a
+- [x] also call it once on app start, so a fresh install / upgrade gets populated without editing a
   link
 
 Instances are keyed by normalized URL everywhere (candidate list, per-widget selection, cache), so
@@ -203,3 +204,9 @@ Per style (layouts as in the mockups):
   mode (cached/stale path); dark mode; reboot (work survives); one Android 12+ and one older
   device or emulator (the two size-handling paths)
 - [ ] web build unaffected (plugin call is a no-op off Android)
+
+## Open questions
+
+- Labels: the seeded weather link is labelled "Weather" on every account, so tiles would all read
+  "Weather". Proposal: default to the saved connection's name ("MONET/S", "IAG 50cm") for new links,
+  and use it in the widget whenever a link still has the default label.
