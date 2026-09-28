@@ -1,0 +1,419 @@
+[
+ {
+  "id": 50,
+  "station_id": 1,
+  "type_id": 17,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "average",
+  "station_name": "Average values",
+  "type_code": "dewpoint",
+  "type_name": "Dew point",
+  "unit": "\u00b0",
+  "value": null,
+  "limits": []
+ },
+ {
+  "id": 25,
+  "station_id": 1,
+  "type_id": 12,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "average",
+  "station_name": "Average values",
+  "type_code": "press",
+  "type_name": "Pressure",
+  "unit": "hPa",
+  "value": 830.6,
+  "limits": []
+ },
+ {
+  "id": 26,
+  "station_id": 1,
+  "type_id": 13,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "average",
+  "station_name": "Average values",
+  "type_code": "rain",
+  "type_name": "Raining",
+  "unit": "0/1",
+  "value": 0.0,
+  "limits": [
+   {
+    "type": "danger",
+    "min": 0.5,
+    "max": 1.0
+   }
+  ]
+ },
+ {
+  "id": 22,
+  "station_id": 1,
+  "type_id": 9,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "average",
+  "station_name": "Average values",
+  "type_code": "humid",
+  "type_name": "Relative humidity",
+  "unit": "%",
+  "value": 65.7,
+  "limits": [
+   {
+    "type": "danger",
+    "min": 85
+   },
+   {
+    "type": "warning",
+    "min": 80,
+    "max": 85
+   }
+  ]
+ },
+ {
+  "id": 43,
+  "station_id": 1,
+  "type_id": 16,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "average",
+  "station_name": "Average values",
+  "type_code": "skytemp",
+  "type_name": "Relative sky temperature",
+  "unit": "\u00b0C",
+  "value": -30.41,
+  "limits": [
+   {
+    "type": "danger",
+    "min": -20
+   },
+   {
+    "type": "warning",
+    "min": -25,
+    "max": -20
+   }
+  ]
+ },
+ {
+  "id": 27,
+  "station_id": 1,
+  "type_id": 1,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "average",
+  "station_name": "Average values",
+  "type_code": "sunalt",
+  "type_name": "Solar altitude",
+  "unit": "\u00b0",
+  "value": -39.64865016695605,
+  "limits": []
+ },
+ {
+  "id": 21,
+  "station_id": 1,
+  "type_id": 8,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "average",
+  "station_name": "Average values",
+  "type_code": "temp",
+  "type_name": "Temperature",
+  "unit": "\u00b0C",
+  "value": 5.3,
+  "limits": []
+ },
+ {
+  "id": 23,
+  "station_id": 1,
+  "type_id": 10,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "average",
+  "station_name": "Average values",
+  "type_code": "winddir",
+  "type_name": "Wind dir",
+  "unit": "\u00b0E of N",
+  "value": 87.0,
+  "limits": []
+ },
+ {
+  "id": 24,
+  "station_id": 1,
+  "type_id": 11,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "average",
+  "station_name": "Average values",
+  "type_code": "windspeed",
+  "type_name": "Wind speed",
+  "unit": "km/h",
+  "value": 43.92,
+  "limits": [
+   {
+    "type": "danger",
+    "min": 45
+   },
+   {
+    "type": "warning",
+    "min": 35,
+    "max": 45
+   }
+  ]
+ },
+ {
+  "id": 57,
+  "station_id": 12,
+  "type_id": 16,
+  "good": true,
+  "since": "2026-09-28T13:26:58.422Z",
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "boltwood",
+  "station_name": "Boltwood",
+  "type_code": "skytemp",
+  "type_name": "Relative sky temperature",
+  "unit": "\u00b0C",
+  "value": -30.6,
+  "limits": [
+   {
+    "type": "danger",
+    "min": -20
+   },
+   {
+    "type": "warning",
+    "min": -25,
+    "max": -20
+   }
+  ]
+ },
+ {
+  "id": 13,
+  "station_id": 5,
+  "type_id": 12,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "thiesws",
+  "station_name": "MONET",
+  "type_code": "press",
+  "type_name": "Pressure",
+  "unit": "hPa",
+  "value": 830.7,
+  "limits": []
+ },
+ {
+  "id": 14,
+  "station_id": 5,
+  "type_id": 13,
+  "good": true,
+  "since": "2026-09-23T18:57:40.384Z",
+  "delay_good": 7200,
+  "delay_bad": 120,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "thiesws",
+  "station_name": "MONET",
+  "type_code": "rain",
+  "type_name": "Raining",
+  "unit": "0/1",
+  "value": 0.0,
+  "limits": [
+   {
+    "type": "danger",
+    "min": 0.5,
+    "max": 1.0
+   }
+  ]
+ },
+ {
+  "id": 10,
+  "station_id": 5,
+  "type_id": 9,
+  "good": true,
+  "since": "2026-09-28T07:44:31.656Z",
+  "delay_good": 1800,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "thiesws",
+  "station_name": "MONET",
+  "type_code": "humid",
+  "type_name": "Relative humidity",
+  "unit": "%",
+  "value": 65.7,
+  "limits": [
+   {
+    "type": "danger",
+    "min": 85
+   },
+   {
+    "type": "warning",
+    "min": 80,
+    "max": 85
+   }
+  ]
+ },
+ {
+  "id": 9,
+  "station_id": 5,
+  "type_id": 8,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "thiesws",
+  "station_name": "MONET",
+  "type_code": "temp",
+  "type_name": "Temperature",
+  "unit": "\u00b0C",
+  "value": 5.3,
+  "limits": []
+ },
+ {
+  "id": 11,
+  "station_id": 5,
+  "type_id": 10,
+  "good": null,
+  "since": null,
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "thiesws",
+  "station_name": "MONET",
+  "type_code": "winddir",
+  "type_name": "Wind dir",
+  "unit": "\u00b0E of N",
+  "value": 92.0,
+  "limits": []
+ },
+ {
+  "id": 12,
+  "station_id": 5,
+  "type_id": 11,
+  "good": true,
+  "since": "2026-09-25T15:35:07.428Z",
+  "delay_good": 1200,
+  "delay_bad": 30,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "thiesws",
+  "station_name": "MONET",
+  "type_code": "windspeed",
+  "type_name": "Wind speed",
+  "unit": "km/h",
+  "value": 39.6,
+  "limits": [
+   {
+    "type": "danger",
+    "min": 55
+   },
+   {
+    "type": "warning",
+    "min": 45,
+    "max": 55
+   }
+  ]
+ },
+ {
+  "id": 1,
+  "station_id": 3,
+  "type_id": 1,
+  "good": true,
+  "since": "2026-09-28T16:33:13.336Z",
+  "delay_good": 0,
+  "delay_bad": 0,
+  "bad_since": null,
+  "good_since": null,
+  "average": true,
+  "active": true,
+  "station_code": "observer",
+  "station_name": "Observer",
+  "type_code": "sunalt",
+  "type_name": "Solar altitude",
+  "unit": "\u00b0",
+  "value": -39.64865016695605,
+  "limits": [
+   {
+    "type": "danger",
+    "max": 0
+   }
+  ]
+ }
+]

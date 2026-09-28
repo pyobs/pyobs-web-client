@@ -18,6 +18,7 @@ public class WeatherWidgetPlugin extends Plugin {
             return;
         }
         WeatherStore.setInstances(getContext(), instances.toString());
+        WeatherRefresh.refreshNow(getContext());
         call.resolve();
     }
 }

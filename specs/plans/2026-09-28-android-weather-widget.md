@@ -1,7 +1,6 @@
 # Plan: Android home-screen widgets for pyobs-weather instances
 
-Status: in progress. Phases 1 and 2 done 2026-09-28 (unit-tested; phase 1 checked on device, phase 2's
-start-up sync checked on device).
+Status: in progress. Phases 1 to 3 done 2026-09-28 (unit-tested, checked on device).
 
 Repos: pyobs-web-client only. No pyobs-weather changes (Tim, 2026-09-28).
 
@@ -136,21 +135,25 @@ Consequence: the configuration activity only lists instances after the app has r
 
 ### Phase 3: fetch, cache, classify (native, pure Java, unit-tested)
 
-- [ ] `WeatherFetcher`: per instance, `GET api/current/` and `GET api/sensors/` (URLs joined
+- [x] `WeatherFetcher`: per instance, `GET api/current/` and `GET api/sensors/` (URLs joined
   against the stored base URL, so `root_url` sub-paths work). Units and limits from the
   `api/sensors/` rows with `station_name == "Average values"`
-- [ ] `WeatherCondition.classify(sensors, limits, sunalt)` → `RAIN | CLOUDY | PARTLY_CLOUDY |
+- [x] `WeatherCondition.classify(sensors, limits, sunalt)` → `RAIN | CLOUDY | PARTLY_CLOUDY |
   CLEAR | DRY`, plus night flag. Pure function
-- [ ] `SensorLevel.of(value, limits)` → `OK | WARNING | DANGER`, for D's chip highlighting. Pure
+- [x] `SensorLevel.of(value, limits)` → `OK | WARNING | DANGER`, for D's chip highlighting. Pure
   function
-- [ ] units from the API, never hard-coded (all sites use km/h today, don't rely on it)
-- [ ] 10 s connect/read timeouts; one failing instance doesn't block the others
-- [ ] cache last good result per instance in `SharedPreferences`, so a failed fetch shows old data
+- [x] units from the API, never hard-coded (all sites use km/h today, don't rely on it)
+- [x] 10 s connect/read timeouts; one failing instance doesn't block the others
+- [x] cache last good result per instance in `SharedPreferences`, so a failed fetch shows old data
   with its age instead of a blank entry
-- [ ] `WeatherRefreshWorker`: fetches the union of instances selected by any placed widget, then
+- [x] `WeatherRefreshWorker`: fetches the union of instances selected by any placed widget, then
   updates all three providers. Periodic 15 min, `NetworkType.CONNECTED`, unique work so it isn't
   enqueued twice. Enqueued when the first widget of any style is placed, cancelled when the last
-  one is removed
+  one is removed (`WeatherRefresh.schedule` / `cancel`; the provider hooks and "update all
+  providers" come with phase 5)
+- [x] `WeatherWidgetPlugin.setInstances` also triggers a one-off refresh (checked on device: both
+  instances fetched and cached). Phase 5: skip it when no widget is placed, so app start doesn't
+  fetch for nothing
 
 ### Phase 4: widget configuration
 
@@ -210,3 +213,9 @@ Per style (layouts as in the mockups):
 - Labels: the seeded weather link is labelled "Weather" on every account, so tiles would all read
   "Weather". Proposal: default to the saved connection's name ("MONET/S", "IAG 50cm") for new links,
   and use it in the widget whenever a link still has the default label.
+- Cleartext HTTP: Android blocks `http://` by default (targetSdk 36). iagvt's link is
+  `http://weather.iagvtsrv`, so it would always show "unreachable" unless it moves to https or the
+  app gets a network security config allowing that host.
+- pyobs-weather's `Switch` evaluator seems to report its danger band on the wrong side in `areas()`
+  (danger `max: threshold` while it's bad at `value >= threshold` without `invert`). Not verified on
+  a live instance; a sensor using it would get the wrong level in the widgets.
