@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-09-29
+
+### Added
+
+- Android home-screen weather widgets for linked pyobs-weather instances, in three styles (list,
+  tiles, detailed). Sites are picked per widget, layouts adapt to the widget size (tiles also work
+  at 4x1 and 2x1), and the picker shows previews on Android 12+. Temperature, humidity and wind per
+  site, an OK/BAD flag from pyobs-weather, and a condition icon (rain, clear, partly cloudy,
+  cloudy) derived from each site's own rain and sky-temperature limits. Refreshes every 15 minutes
+  and on tap, with "Updating…" / "Update failed" in the header.
+- Linked apps can be marked as pyobs-weather instances ("pyobs-weather instance" in the link
+  editor, badge in the list). Existing `weather.<domain>` links are marked automatically.
+
+### Changed
+
+- Forms no longer show the wire data type next to structured-config fields (#40).
+
+### Security
+
+- Capacitor bridge logging is turned off. It wrote every native call, including saved passwords
+  read from secure storage, to the Android log. Affected all earlier APKs, which are debug builds.
+
 ## [0.12.0] - 2026-09-18
 
 ### Added
@@ -173,6 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial versioned release.
 
+[0.13.0]: https://github.com/pyobs/pyobs-web-client/releases/tag/v0.13.0
 [0.12.0]: https://github.com/pyobs/pyobs-web-client/releases/tag/v0.12.0
 [0.11.0]: https://github.com/pyobs/pyobs-web-client/releases/tag/v0.11.0
 [0.10.0]: https://github.com/pyobs/pyobs-web-client/releases/tag/v0.10.0
