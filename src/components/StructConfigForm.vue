@@ -19,7 +19,6 @@ import {
   ACCESS_LEVEL_HIDDEN,
   ACCESS_LEVEL_EXPERT,
   widgetKind,
-  formatWireType,
   type ConfigFieldSchemaWire,
   type WireType,
 } from '@/pyobs-codec'
@@ -75,10 +74,7 @@ function pathFor(name: string): string {
       <div v-else class="mb-2">
         <div class="d-flex align-items-baseline gap-2 mb-1">
           <label class="form-label mb-0 text-muted" style="font-size:0.8rem">{{ humanizeParamName(name) }}</label>
-          <span class="text-secondary" style="font-size:0.7rem">
-            {{ formatWireType(wireTypeFor(name, f)) }}
-            <span v-if="f.unit">({{ f.unit }})</span>
-          </span>
+          <span v-if="f.unit" class="text-secondary" style="font-size:0.7rem">({{ f.unit }})</span>
         </div>
         <p v-if="f.description" class="text-secondary mb-1" style="font-size:0.7rem">{{ f.description }}</p>
         <select

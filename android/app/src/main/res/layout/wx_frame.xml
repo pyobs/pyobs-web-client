@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shared frame of all three weather widgets: header (title, info, refresh, choose sites), a
+     content area the renderer fills with rows / tiles / blocks, and an empty-state message. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/wx_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/wx_bg"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <LinearLayout
+        android:id="@+id/wx_header"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/wx_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="8dp"
+            android:text="@string/wx_title"
+            android:textColor="@color/wx_sub"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/wx_info"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:paddingStart="8dp"
+            android:singleLine="true"
+            android:textColor="@color/wx_sub"
+            android:textSize="11sp" />
+
+        <ImageButton
+            android:id="@+id/wx_refresh"
+            android:layout_width="40dp"
+            android:layout_height="36dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/wx_refresh"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/wx_ic_refresh" />
+
+        <ImageButton
+            android:id="@+id/wx_settings"
+            android:layout_width="40dp"
+            android:layout_height="36dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/wx_settings"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/wx_ic_settings" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/wx_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical" />
+
+    <TextView
+        android:id="@+id/wx_empty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:padding="8dp"
+        android:textColor="@color/wx_sub"
+        android:textSize="13sp"
+        android:visibility="gone" />
+</LinearLayout>

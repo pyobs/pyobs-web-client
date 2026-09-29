@@ -1,6 +1,7 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, type Ref } from 'vue'
 import { Strophe } from 'strophe.js'
-import { useXmpp } from '@/composables/useXmpp'
+import { useXmpp, type RecentLogin } from '@/composables/useXmpp'
+import { syncWeatherInstances } from '@/native/weatherWidget'
 
 // Plain external links to other pyobs web apps (web-admin/portal/weather, or anything a site
 // wants to add) — see specs/design/embedded-app-auth.md (issue #48). No auth mechanism of its
@@ -11,21 +12,56 @@ export type LinkedApp = {
   label: string
   url: string
   icon?: string
+  // 'weather' marks a pyobs-weather instance, the candidate list for the Android home-screen
+  // widgets (specs/plans/2026-09-28-android-weather-widget.md). An explicit field rather than
+  // matching the label, which the user can edit freely.
+  kind?: LinkedAppKind
 }
+
+export type LinkedAppKind = 'weather' | 'other'
 
 const LINKED_APPS_KEY = 'pyobs_linked_apps'
 
 // Keyed by bare JID — same reasoning as VFS endpoints: different accounts on the same install may
 // want different links (different fleet, different domain).
-type LinkedAppsStore = Record<string, LinkedApp[]>
+export type LinkedAppsStore = Record<string, LinkedApp[]>
+
+// Best guess for entries stored before `kind` existed: the seeded weather link, and any site
+// following the same `weather.<domain>` naming, is a pyobs-weather instance.
+export function guessKind(url: string): LinkedAppKind {
+  try {
+    return new URL(url).hostname.startsWith('weather.') ? 'weather' : 'other'
+  } catch {
+    return 'other'
+  }
+}
+
+// One-time backfill of `kind` for entries stored before it existed. Every entry comes out with a
+// `kind`, so once written back this never guesses again and the user's choice wins.
+export function migrateLinkedApps(store: LinkedAppsStore): { store: LinkedAppsStore; changed: boolean } {
+  let changed = false
+  const next: LinkedAppsStore = {}
+  for (const [bareJid, apps] of Object.entries(store)) {
+    next[bareJid] = apps.map((app) => {
+      if (app.kind) return app
+      changed = true
+      return { ...app, kind: guessKind(app.url) }
+    })
+  }
+  return { store: next, changed }
+}
 
 function loadStore(): LinkedAppsStore {
+  let raw: unknown
   try {
-    const raw = JSON.parse(localStorage.getItem(LINKED_APPS_KEY) ?? '{}')
-    return raw && typeof raw === 'object' ? raw : {}
+    raw = JSON.parse(localStorage.getItem(LINKED_APPS_KEY) ?? '{}')
   } catch {
     return {}
   }
+  if (!raw || typeof raw !== 'object') return {}
+  const { store, changed } = migrateLinkedApps(raw as LinkedAppsStore)
+  if (changed) localStorage.setItem(LINKED_APPS_KEY, JSON.stringify(store))
+  return store
 }
 
 const store = ref<LinkedAppsStore>(loadStore())
@@ -33,6 +69,29 @@ const store = ref<LinkedAppsStore>(loadStore())
 function persist(bareJid: string, apps: LinkedApp[]): void {
   store.value = { ...store.value, [bareJid]: apps }
   localStorage.setItem(LINKED_APPS_KEY, JSON.stringify(store.value))
+  void syncWeatherInstances(store.value, connectionLabels())
+}
+
+// Saved connections' names by bare JID, for the widgets' labels (see weatherInstances()).
+function recentLogins(): Readonly<Ref<readonly RecentLogin[]>> | undefined {
+  return (useXmpp() as { recentLogins?: Readonly<Ref<readonly RecentLogin[]>> }).recentLogins
+}
+
+function connectionLabels(): Record<string, string> {
+  const labels: Record<string, string> = {}
+  for (const login of recentLogins()?.value ?? []) {
+    if (login.label) labels[Strophe.getBareJidFromJid(login.jid) ?? login.jid] = login.label
+  }
+  return labels
+}
+
+// Called once at app start (main.ts), so the widgets get the current list after an install or
+// upgrade without the user having to touch a link first. Also re-syncs when a connection is
+// renamed, since that name can be a widget label.
+export function syncWeatherWidgets(): Promise<void> {
+  const logins = recentLogins()
+  if (logins) watch(logins, () => void syncWeatherInstances(store.value, connectionLabels()), { deep: true })
+  return syncWeatherInstances(store.value, connectionLabels())
 }
 
 // Domain-guessed defaults, confirmed against real fleet deployments (see the design doc's
@@ -40,9 +99,9 @@ function persist(bareJid: string, apps: LinkedApp[]): void {
 // every one of these like any other entry the moment they're seeded.
 function seedDefaults(bareJid: string, domain: string): void {
   persist(bareJid, [
-    { label: 'Weather', url: `https://weather.${domain}`, icon: `https://weather.${domain}/favicon.ico` },
-    { label: 'Portal', url: `https://observe.${domain}`, icon: `https://observe.${domain}/favicon.ico` },
-    { label: 'Web Admin', url: `https://admin.${domain}`, icon: `https://admin.${domain}/favicon.ico` },
+    { label: 'Weather', url: `https://weather.${domain}`, icon: `https://weather.${domain}/favicon.ico`, kind: 'weather' },
+    { label: 'Portal', url: `https://observe.${domain}`, icon: `https://observe.${domain}/favicon.ico`, kind: 'other' },
+    { label: 'Web Admin', url: `https://admin.${domain}`, icon: `https://admin.${domain}/favicon.ico`, kind: 'other' },
   ])
 }
 

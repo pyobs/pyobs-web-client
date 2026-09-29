@@ -92,12 +92,12 @@ async function save() {
 
 const editingLinkIndex = ref<number | null>(null)
 const isNewLink = ref(false)
-const linkForm = ref<LinkedApp>({ label: '', url: '', icon: '' })
+const linkForm = ref<LinkedApp>({ label: '', url: '', icon: '', kind: 'other' })
 
 function startAddLink() {
   isNewLink.value = true
   editingLinkIndex.value = -1
-  linkForm.value = { label: '', url: '', icon: '' }
+  linkForm.value = { label: '', url: '', icon: '', kind: 'other' }
 }
 
 function startEditLink(index: number) {
@@ -118,6 +118,7 @@ function saveLink() {
     label: linkForm.value.label,
     url: linkForm.value.url,
     ...(linkForm.value.icon ? { icon: linkForm.value.icon } : {}),
+    kind: linkForm.value.kind ?? 'other',
   }
   if (isNewLink.value) {
     addLink(app)
@@ -240,7 +241,10 @@ const brokenLinkIcons = ref<Record<number, boolean>>({})
         />
         <i v-else class="bi bi-link-45deg text-secondary" style="font-size:1.1rem"></i>
         <div class="flex-grow-1">
-          <div class="text-light fw-semibold" style="font-size:0.85rem">{{ app.label }}</div>
+          <div class="text-light fw-semibold" style="font-size:0.85rem">
+            {{ app.label }}
+            <span v-if="app.kind === 'weather'" class="badge text-bg-secondary ms-1" style="font-size:0.65rem">weather</span>
+          </div>
           <div class="text-muted text-break" style="font-size:0.75rem">{{ app.url }}</div>
         </div>
         <button class="btn btn-outline-secondary btn-sm" @click="startEditLink(index)">
@@ -264,9 +268,21 @@ const brokenLinkIcons = ref<Record<number, boolean>>({})
         <label class="form-label mb-1 text-muted" style="font-size:0.8rem">URL</label>
         <input v-model="linkForm.url" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="https://observe.example.com" />
       </div>
-      <div class="mb-3">
+      <div class="mb-2">
         <label class="form-label mb-1 text-muted" style="font-size:0.8rem">Icon URL <span class="text-secondary">(optional)</span></label>
         <input v-model="linkForm.icon" type="text" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="https://observe.example.com/favicon.ico" />
+      </div>
+      <div class="form-check mb-3">
+        <input
+          id="link-kind-weather"
+          class="form-check-input"
+          type="checkbox"
+          :checked="linkForm.kind === 'weather'"
+          @change="linkForm.kind = ($event.target as HTMLInputElement).checked ? 'weather' : 'other'"
+        />
+        <label class="form-check-label text-muted" for="link-kind-weather" style="font-size:0.8rem">
+          pyobs-weather instance <span class="text-secondary">(offered in home-screen widgets)</span>
+        </label>
       </div>
       <div class="d-flex gap-2">
         <button class="btn btn-primary btn-sm" :disabled="!linkForm.label || !linkForm.url" @click="saveLink">Save</button>

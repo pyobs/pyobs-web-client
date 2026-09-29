@@ -50,6 +50,10 @@ link to them instead:
 - `pyobs-core/specs/steering/pyobs-project-tiers.md`,
   `connected-projects-version-policy.md`, `fleet-tooling-consistency.md` —
   fleet-wide conventions this repo falls under.
+- `pyobs-core/specs/design/basevideo-live-view.md`: **proposed** (2026-09-29). User-selectable
+  live view in `VideoView.vue`: MJPEG with server-side stretch for slow links, or `/video.raw` via
+  streamed `fetch()` with client-side stretch/cuts. Plan:
+  `pyobs-core/specs/plans/2026-09-29-basevideo-frame-buffer-redesign.md` (phase 6).
 - `pyobs-core/specs/steering/fleet-open-items.md` — standing snapshot of open
   issues and plans across the fleet; this repo's open plans are listed there.
 

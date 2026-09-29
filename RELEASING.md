@@ -29,9 +29,8 @@ green `develop`.
 ### 2. Update `CHANGELOG.md`
 
 The repo follows Keep a Changelog + Semantic Versioning (see the file header). Add an
-`## [X.Y.Z] - YYYY-MM-DD` section with the notable changes. *(Note: the changelog is currently
-stale — it stops at `0.1.0` while tags run to `0.11.0` — so backfill as you go, or at minimum
-start recording from the next release.)*
+`## [X.Y.Z] - YYYY-MM-DD` section with the notable changes, plus the matching `[X.Y.Z]:` link at
+the bottom of the file.
 
 ### 3. Bump the version
 

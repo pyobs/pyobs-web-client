@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wx_widget_list">Weather list</string>
+    <string name="wx_widget_tiles">Weather tiles</string>
+    <string name="wx_widget_detailed">Weather detailed</string>
+    <string name="wx_widget_list_desc">One row per pyobs-weather site</string>
+    <string name="wx_widget_tiles_desc">One tile per pyobs-weather site</string>
+    <string name="wx_widget_detailed_desc">Per site with humidity, wind and sky temperature</string>
+    <string name="wx_title">Weather</string>
+    <string name="wx_refresh">Refresh</string>
+    <string name="wx_settings">Choose sites</string>
+    <string name="wx_loading">Loading…</string>
+    <string name="wx_unreachable">Unreachable</string>
+    <string name="wx_updating">Updating…</string>
+    <string name="wx_update_failed">Update failed</string>
+    <string name="wx_no_instances">Open pyobs and mark a linked app as a pyobs-weather instance.</string>
+    <string name="wx_no_selection">No sites selected. Tap to choose.</string>
+    <string name="wx_configure_title">Weather sites</string>
+    <string name="wx_configure_add">Add widget</string>
+    <string name="wx_configure_save">Save</string>
+    <string name="wx_configure_open_app">Open pyobs</string>
+    <string name="wx_humidity">Humidity</string>
+    <string name="wx_wind">Wind</string>
+    <string name="wx_sky">Sky</string>
+</resources>

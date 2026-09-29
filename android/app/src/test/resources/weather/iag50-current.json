@@ -1,0 +1,1 @@
+{"time": "2026-09-28T19:53:14Z", "good": true, "sensors": {"humid": {"good": null, "value": 66.25}, "winddir": {"good": null, "value": 66.5}, "windspeed": {"good": null, "value": 4.924113576712002}, "press": {"good": null, "value": 996.9}, "rain": {"good": null, "value": 0.0}, "sunalt": {"good": null, "value": -25.780482543476335}, "temp": {"good": null, "value": 18.95}}}
