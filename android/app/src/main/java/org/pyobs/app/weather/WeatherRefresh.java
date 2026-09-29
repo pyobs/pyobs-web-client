@@ -34,11 +34,15 @@ public final class WeatherRefresh {
         WorkManager.getInstance(context).cancelUniqueWork(PERIODIC);
     }
 
-    /** Refresh now (refresh button, widget placed, instance list changed). */
+    /**
+     * Refresh now (refresh button, widget placed, instance list changed). Unlike the periodic job it
+     * doesn't wait for a network: offline it fails right away and the widgets say so, instead of a
+     * tap that seemingly does nothing until the connection is back.
+     */
     public static void refreshNow(Context context) {
-        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(WeatherRefreshWorker.class)
-            .setConstraints(constraints())
-            .build();
+        WeatherStore.setRefreshing(context, System.currentTimeMillis());
+        WeatherWidgets.updateAll(context);
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(WeatherRefreshWorker.class).build();
         WorkManager.getInstance(context).enqueueUniqueWork(ONE_OFF, ExistingWorkPolicy.REPLACE, request);
     }
 }

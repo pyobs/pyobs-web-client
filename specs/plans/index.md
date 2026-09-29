@@ -72,4 +72,4 @@ Implementation plans, checklist-style.
   `PushNotifier` v2. **done** 2026-09-18, type-check + 158 unit tests green
 - [2026-09-28-android-weather-widget.md](2026-09-28-android-weather-widget.md) — Android home-screen
   widgets (list / tiles / detailed, sites picked per widget) for linked pyobs-weather instances.
-  **proposed**
+  **implemented** 2026-09-29, verified on Android 14; Android < 12 untested

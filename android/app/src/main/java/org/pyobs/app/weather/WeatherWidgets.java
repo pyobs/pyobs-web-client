@@ -47,6 +47,8 @@ public final class WeatherWidgets {
     private static final float DETAIL_BLOCK = 96;
     /** Below this height the header (title, refresh, choose sites) is dropped to fit one row. */
     private static final float HEADER_MIN_HEIGHT = 96;
+    /** A refresh still "running" after this is treated as finished (job killed, process died). */
+    private static final long REFRESHING_TIMEOUT_MS = 60_000;
 
     private WeatherWidgets() {}
 
@@ -167,16 +169,34 @@ public final class WeatherWidgets {
             default:
                 shown = addRows(context, views, entries, contentHeight, now, widgetId);
         }
-        views.setTextViewText(R.id.wx_info, info(entries, shown, now));
+        long refreshing = WeatherStore.getRefreshing(context);
+        boolean updating = refreshing > 0 && now - refreshing < REFRESHING_TIMEOUT_MS;
+        boolean failed = !updating && latestFetchFailed(entries);
+        views.setTextViewText(R.id.wx_info, info(context, entries, shown, now, updating, failed));
+        views.setTextColor(R.id.wx_info, context.getColor(failed ? R.color.wx_warn : R.color.wx_sub));
         return views;
     }
 
-    /** Header text: "+N" for sites that don't fit, else the age of the oldest data. */
-    private static String info(List<Entry> entries, int shown, long now) {
-        if (shown < entries.size()) return "+" + (entries.size() - shown);
+    /** A site whose last attempt failed after its cached data was fetched (or with no data at all). */
+    private static boolean latestFetchFailed(List<Entry> entries) {
+        for (Entry e : entries) {
+            if (e.errorAt > 0 && (e.snapshot == null || e.errorAt > e.snapshot.fetchedAt)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Header text: "Updating…" right after a refresh tap, "+N" for sites that don't fit, and the age
+     * of the oldest data, prefixed with "Update failed" when the last attempt didn't get through.
+     */
+    private static String info(Context context, List<Entry> entries, int shown, long now, boolean updating, boolean failed) {
+        if (updating) return context.getString(R.string.wx_updating);
+        String more = shown < entries.size() ? "+" + (entries.size() - shown) + " · " : "";
         long oldest = Long.MAX_VALUE;
         for (Entry e : entries) if (e.snapshot != null) oldest = Math.min(oldest, e.snapshot.fetchedAt);
-        return oldest == Long.MAX_VALUE ? "" : WeatherFormat.age(oldest, now);
+        String age = oldest == Long.MAX_VALUE ? "" : WeatherFormat.age(oldest, now);
+        if (failed) return more + context.getString(R.string.wx_update_failed) + (age.isEmpty() ? "" : " · " + age);
+        return more + age;
     }
 
     private static int addRows(Context context, RemoteViews views, List<Entry> entries, float height, long now, int widgetId) {

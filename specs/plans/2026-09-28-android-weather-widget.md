@@ -1,6 +1,7 @@
 # Plan: Android home-screen widgets for pyobs-weather instances
 
-Status: in progress. Phases 1 to 5 done 2026-09-29 (unit-tested, checked on device); phase 6 left.
+Status: implemented 2026-09-29, verified on an Android 14 device. Open: Android < 12 untested, picker
+preview PNGs for < 12.
 
 Repos: pyobs-web-client only. No pyobs-weather changes (Tim, 2026-09-28).
 
@@ -198,6 +199,9 @@ Common:
   resources)
 - [x] tap on an entry opens that instance's URL in the browser; refresh button enqueues a one-off
   work request
+- [x] refresh feedback (found testing in airplane mode, 2026-09-29): the one-off refresh doesn't wait
+  for a network (the periodic job still does), the header shows "Updating…" right after a tap and
+  "Update failed · <age>" in orange when the last attempt didn't get through; cached values stay
 - [x] manifest: three receivers, the configure activity, `INTERNET` (already present for the app,
   verify)
 
@@ -210,14 +214,15 @@ Per style (layouts as in the mockups):
 
 ### Phase 6: verify
 
-- [ ] JUnit for `WeatherCondition`, `SensorLevel`, JSON parsing (fixtures from the live responses
+- [x] JUnit for `WeatherCondition`, `SensorLevel`, JSON parsing (fixtures from the live responses
   above, plus a `/api/sensors/` response without an "Average values" station)
-- [ ] Vitest for phases 1 and 2 (TS side)
-- [ ] real device: each style with 1, 2, 3 sites; resize through the size table and correct it
-  from what actually fits; reconfigure; remove a linked app while a widget shows it; airplane
-  mode (cached/stale path); dark mode; reboot (work survives); one Android 12+ and one older
-  device or emulator (the two size-handling paths)
-- [ ] web build unaffected (plugin call is a no-op off Android)
+- [x] Vitest for phases 1 and 2 (TS side)
+- [x] real device (Tim, Motorola edge 50 neo, Android 14, 2026-09-29): all three styles, resize
+  through the size table (corrected above from measured sizes), reconfigure, remove a linked app
+  while a widget shows it, airplane mode, dark mode, reboot
+- [ ] Android < 12 (the pre-12 size-handling path, no picker preview): untested, no device or
+  emulator image available
+- [x] web build unaffected (plugin call is a no-op off Android)
 
 ## Open questions
 

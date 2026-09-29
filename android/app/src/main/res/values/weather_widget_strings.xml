@@ -11,6 +11,8 @@
     <string name="wx_settings">Choose sites</string>
     <string name="wx_loading">Loading…</string>
     <string name="wx_unreachable">Unreachable</string>
+    <string name="wx_updating">Updating…</string>
+    <string name="wx_update_failed">Update failed</string>
     <string name="wx_no_instances">Open pyobs and mark a linked app as a pyobs-weather instance.</string>
     <string name="wx_no_selection">No sites selected. Tap to choose.</string>
     <string name="wx_configure_title">Weather sites</string>

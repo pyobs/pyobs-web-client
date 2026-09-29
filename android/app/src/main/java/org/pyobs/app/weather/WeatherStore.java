@@ -18,6 +18,7 @@ public final class WeatherStore {
     private static final String SNAPSHOT_PREFIX = "snapshot:";
     private static final String ERROR_PREFIX = "error:";
     private static final String SELECTION_PREFIX = "selection:";
+    private static final String KEY_REFRESHING = "refreshing";
 
     private WeatherStore() {}
 
@@ -84,6 +85,15 @@ public final class WeatherStore {
     /** When the latest fetch failed, or 0 if it didn't. */
     public static long getErrorAt(Context context, String url) {
         return prefs(context).getLong(ERROR_PREFIX + url, 0);
+    }
+
+    /** When a manual refresh started, 0 once the job finished. Drives the "Updating…" header. */
+    public static void setRefreshing(Context context, long at) {
+        prefs(context).edit().putLong(KEY_REFRESHING, at).apply();
+    }
+
+    public static long getRefreshing(Context context) {
+        return prefs(context).getLong(KEY_REFRESHING, 0);
     }
 
     private static List<String> parseUrls(String json) {
