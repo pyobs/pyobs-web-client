@@ -1,6 +1,6 @@
 # Plan: Android home-screen widgets for pyobs-weather instances
 
-Status: in progress. Phases 1 to 3 done 2026-09-28 (unit-tested, checked on device).
+Status: in progress. Phases 1 to 5 done 2026-09-29 (unit-tested, checked on device); phase 6 left.
 
 Repos: pyobs-web-client only. No pyobs-weather changes (Tim, 2026-09-28).
 
@@ -65,24 +65,32 @@ Live values:
   which weather instances it shows (checkbox list, order as listed in the app). Stored per
   `appWidgetId`. This replaces a global "show in widget" setting; hiding e.g. iagvt (~10 m from
   iag50) is just not ticking it.
-- **Layout adapts to widget size**. Estimated fits, to be checked on a device:
+- **Layout adapts to widget size**. Sizes reported by Tim's Motorola launcher (Android 14, 4-column
+  grid), two per widget (portrait/landscape), the smaller one is what the layout must fit:
 
-  | Style | 1 site | 2 sites | 3 sites | 4 sites |
-  |---|---|---|---|---|
-  | A · List | 4×1 | 4×2 | 4×2 (tight) | 4×3 |
-  | B · Tiles | 2×2 | 4×2 | 4×2 | 5×2, or two rows at 4×3 |
-  | D · Detailed | 4×2 | 4×3 | 4×4 | too tall |
+  | Widget | Reported size (dp) |
+  |---|---|
+  | 4×1 | 409 × 91 to 94 |
+  | 4×2 | 409 × 181 to 188 |
+  | 4×3 | 409 × 272 to 282 |
 
-  When more sites are selected than fit the current size, show what fits plus a "+N" hint rather
-  than squeezing. B wraps to a second row when the widget is tall enough.
+  The widgets actually render a bit taller than reported (a 4×2 is ~225 dp on screen), so entries
+  share the height by weight instead of using fixed heights. List rows switch to a large variant
+  (bigger text, condition + sky line) at 72 dp or more per row. Tiles switch to a compact form
+  (icon, temperature, OK/BAD dot, name; humidity and wind on the right when a tile is ≥ 170 dp wide)
+  below 120 dp of tile height, which makes 4×1 and 2×1 tiles widgets work. Below 96 dp total height
+  the header (title, refresh, choose sites) is dropped. When more sites are selected than fit, the
+  header shows "+N" rather than squeezing. B wraps to a second row when the widget is tall enough.
 - **Label** is the linked app's `label` (short, user controlled), not pyobs-weather's `site`
-  ("MONET/S @ SAAO" doesn't fit a ~110 dp tile). `site` only as a fallback when the label is empty.
+  ("MONET/S @ SAAO" doesn't fit a ~110 dp tile). A link still carrying the seeded "Weather" label is
+  shown under its saved connection's name ("MONET/S", "IAG 50cm"); host name if the label is empty.
 - **Condition rules** (Tim, 2026-09-28): rain from `rain`, clear/cloudy from `skytemp`.
   Thresholds come from the site's own pyobs-weather limits, not an app setting:
   1. `rain` inside its `danger` range → **rain**. No limits → `rain > 0`.
   2. else `skytemp` inside `danger` → **cloudy**, inside `warning` → **partly cloudy**, else
      **clear**.
-  3. no `skytemp` value, or no skytemp limits → **dry** (neutral icon, no cloud claim).
+  3. no `skytemp` value, or no skytemp limits → **sky unknown** (grey cloud with a question mark
+     beside it, "No sky sensor"; Tim picked it over a thermometer, which read as "temperature").
   4. `sunalt < 0` → night variant (moon instead of sun) for clear / partly cloudy.
 - **OK/BAD** is pyobs-weather's top-level `good`. Per-sensor warning highlighting only in D.
 - **Refresh**: WorkManager periodic work every 15 min, plus tap-to-refresh (Tim: 15 to 30 min is
@@ -152,49 +160,52 @@ Consequence: the configuration activity only lists instances after the app has r
   one is removed (`WeatherRefresh.schedule` / `cancel`; the provider hooks and "update all
   providers" come with phase 5)
 - [x] `WeatherWidgetPlugin.setInstances` also triggers a one-off refresh (checked on device: both
-  instances fetched and cached). Phase 5: skip it when no widget is placed, so app start doesn't
-  fetch for nothing
+  instances fetched and cached). Skipped while no widget is placed, so app start doesn't fetch for
+  nothing
 
 ### Phase 4: widget configuration
 
-- [ ] `WeatherWidgetConfigureActivity`: checkbox list of candidate instances (label + URL), "Add
+- [x] `WeatherWidgetConfigureActivity`: checkbox list of candidate instances (label + URL), "Add
   widget" button, returns `RESULT_OK` with the `appWidgetId`; `RESULT_CANCELED` on back so the
   launcher drops the widget
-- [ ] per-widget selection in `SharedPreferences` under `widget_<appWidgetId>`; cleared in each
+- [x] per-widget selection in `SharedPreferences` under `widget_<appWidgetId>`; cleared in each
   provider's `onDeleted`
-- [ ] shared by all three providers (`android:configure` in each provider's info XML)
-- [ ] reconfigure: `android:widgetFeatures="reconfigurable"` (Android 12+, long-press → settings).
+- [x] shared by all three providers (`android:configure` in each provider's info XML)
+- [x] reconfigure: `android:widgetFeatures="reconfigurable"` (Android 12+, long-press → settings).
   Below 12 there's no launcher entry point, so a small gear in the widget header opens the same
   activity
-- [ ] selected instance later deleted in the app: drop it from the widget; none left → empty state
+- [x] selected instance later deleted in the app: drop it from the widget; none left → empty state
 
 ### Phase 5: the three widgets
 
 Common:
 
-- [ ] three providers (`WeatherListWidget`, `WeatherTilesWidget`, `WeatherDetailedWidget`) with
-  their own `res/xml/*_info.xml` (resizable, `updatePeriodMillis=0`, `previewLayout` on 12+ and
-  `previewImage` below), sharing a `WeatherWidgetRenderer` base that reads selection + cache
-- [ ] size handling: Android 12+ via `new RemoteViews(Map<SizeF, RemoteViews>)` (launcher picks
+- [x] three providers (`WeatherListWidget`, `WeatherTilesWidget`, `WeatherDetailedWidget`) with
+  their own `res/xml/wx_widget_*.xml` (resizable, `updatePeriodMillis=0`), sharing
+  `WeatherWidgetProvider` + `WeatherWidgets` (rendering)
+- [x] picker previews via `previewLayout` (Android 12+), generated from the real layouts with sample
+  data by `android/scripts/gen_weather_widget_previews.py`; re-run after changing a `wx_*` layout
+- [ ] `previewImage` PNGs for Android < 12 (they show the app icon for now)
+- [x] size handling: Android 12+ via `new RemoteViews(Map<SizeF, RemoteViews>)` (launcher picks
   per size); API 24 to 30 by reading `OPTION_APPWIDGET_MIN_WIDTH` / `MAX_HEIGHT` in
   `onAppWidgetOptionsChanged` and rebuilding
-- [ ] entries built with `RemoteViews.removeAllViews` / `addView` (works on API 24; no
+- [x] entries built with `RemoteViews.removeAllViews` / `addView` (works on API 24; no
   `RemoteViewsService` for what's at most a handful of entries); "+N" when more are selected than
   fit
-- [ ] stale data (age > 1 h) shown greyed, so an old "clear" doesn't read as current
-- [ ] fetch error with no cache: entry shows the label and "unreachable" (offline icon)
-- [ ] vector drawables for the 5 conditions + night variants + offline, both themes (day/night
+- [x] stale data (age > 1 h) shown greyed, so an old "clear" doesn't read as current
+- [x] fetch error with no cache: entry shows the label and "unreachable" (offline icon)
+- [x] vector drawables for the 5 conditions + night variants + offline, both themes (day/night
   resources)
-- [ ] tap on an entry opens that instance's URL in the browser; refresh button enqueues a one-off
+- [x] tap on an entry opens that instance's URL in the browser; refresh button enqueues a one-off
   work request
-- [ ] manifest: three receivers, the configure activity, `INTERNET` (already present for the app,
+- [x] manifest: three receivers, the configure activity, `INTERNET` (already present for the app,
   verify)
 
 Per style (layouts as in the mockups):
 
-- [ ] A · List: rows in a vertical `LinearLayout`, header with title + refresh
-- [ ] B · Tiles: weighted horizontal `LinearLayout` of tiles; second row when height allows
-- [ ] D · Detailed: per-site block with header row and 3 chips (humidity, wind, sky); chip
+- [x] A · List: rows in a vertical `LinearLayout`, header with title + refresh
+- [x] B · Tiles: weighted horizontal `LinearLayout` of tiles; second row when height allows
+- [x] D · Detailed: per-site block with header row and 3 chips (humidity, wind, sky); chip
   background from `SensorLevel`; sky chip "n/a" without a sensor
 
 ### Phase 6: verify
@@ -210,9 +221,6 @@ Per style (layouts as in the mockups):
 
 ## Open questions
 
-- Labels: the seeded weather link is labelled "Weather" on every account, so tiles would all read
-  "Weather". Proposal: default to the saved connection's name ("MONET/S", "IAG 50cm") for new links,
-  and use it in the widget whenever a link still has the default label.
 - Cleartext HTTP: Android blocks `http://` by default (targetSdk 36). iagvt's link is
   `http://weather.iagvtsrv`, so it would always show "unreachable" unless it moves to https or the
   app gets a network security config allowing that host.

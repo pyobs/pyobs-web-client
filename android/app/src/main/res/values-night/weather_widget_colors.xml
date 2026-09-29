@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="wx_surface">#1F2226</color>
+    <color name="wx_tile">#2A2E33</color>
+    <color name="wx_text">#EEECE8</color>
+    <color name="wx_sub">#AAA69E</color>
+    <color name="wx_ok">#7AD3A0</color>
+    <color name="wx_ok_bg">#1D3A2A</color>
+    <color name="wx_bad">#FF9B91</color>
+    <color name="wx_bad_bg">#4A2220</color>
+    <color name="wx_warn">#F4B860</color>
+    <color name="wx_warn_bg">#43331B</color>
+    <color name="wx_danger_bg">#4A2220</color>
+    <color name="wx_icon_sun">#F2B84B</color>
+    <color name="wx_icon_moon">#D6DCF0</color>
+    <color name="wx_icon_cloud">#B9C0CC</color>
+    <color name="wx_icon_rain">#6CB4F0</color>
+    <color name="wx_icon_muted">#A9A59D</color>
+</resources>

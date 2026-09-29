@@ -46,6 +46,19 @@ describe('weatherInstances', () => {
   })
 })
 
+describe('weatherInstances labels', () => {
+  const store = {
+    'admin@monet.saao.ac.za': [{ label: 'Weather', url: 'https://weather.monet.saao.ac.za', kind: 'weather' as const }],
+    'husser@iag50srv': [{ label: 'My label', url: 'https://weather.iag50srv', kind: 'weather' as const }],
+    'x@nolabel': [{ label: 'Weather', url: 'https://weather.nolabel', kind: 'weather' as const }],
+  }
+
+  it('uses the connection name for links still labelled "Weather"', () => {
+    const labels = { 'admin@monet.saao.ac.za': 'MONET/S', 'husser@iag50srv': 'IAG 50cm' }
+    expect(weatherInstances(store, labels).map((i) => i.label)).toEqual(['MONET/S', 'My label', 'Weather'])
+  })
+})
+
 describe('syncWeatherInstances', () => {
   const store = { 'a@x': [{ label: 'W', url: 'https://weather.x/', kind: 'weather' as const }] }
 

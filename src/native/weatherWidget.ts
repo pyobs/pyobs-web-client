@@ -23,23 +23,37 @@ export function normalizeInstanceUrl(url: string): string {
   }
 }
 
+// Label every account gets for its seeded weather link (useLinkedApps.ts seedDefaults).
+const DEFAULT_WEATHER_LABEL = 'Weather'
+
 // Every `kind: 'weather'` link across all accounts on this device, first label wins on duplicates.
-export function weatherInstances(store: LinkedAppsStore): WeatherInstance[] {
+// A link still carrying the seeded "Weather" label is shown under its connection's name instead
+// ("MONET/S", "IAG 50cm"), so the widget's tiles tell the sites apart. `connectionLabels` maps bare
+// JID to that name.
+export function weatherInstances(
+  store: LinkedAppsStore,
+  connectionLabels: Record<string, string> = {},
+): WeatherInstance[] {
   const byUrl = new Map<string, WeatherInstance>()
-  for (const apps of Object.values(store)) {
+  for (const [bareJid, apps] of Object.entries(store)) {
     for (const app of apps) {
       if (app.kind !== 'weather') continue
       const url = normalizeInstanceUrl(app.url)
-      if (!byUrl.has(url)) byUrl.set(url, { url, label: app.label })
+      const connection = connectionLabels[bareJid]
+      const label = app.label === DEFAULT_WEATHER_LABEL && connection ? connection : app.label
+      if (!byUrl.has(url)) byUrl.set(url, { url, label })
     }
   }
   return [...byUrl.values()]
 }
 
-export async function syncWeatherInstances(store: LinkedAppsStore): Promise<void> {
+export async function syncWeatherInstances(
+  store: LinkedAppsStore,
+  connectionLabels: Record<string, string> = {},
+): Promise<void> {
   if (Capacitor.getPlatform() !== 'android') return
   try {
-    await WeatherWidget.setInstances({ instances: weatherInstances(store) })
+    await WeatherWidget.setInstances({ instances: weatherInstances(store, connectionLabels) })
   } catch (e) {
     // Widgets just keep their last list; nothing in the app depends on this succeeding.
     console.warn('WeatherWidget.setInstances failed', e)

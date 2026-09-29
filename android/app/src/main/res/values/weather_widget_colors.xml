@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Weather widget palette (light). Night variants in values-night. Resolved by the launcher, so
+     the widgets follow the system theme without being re-rendered. -->
+<resources>
+    <color name="wx_surface">#F6F4EF</color>
+    <color name="wx_tile">#EBE7DF</color>
+    <color name="wx_text">#1B1B1A</color>
+    <color name="wx_sub">#5B5852</color>
+    <color name="wx_ok">#1D6A3D</color>
+    <color name="wx_ok_bg">#D9EEE0</color>
+    <color name="wx_bad">#9F241B</color>
+    <color name="wx_bad_bg">#F7DCD9</color>
+    <color name="wx_warn">#8A4B00</color>
+    <color name="wx_warn_bg">#FBE7C6</color>
+    <color name="wx_danger_bg">#F7DCD9</color>
+    <color name="wx_icon_sun">#B86E00</color>
+    <color name="wx_icon_moon">#44507A</color>
+    <color name="wx_icon_cloud">#5F6876</color>
+    <color name="wx_icon_rain">#1F6FB5</color>
+    <color name="wx_icon_muted">#6A665F</color>
+</resources>

@@ -27,6 +27,7 @@ public class WeatherRefreshWorker extends Worker {
                 WeatherStore.putError(context, instance.url, System.currentTimeMillis());
             }
         }
+        WeatherWidgets.updateAll(context);
         // Always success: a failed fetch is shown as stale/unreachable, and the next periodic run
         // retries anyway. WorkManager's own backoff would only add extra requests.
         return Result.success();

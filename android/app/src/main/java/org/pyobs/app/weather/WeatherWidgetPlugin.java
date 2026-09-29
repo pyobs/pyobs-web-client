@@ -18,7 +18,11 @@ public class WeatherWidgetPlugin extends Plugin {
             return;
         }
         WeatherStore.setInstances(getContext(), instances.toString());
-        WeatherRefresh.refreshNow(getContext());
+        // Labels or links may have changed; nothing to do while no widget is placed.
+        if (WeatherWidgets.anyPlaced(getContext())) {
+            WeatherWidgets.updateAll(getContext());
+            WeatherRefresh.refreshNow(getContext());
+        }
         call.resolve();
     }
 }

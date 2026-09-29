@@ -1,6 +1,6 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, type Ref } from 'vue'
 import { Strophe } from 'strophe.js'
-import { useXmpp } from '@/composables/useXmpp'
+import { useXmpp, type RecentLogin } from '@/composables/useXmpp'
 import { syncWeatherInstances } from '@/native/weatherWidget'
 
 // Plain external links to other pyobs web apps (web-admin/portal/weather, or anything a site
@@ -69,13 +69,29 @@ const store = ref<LinkedAppsStore>(loadStore())
 function persist(bareJid: string, apps: LinkedApp[]): void {
   store.value = { ...store.value, [bareJid]: apps }
   localStorage.setItem(LINKED_APPS_KEY, JSON.stringify(store.value))
-  void syncWeatherInstances(store.value)
+  void syncWeatherInstances(store.value, connectionLabels())
+}
+
+// Saved connections' names by bare JID, for the widgets' labels (see weatherInstances()).
+function recentLogins(): Readonly<Ref<readonly RecentLogin[]>> | undefined {
+  return (useXmpp() as { recentLogins?: Readonly<Ref<readonly RecentLogin[]>> }).recentLogins
+}
+
+function connectionLabels(): Record<string, string> {
+  const labels: Record<string, string> = {}
+  for (const login of recentLogins()?.value ?? []) {
+    if (login.label) labels[Strophe.getBareJidFromJid(login.jid) ?? login.jid] = login.label
+  }
+  return labels
 }
 
 // Called once at app start (main.ts), so the widgets get the current list after an install or
-// upgrade without the user having to touch a link first.
+// upgrade without the user having to touch a link first. Also re-syncs when a connection is
+// renamed, since that name can be a widget label.
 export function syncWeatherWidgets(): Promise<void> {
-  return syncWeatherInstances(store.value)
+  const logins = recentLogins()
+  if (logins) watch(logins, () => void syncWeatherInstances(store.value, connectionLabels()), { deep: true })
+  return syncWeatherInstances(store.value, connectionLabels())
 }
 
 // Domain-guessed defaults, confirmed against real fleet deployments (see the design doc's
