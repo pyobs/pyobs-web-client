@@ -19,6 +19,8 @@ modules:
     class: pyobs.modules.camera.dummyvideo.DummyVideo
     label: video
     http_port: 37077
+    # lets the web client's raw live view (pyobs-core >= 2.14.0) read /video.raw cross-origin
+    cors_origins: ['*']
     vfs: *vfs
     comm:
       class: pyobs.comm.xmpp.XmppComm

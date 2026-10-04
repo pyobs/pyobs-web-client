@@ -51,3 +51,10 @@ Living architecture/design docs, one per feature or subsystem. Kept around after
   Compose Multiplatform as a from-scratch native alternative to the Capacitor shell, covering
   Android/iOS/Windows/Linux (web stays Vue). *not proposed, not started* — a considered option with
   revisit triggers, not a plan
+- Live view modes (MJPEG with server stretch, raw with client stretch, zoom/crop) — the design is
+  `pyobs-core/specs/design/basevideo-live-view.md` (Repos: pyobs-core, pyobs-gui,
+  pyobs-web-client), not duplicated here. Client plan:
+  `specs/plans/2026-10-04-video-live-view-modes.md`; the CORS decision:
+  `specs/adrs/0002-raw-live-view-needs-basevideo-cors.md`. *implemented* (phases a to c), issue
+  #58 — needs pyobs-core >= 2.13.0 (MJPEG) / 2.14.0 with `cors_origins` (raw); e2e specs and a few
+  device checks still open, see `specs/steering/open-items.md`
