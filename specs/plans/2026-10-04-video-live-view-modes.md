@@ -36,9 +36,9 @@ pyobs-core's design doc still say "not released"). Client code: `src/views/Video
       nothing breaks, but the stretch controls then have no effect and the client can't detect
       that. Note it in the UI help text or accept it.
 
-## Phase b: raw mode, full-frame stretch (needs CORS follow-up in pyobs-core)
+## Phase b: raw mode, full-frame stretch (needs pyobs-core >= 2.14.0 with `cors_origins` set)
 
-- [ ] pyobs-core follow-up: opt-in CORS, filed as pyobs/pyobs-core#942 (`OPTIONS` preflight, allow-origin/headers, credentials
+- [x] pyobs-core follow-up: opt-in CORS, filed as pyobs/pyobs-core#942, released in v2.14.0 as module option `cors_origins` (`OPTIONS` preflight, allow-origin/headers, credentials
       if needed). File the issue, link it here.
 - [x] Read `videoCaps.raw` alongside `mjpeg`; mode toggle only when `raw` is published, the
       screen is desktop-sized and the app is not running under Capacitor (`VideoView.vue`).
@@ -61,17 +61,31 @@ pyobs-core's design doc still say "not released"). Client code: `src/views/Video
 - [x] Unit tests (`rawFrameParser.spec.ts`, `stretch.spec.ts`): parser (split chunks, partial headers, several frames), each stretch/cut
       mode against known values, dtype handling.
 - [ ] E2E: raw mode draws a non-blank canvas against a real module.
-- [ ] Measure Canvas 2D cost on a 2048x2048 frame. If too slow, plan a WebGL path as a new phase.
+- [ ] Measure Canvas 2D cost on a 2048x2048 frame (only 640x480 `DummyVideo` frames tried so far). If too slow, plan a WebGL path as a new phase.
 - [ ] Check browser connection limits with several cameras on one page (HTTP/1.1 caps about
       6 per host, to be verified); decide whether only the visible camera streams.
 - [ ] Check on a real Android device how a streamed cross-origin `fetch()` behaves in the WebView.
 
 ## Phase c: zoom with server crop, `bin`, `max_rate`
 
-- [ ] Zoom/pan on the canvas; when zoomed far enough, reconnect with `x`,`y`,`w`,`h`.
-- [ ] Map displayed pixels back to full-frame coordinates with `CROP-X`, `CROP-Y`, `SWBIN`.
-- [ ] `bin` and `max_rate` options; `max_rate` lowered while the tab is hidden.
-- [ ] Unit tests for the coordinate mapping; e2e: zoom triggers a cropped request.
+- [x] Zoom/pan on the canvas (wheel around the cursor, drag, buttons, double-click reset). The
+      frame in hand is drawn zoomed (pixelated) at once; the stream then reconnects with a crop of
+      the view plus a 25% margin (hysteresis in `needsReconnect`, 250 ms debounce) and sharpens.
+- [x] Map displayed pixels back to full-frame coordinates with `CROP-X`, `CROP-Y`, `SWBIN`
+      (`src/utils/viewport.ts`); used for pointer anchoring, panning and a cursor readout (x, y,
+      value).
+- [x] `bin` and `max_rate` options (stored per camera); `max_rate` drops to 1 fps while the tab is
+      hidden.
+- [x] Unit tests (`viewport.spec.ts`, extended `useVideoSettings.spec.ts`).
+- [x] Verified 2026-10-04 in Chromium (Playwright) against a live `DummyVideo`, re-run the same
+      day directly against pyobs-core 2.14.0 with `cors_origins: ['*']` (no proxy): stream, live stretch (no request), zoom (`x,y,w,h`
+      request), hover readout, bin and `max_rate` params, zoom reset. The scratch page and proxy
+      were not committed.
+- [ ] E2E (`e2e/video-live-view-raw.spec.ts`, covers b and c): written, NOT run. It skips itself
+      when the raw stream can't be opened, so it needs pyobs-core#942 (or a same-origin setup).
+- Known limits: cuts are computed on the whole received frame (including the margin), not just the
+  visible part; no pinch zoom (raw is hidden on touch phones anyway); `fullSize` is learned from
+  the first uncropped frame, so zoom controls are disabled until it arrives.
 
 ## Open
 

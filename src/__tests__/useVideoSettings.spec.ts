@@ -8,6 +8,7 @@ import {
   loadRawSettings,
   normalizeMjpegSettings,
   normalizeRawSettings,
+  buildRawUrl,
   saveMjpegSettings,
   saveMode,
   saveRawSettings,
@@ -152,7 +153,7 @@ describe('mode and raw settings', () => {
   })
 
   it('stores mode, mjpeg and raw settings side by side without overwriting each other', () => {
-    const raw = { stretch: 'sqrt' as const, cuts: 'manual' as const, lo: 1, hi: 9 }
+    const raw = { stretch: 'sqrt' as const, cuts: 'manual' as const, lo: 1, hi: 9, bin: 2, maxRate: 5 }
     saveRawSettings('a@x', raw)
     saveMode('a@x', 'raw')
     saveMjpegSettings('a@x', { ...defaultMjpegSettings(), scale: 4 })
@@ -170,5 +171,29 @@ describe('mode and raw settings', () => {
     expect(validateCuts({ cuts: 'manual', lo: 1 })).toBeDefined()
     expect(validateCuts({ cuts: 'manual', lo: 1, hi: 2 })).toBeUndefined()
     expect(validateCuts({ cuts: '' })).toBeUndefined()
+  })
+})
+
+describe('raw bin and max_rate settings', () => {
+  it('accepts only the offered values', () => {
+    expect(normalizeRawSettings({ bin: 4, maxRate: 2 })).toMatchObject({ bin: 4, maxRate: 2 })
+    expect(normalizeRawSettings({ bin: 3, maxRate: 7 })).toMatchObject({ bin: 1, maxRate: 0 })
+    expect(normalizeRawSettings({ bin: '2' })).toMatchObject({ bin: 1 })
+  })
+})
+
+describe('buildRawUrl', () => {
+  const BASE = 'http://cam.example.com:37077/video.raw'
+
+  it('leaves the URL bare for no crop, bin 1 and no cap', () => {
+    expect(buildRawUrl(BASE, {})).toBe(BASE)
+    expect(buildRawUrl(BASE, { bin: 1, maxRate: 0 })).toBe(BASE)
+  })
+
+  it('sends a crop as whole numbers, plus bin and max_rate', () => {
+    const q = new URL(buildRawUrl(BASE, { crop: { x: 10.4, y: 20, w: 300.6, h: 200 }, bin: 2, maxRate: 5 })).searchParams
+    expect([q.get('x'), q.get('y'), q.get('w'), q.get('h')]).toEqual(['10', '20', '301', '200'])
+    expect(q.get('bin')).toBe('2')
+    expect(q.get('max_rate')).toBe('5')
   })
 })

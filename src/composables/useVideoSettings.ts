@@ -27,7 +27,14 @@ export type RawSettings = {
   cuts: CutsMode | ''
   lo?: number
   hi?: number
+  // Server-side software binning (block mean, after the crop) and frame-rate cap for this
+  // connection, both to save bandwidth. maxRate 0 means unlimited. Changing either reconnects.
+  bin: number
+  maxRate: number
 }
+
+export const BIN_CHOICES = [1, 2, 4, 8]
+export const MAX_RATE_CHOICES = [0, 10, 5, 2, 1]
 
 export type LiveViewMode = 'mjpeg' | 'raw'
 
@@ -42,7 +49,7 @@ export function defaultMjpegSettings(): MjpegSettings {
 }
 
 export function defaultRawSettings(): RawSettings {
-  return { stretch: 'linear', cuts: '' }
+  return { stretch: 'linear', cuts: '', bin: 1, maxRate: 0 }
 }
 
 const STORAGE_KEY = 'pyobs_video_settings'
@@ -80,6 +87,8 @@ export function normalizeRawSettings(raw: unknown): RawSettings {
   if ((CUTS_MODES as readonly unknown[]).includes(r.cuts)) out.cuts = r.cuts as CutsMode
   out.lo = finite(r.lo)
   out.hi = finite(r.hi)
+  if (BIN_CHOICES.includes(r.bin as number)) out.bin = r.bin as number
+  if (MAX_RATE_CHOICES.includes(r.maxRate as number)) out.maxRate = r.maxRate as number
   return out
 }
 
@@ -168,5 +177,20 @@ export function buildMjpegUrl(baseUrl: string, s: MjpegSettings): string {
   }
   if (s.scale !== DEFAULT_SCALE) url.searchParams.set('scale', String(s.scale))
   if (s.quality !== DEFAULT_QUALITY) url.searchParams.set('quality', String(s.quality))
+  return url.toString()
+}
+
+// The /video.raw URL for a crop (full-frame unbinned pixels, whole numbers), binning and rate cap.
+// Defaults are left out, so with no zoom, bin 1 and no cap it is the bare stream URL.
+export function buildRawUrl(
+  baseUrl: string,
+  opts: { crop?: { x: number; y: number; w: number; h: number }; bin?: number; maxRate?: number },
+): string {
+  const url = new URL(baseUrl)
+  if (opts.crop) {
+    for (const k of ['x', 'y', 'w', 'h'] as const) url.searchParams.set(k, String(Math.round(opts.crop[k])))
+  }
+  if (opts.bin && opts.bin > 1) url.searchParams.set('bin', String(opts.bin))
+  if (opts.maxRate && opts.maxRate > 0) url.searchParams.set('max_rate', String(opts.maxRate))
   return url.toString()
 }

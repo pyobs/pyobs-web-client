@@ -1,6 +1,6 @@
 # Raw live view needs CORS on BaseVideo, not a same-host restriction
 
-status: proposed
+status: accepted
 date: 2026-10-04
 
 ## Context and Problem Statement
@@ -30,15 +30,18 @@ CORS support in `BaseVideo`, as an opt-in module option, tracked as a pyobs-core
 
 ### Consequences
 
-- Raw mode depends on a second pyobs-core release, after #926.
+- Raw mode depends on a second pyobs-core release, after #926. Landed as pyobs/pyobs-core#942,
+  released in v2.14.0: module option `cors_origins` (list of origins or `["*"]`; default none),
+  preflight answered before auth, `Access-Control-Allow-Origin` on every `/video.raw` response.
+  A module needs the option set for raw mode to work from another origin.
 - Auth for cross-origin raw: the client sends `Authorization: Bearer <token>`, which forces a
   preflight, so the `OPTIONS` handler is required, not optional. The VFS token is already
   available to the client (`useVfsConfig`).
-- Until the follow-up lands, raw mode only works for a stream on the app's own origin (same
+- Before 2.14.0, or with `cors_origins` unset, raw mode only works for a stream on the app's own origin (same
   scheme, host and port, e.g. behind a reverse proxy). A same-host check is not enough: the same
   host on another port is cross-origin. Verified 2026-10-04 against a running `DummyVideo`
   (pyobs-core 2.13.x): `OPTIONS /video.raw` answers 405 and responses carry no `Access-Control-*`
-  headers. The client offers the toggle whenever a raw path is published and shows an explanatory
+  headers (checked against 2.13.x). The client offers the toggle whenever a raw path is published and shows an explanatory
   error when `fetch()` fails, instead of guessing from the URL.
 - Not verified: how Capacitor's WebView treats a streamed cross-origin `fetch()`. Check on a
   real device in phase b, even though raw mode is hidden on mobile in v1.
