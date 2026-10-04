@@ -15,11 +15,17 @@ import {
   defaultMjpegSettings,
   loadMjpegSettings,
   saveMjpegSettings,
+  loadMode,
+  saveMode,
+  type LiveViewMode,
   validateMjpegSettings,
   type MjpegSettings,
 } from '@/composables/useVideoSettings'
 import { useXmpp } from '@/composables/useXmpp'
 import { useVfsConfig } from '@/composables/useVfsConfig'
+import { useBreakpoint } from '@/composables/useBreakpoint'
+import { Capacitor } from '@capacitor/core'
+import RawLiveView from '@/components/RawLiveView.vue'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
 import type { CommandSchema } from '@/pyobs-codec'
 
@@ -40,6 +46,38 @@ function permitted(method: string): boolean {
 const baseStreamUrl = ref<string | undefined>(undefined)
 const streamTokenProtected = ref(false)
 const streamError = ref('')
+
+// ── Raw mode (issue #58 phase b) ─────────────────────────────────────────────
+// The raw stream's URL and bearer token, resolved like the MJPEG one. Raw frames are large and get
+// stretched in JS, so the mode isn't offered on phones or in the native app until it's been measured
+// there; a stored 'raw' choice is kept but not used on such a screen.
+const { isCompact } = useBreakpoint()
+const rawUrl = ref<string | undefined>(undefined)
+const rawToken = ref<string | undefined>(undefined)
+const storedMode = ref<LiveViewMode>('mjpeg')
+const rawAvailable = computed(() => !!rawUrl.value && !isCompact.value && !Capacitor.isNativePlatform())
+const mode = computed<LiveViewMode>(() => (storedMode.value === 'raw' && rawAvailable.value ? 'raw' : 'mjpeg'))
+
+// Watches the capability's path (a string), not the module object: that object changes on every
+// capability/state update, and re-resolving then would tear down a running raw stream each time.
+const rawPath = computed(() => {
+  const caps = currentModule.value?.capabilities['IVideo'] as { raw?: string | null } | undefined
+  return caps?.raw ?? null
+})
+watch(
+  rawPath,
+  async (path) => {
+    const resolved = path ? await resolveVfsEndpoint(path) : null
+    rawUrl.value = resolved?.url
+    rawToken.value = resolved?.endpoint.token
+  },
+  { immediate: true },
+)
+
+function setMode(next: LiveViewMode) {
+  storedMode.value = next
+  saveMode(props.jid, next)
+}
 
 // ── Bearer-token auth for the <img>-tag stream ──────────────────────────────
 // An <img> tag's src can't carry a custom Authorization header, but
@@ -106,7 +144,7 @@ watch(
     // used to collapse into one generic "No video stream available", which
     // made a real capabilities-publishing bug (see #39) indistinguishable
     // from a module that genuinely doesn't support a live stream.
-    const videoCaps = mod.capabilities['IVideo'] as { mjpeg?: string | null } | undefined
+    const videoCaps = mod.capabilities['IVideo'] as { mjpeg?: string | null; raw?: string | null } | undefined
     if (!videoCaps) {
       streamError.value = "This module hasn't published its IVideo capabilities yet."
       return
@@ -149,6 +187,7 @@ watch(
   () => props.jid,
   (jid) => {
     clearTimeout(applyTimer)
+    storedMode.value = loadMode(jid)
     settings.value = loadMjpegSettings(jid)
     appliedSettings.value = { ...settings.value }
   },
@@ -289,7 +328,30 @@ async function setGain() {
       <input ref="loginTokenInput" type="hidden" name="token" />
     </form>
 
-    <div class="pyobs-card p-0" style="overflow:hidden">
+    <div v-if="rawAvailable" class="btn-group btn-group-sm" role="group" aria-label="Live view mode">
+      <button
+        type="button"
+        class="btn"
+        :class="mode === 'mjpeg' ? 'btn-secondary' : 'btn-outline-secondary'"
+        data-testid="mode-mjpeg"
+        @click="setMode('mjpeg')"
+      >
+        Low bandwidth
+      </button>
+      <button
+        type="button"
+        class="btn"
+        :class="mode === 'raw' ? 'btn-secondary' : 'btn-outline-secondary'"
+        data-testid="mode-raw"
+        @click="setMode('raw')"
+      >
+        Full quality
+      </button>
+    </div>
+
+    <RawLiveView v-if="mode === 'raw' && rawUrl" :jid="jid" :url="rawUrl" :token="rawToken" />
+
+    <div v-if="mode === 'mjpeg'" class="pyobs-card p-0" style="overflow:hidden">
       <img
         v-if="streamUrl"
         :src="streamUrl"
@@ -310,7 +372,7 @@ async function setGain() {
       <div v-else-if="!streamUrl" class="text-muted p-3" style="font-size:0.85rem">No video stream available.</div>
     </div>
 
-    <div v-if="streamUrl" class="pyobs-card" data-testid="stretch-controls">
+    <div v-if="streamUrl && mode === 'mjpeg'" class="pyobs-card" data-testid="stretch-controls">
       <div class="d-flex justify-content-between align-items-center mb-1">
         <span class="text-muted" style="font-size:0.7rem">Display (server-side)</span>
         <button type="button" class="btn btn-link btn-sm p-0" style="font-size:0.75rem" @click="resetSettings">

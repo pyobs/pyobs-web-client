@@ -2,9 +2,16 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import {
   buildMjpegUrl,
   defaultMjpegSettings,
+  defaultRawSettings,
   loadMjpegSettings,
+  loadMode,
+  loadRawSettings,
   normalizeMjpegSettings,
+  normalizeRawSettings,
   saveMjpegSettings,
+  saveMode,
+  saveRawSettings,
+  validateCuts,
   validateMjpegSettings,
 } from '../composables/useVideoSettings'
 
@@ -128,5 +135,40 @@ describe('storage', () => {
     })
     expect(loadMjpegSettings('a@x')).toEqual(defaultMjpegSettings())
     expect(() => saveMjpegSettings('a@x', defaultMjpegSettings())).not.toThrow()
+  })
+})
+
+describe('mode and raw settings', () => {
+  it('defaults to MJPEG and remembers the mode per camera', () => {
+    expect(loadMode('a@x')).toBe('mjpeg')
+    saveMode('a@x', 'raw')
+    expect(loadMode('a@x')).toBe('raw')
+    expect(loadMode('b@x')).toBe('mjpeg')
+  })
+
+  it('falls back to MJPEG for an unknown stored mode', () => {
+    localStorage.setItem('pyobs_video_settings', JSON.stringify({ 'a@x': { mode: 'webgl' } }))
+    expect(loadMode('a@x')).toBe('mjpeg')
+  })
+
+  it('stores mode, mjpeg and raw settings side by side without overwriting each other', () => {
+    const raw = { stretch: 'sqrt' as const, cuts: 'manual' as const, lo: 1, hi: 9 }
+    saveRawSettings('a@x', raw)
+    saveMode('a@x', 'raw')
+    saveMjpegSettings('a@x', { ...defaultMjpegSettings(), scale: 4 })
+    expect(loadRawSettings('a@x')).toEqual(raw)
+    expect(loadMode('a@x')).toBe('raw')
+    expect(loadMjpegSettings('a@x').scale).toBe(4)
+  })
+
+  it('normalizes junk raw settings to defaults', () => {
+    expect(normalizeRawSettings({ stretch: 'cubic', cuts: 1, lo: 'x' })).toEqual(defaultRawSettings())
+    expect(normalizeRawSettings(null)).toEqual(defaultRawSettings())
+  })
+
+  it('validates raw cuts the same way', () => {
+    expect(validateCuts({ cuts: 'manual', lo: 1 })).toBeDefined()
+    expect(validateCuts({ cuts: 'manual', lo: 1, hi: 2 })).toBeUndefined()
+    expect(validateCuts({ cuts: '' })).toBeUndefined()
   })
 })

@@ -38,13 +38,13 @@ pyobs-core's design doc still say "not released"). Client code: `src/views/Video
 
 ## Phase b: raw mode, full-frame stretch (needs CORS follow-up in pyobs-core)
 
-- [ ] pyobs-core follow-up: opt-in CORS (`OPTIONS` preflight, allow-origin/headers, credentials
+- [ ] pyobs-core follow-up: opt-in CORS, filed as pyobs/pyobs-core#942 (`OPTIONS` preflight, allow-origin/headers, credentials
       if needed). File the issue, link it here.
-- [ ] Read `videoCaps.raw` alongside `mjpeg`; mode toggle only when `raw` is published, the
-      screen is desktop-sized and the app is not running under Capacitor.
-- [ ] `fetch()` with Bearer token (from `useVfsConfig`), streamed body, abort on unmount and on
+- [x] Read `videoCaps.raw` alongside `mjpeg`; mode toggle only when `raw` is published, the
+      screen is desktop-sized and the app is not running under Capacitor (`VideoView.vue`).
+- [x] `fetch()` with Bearer token (from `useVfsConfig`), streamed body, abort on unmount and on
       mode/camera change.
-- [ ] Multipart parser (own module, no Vue): boundary handling across chunk splits, per-part
+- [x] Multipart parser (`src/utils/rawFrameParser.ts`; verified against a live DummyVideo, 640x480 `<u2`): boundary handling across chunk splits, per-part
       `X-Pyobs-Frame-Meta` JSON, little-endian data by `DTYPE`. Read the exact framing in
       `basevideo-raw-frame-streaming.md` and `raw_handler` in `basevideo.py` (checked 2026-10-04).
       Framing: the response declares `boundary=--rawboundary` but the server writes
@@ -54,11 +54,11 @@ pyobs-core's design doc still say "not released"). Client code: `src/views/Video
       `NAXIS1/2`, and `NAXIS3` for 3D frames, times `DTYPE` size). Meta keys: `DTYPE`, `SRCDTYPE`
       (dtype before binning, needed for `full` cuts), `VIDFRAME`, `SETGEN`, `SWBIN`, `DATE-SRC`,
       `DATE-ARR`, `EXPTIME`, `CROP-X`, `CROP-Y`. Binned frames are float32.
-- [ ] Stretch module: linear/sqrt/asinh/log and minmax/percentile/manual/full cuts on typed
+- [x] Stretch module (`src/utils/stretch.ts`, LUT for 8/16 bit): linear/sqrt/asinh/log and minmax/percentile/manual/full cuts on typed
       arrays, output to `ImageData` on a canvas. Live controls, no reconnect. Percentiles on a
       subsample, as the server does.
-- [ ] Reuse `pyobs/utils/stretch.py` semantics so MJPEG and raw look alike for the same settings.
-- [ ] Unit tests: parser (split chunks, partial headers, several frames), each stretch/cut
+- [x] Reuse `pyobs/utils/stretch.py` semantics so MJPEG and raw look alike for the same settings.
+- [x] Unit tests (`rawFrameParser.spec.ts`, `stretch.spec.ts`): parser (split chunks, partial headers, several frames), each stretch/cut
       mode against known values, dtype handling.
 - [ ] E2E: raw mode draws a non-blank canvas against a real module.
 - [ ] Measure Canvas 2D cost on a 2048x2048 frame. If too slow, plan a WebGL path as a new phase.
