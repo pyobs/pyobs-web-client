@@ -73,3 +73,6 @@ Implementation plans, checklist-style.
 - [2026-09-28-android-weather-widget.md](2026-09-28-android-weather-widget.md) — Android home-screen
   widgets (list / tiles / detailed, sites picked per widget) for linked pyobs-weather instances.
   **implemented** 2026-09-29, verified on Android 14; Android < 12 untested
+- [2026-10-04-video-live-view-modes.md](2026-10-04-video-live-view-modes.md) — live view mode
+  choice per camera: MJPEG with server-side stretch (phase a), raw with client-side stretch
+  (b, needs CORS on `BaseVideo`), zoom/server crop (c). Issue #58. **planned**

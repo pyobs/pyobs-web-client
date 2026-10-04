@@ -5,6 +5,19 @@
 // MJPEG multipart stream natively, so this widget is just VFS-resolving the
 // stream URL and pointing an <img> at it — no socket/parsing code needed.
 import { ref, computed, watch, onUnmounted } from 'vue'
+import {
+  STRETCH_FUNCTIONS,
+  CUTS_MODES,
+  DEFAULT_PERCENTILES,
+  MIN_QUALITY,
+  MAX_QUALITY,
+  buildMjpegUrl,
+  defaultMjpegSettings,
+  loadMjpegSettings,
+  saveMjpegSettings,
+  validateMjpegSettings,
+  type MjpegSettings,
+} from '@/composables/useVideoSettings'
 import { useXmpp } from '@/composables/useXmpp'
 import { useVfsConfig } from '@/composables/useVfsConfig'
 import { isMethodPermitted, NOT_PERMITTED_TITLE } from '@/utils/acl'
@@ -23,7 +36,8 @@ function permitted(method: string): boolean {
 // ── Stream URL — resolved once per module, not re-fetched on every render.
 // videowidget.py's own open-VFS-path/find-HttpFile logic, minus the
 // raw-socket bit an <img> tag makes unnecessary.
-const streamUrl = ref<string | undefined>(undefined)
+// Resolved once per module; streamUrl below adds the stretch query parameters on top.
+const baseStreamUrl = ref<string | undefined>(undefined)
 const streamTokenProtected = ref(false)
 const streamError = ref('')
 
@@ -81,7 +95,7 @@ function loginForStream(baseUrl: string, token: string): Promise<void> {
 watch(
   currentModule,
   async (mod) => {
-    streamUrl.value = undefined
+    baseStreamUrl.value = undefined
     streamTokenProtected.value = false
     streamError.value = ''
 
@@ -115,9 +129,57 @@ watch(
       }
       await loginForStream(resolved.url, resolved.endpoint.token)
     }
-    streamUrl.value = resolved.url
+    baseStreamUrl.value = resolved.url
   },
   { immediate: true },
+)
+
+// ── Server-side stretch (pyobs-core BaseVideo >= 2.13.0, issue #58) ──────────
+// `settings` is what the form edits; `appliedSettings` is what the stream actually uses. A change
+// means a reconnect, so the form is debounced and invalid combinations (which the server answers
+// with a 400) are never applied. Servers without the stretch parameters ignore them.
+const settings = ref<MjpegSettings>(defaultMjpegSettings())
+const appliedSettings = ref<MjpegSettings>(defaultMjpegSettings())
+const settingsError = computed(() => validateMjpegSettings(settings.value))
+const showsCutValues = computed(() => settings.value.cuts === 'percentile' || settings.value.cuts === 'manual')
+const APPLY_DELAY_MS = 400
+let applyTimer: ReturnType<typeof setTimeout> | undefined
+
+watch(
+  () => props.jid,
+  (jid) => {
+    clearTimeout(applyTimer)
+    settings.value = loadMjpegSettings(jid)
+    appliedSettings.value = { ...settings.value }
+  },
+  { immediate: true },
+)
+
+// Number inputs hand back '' (or null) when cleared; that means "not set".
+function onNumberInput(key: 'lo' | 'hi', e: Event) {
+  const v = (e.target as HTMLInputElement).valueAsNumber
+  settings.value = { ...settings.value, [key]: Number.isFinite(v) ? v : undefined }
+}
+
+watch(
+  settings,
+  (next) => {
+    clearTimeout(applyTimer)
+    if (validateMjpegSettings(next)) return
+    applyTimer = setTimeout(() => {
+      appliedSettings.value = { ...next }
+      saveMjpegSettings(props.jid, next)
+    }, APPLY_DELAY_MS)
+  },
+  { deep: true },
+)
+
+function resetSettings() {
+  settings.value = defaultMjpegSettings()
+}
+
+const streamUrl = computed(() =>
+  baseStreamUrl.value ? buildMjpegUrl(baseStreamUrl.value, appliedSettings.value) : undefined,
 )
 
 // Covers both a wrong token (cookie login silently failed above) and any
@@ -169,7 +231,10 @@ watch(
   { immediate: true },
 )
 
-onUnmounted(() => stopSubscription?.())
+onUnmounted(() => {
+  stopSubscription?.()
+  clearTimeout(applyTimer)
+})
 
 // Seeded once on first arrival, not re-synced on every push — this app's own
 // established precedent (CoolingView.vue etc.) over videowidget.py's literal
@@ -243,6 +308,85 @@ async function setGain() {
       </div>
       <div v-else-if="streamError" class="text-muted p-3" style="font-size:0.85rem">{{ streamError }}</div>
       <div v-else-if="!streamUrl" class="text-muted p-3" style="font-size:0.85rem">No video stream available.</div>
+    </div>
+
+    <div v-if="streamUrl" class="pyobs-card" data-testid="stretch-controls">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="text-muted" style="font-size:0.7rem">Display (server-side)</span>
+        <button type="button" class="btn btn-link btn-sm p-0" style="font-size:0.75rem" @click="resetSettings">
+          Reset
+        </button>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <div class="flex-fill" style="min-width:8rem">
+          <label class="text-muted d-block" style="font-size:0.7rem">Stretch</label>
+          <select v-model="settings.stretch" class="form-select form-select-sm" data-testid="stretch">
+            <option value="">Module default</option>
+            <option v-for="f in STRETCH_FUNCTIONS" :key="f" :value="f">{{ f }}</option>
+          </select>
+        </div>
+        <div class="flex-fill" style="min-width:8rem">
+          <label class="text-muted d-block" style="font-size:0.7rem">Cuts</label>
+          <select v-model="settings.cuts" class="form-select form-select-sm" data-testid="cuts">
+            <option value="">Module default</option>
+            <option v-for="c in CUTS_MODES" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
+      </div>
+      <div v-if="showsCutValues" class="d-flex flex-wrap gap-2 mt-2">
+        <div class="flex-fill" style="min-width:8rem">
+          <label class="text-muted d-block" style="font-size:0.7rem">
+            Low {{ settings.cuts === 'percentile' ? '(percentile)' : '(ADU)' }}
+          </label>
+          <input
+            :value="settings.lo"
+            type="number"
+            step="any"
+            class="form-control form-control-sm"
+            :placeholder="settings.cuts === 'percentile' ? String(DEFAULT_PERCENTILES.lo) : ''"
+            data-testid="lo"
+            @input="onNumberInput('lo', $event)"
+          />
+        </div>
+        <div class="flex-fill" style="min-width:8rem">
+          <label class="text-muted d-block" style="font-size:0.7rem">
+            High {{ settings.cuts === 'percentile' ? '(percentile)' : '(ADU)' }}
+          </label>
+          <input
+            :value="settings.hi"
+            type="number"
+            step="any"
+            class="form-control form-control-sm"
+            :placeholder="settings.cuts === 'percentile' ? String(DEFAULT_PERCENTILES.hi) : ''"
+            data-testid="hi"
+            @input="onNumberInput('hi', $event)"
+          />
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        <div class="flex-fill" style="min-width:8rem">
+          <label class="text-muted d-block" style="font-size:0.7rem">Downsample</label>
+          <select v-model.number="settings.scale" class="form-select form-select-sm" data-testid="scale">
+            <option :value="1">1x (full)</option>
+            <option :value="2">2x</option>
+            <option :value="4">4x</option>
+            <option :value="8">8x</option>
+          </select>
+        </div>
+        <div class="flex-fill" style="min-width:8rem">
+          <label class="text-muted d-block" style="font-size:0.7rem">JPEG quality</label>
+          <input
+            v-model.number="settings.quality"
+            type="number"
+            :min="MIN_QUALITY"
+            :max="MAX_QUALITY"
+            step="1"
+            class="form-control form-control-sm"
+            data-testid="quality"
+          />
+        </div>
+      </div>
+      <div v-if="settingsError" class="text-danger mt-1" style="font-size:0.75rem">{{ settingsError }}</div>
     </div>
 
     <div v-if="exposureTimeStateValue !== undefined" class="d-flex gap-2 align-items-end">
