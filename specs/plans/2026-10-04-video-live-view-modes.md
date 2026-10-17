@@ -1,11 +1,11 @@
 # Plan: Live view modes (MJPEG with server stretch, raw with client stretch)
 
-Status: planned, issue #58. Not started.
+Status: implemented (phases a, b, c in v0.14.0), issue #58 closed. Open: E2E runs against a live
+module, Canvas 2D cost on large frames, connection limits, Android WebView check.
 
 Design lives in pyobs-core: `specs/design/basevideo-live-view.md` (modes, query params, raw meta),
 `basevideo-raw-frame-streaming.md` (wire format), `basevideo-http-auth.md` (auth). Server side is
-pyobs-core PR #926, released in v2.13.0 (checked against tags 2026-10-04; the issue text and
-pyobs-core's design doc still say "not released"). Client code: `src/views/VideoView.vue`.
+pyobs-core PR #926, released in v2.13.0 (checked against tags 2026-10-04 and again 2026-10-17). Client code: `src/views/VideoView.vue`.
 
 ## Decisions
 
